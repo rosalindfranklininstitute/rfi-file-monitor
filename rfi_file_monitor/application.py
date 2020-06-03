@@ -1,7 +1,7 @@
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import GLib, Gio, Gtk
+from gi.repository import GLib, Gio, Gtk, GdkPixbuf
 
 import pkg_resources
 import platform
@@ -61,7 +61,20 @@ class Application(Gtk.Application):
         window.show_all()
 
     def on_about(self, action, param):
-        about_dialog = Gtk.AboutDialog(transient_for=self.get_active_window(), modal=True)
+
+        logo = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+                pkg_resources.resource_filename('rfi_file_monitor', 'data/RFI-logo-transparent.png'),
+                300,
+                -1,
+                True)
+
+        about_dialog = Gtk.AboutDialog(
+            transient_for=self.get_active_window(),
+            modal=True,
+            authors=["Tom Schoonjans"],
+            logo=logo,
+            version="0.1.0",
+            )
         about_dialog.present()
 
     def on_quit(self, action, param):

@@ -25,6 +25,7 @@ setup(
     package_data={
         'rfi_file_monitor.data': [
             '*.ui',
+            '*.png',
         ],
     },
     install_requires=["setuptools", "PyGObject", "boto3"],

@@ -12,8 +12,8 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         self.set_default_size(1000, 1000)
 
         action_entries = (
-            ("on_close", self.on_close),
-            ("on_minimize", self.on_minimize),
+            ("close", self.on_close),
+            ("minimize", self.on_minimize),
         )
 
         # This doesn't work, which is kind of uncool

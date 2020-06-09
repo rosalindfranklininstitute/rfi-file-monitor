@@ -13,11 +13,9 @@ setup(
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft",
         "Operating System :: MacOS :: MacOS X",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.8',
     packages=[
         "rfi_file_monitor",
         "rfi_file_monitor.data"

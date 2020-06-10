@@ -109,13 +109,21 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         column.set_cell_data_func(renderer, self.time_cell_data_func, func_data=dict(column=1))
         files_tree_view.append_column(column)
 
+        renderer = Gtk.CellRendererText()
+        column = Gtk.TreeViewColumn("Status", renderer)
+        column.set_cell_data_func(renderer, self.status_cell_data_func, func_data=dict(column=2))
+        files_tree_view.append_column(column)
+
 
     def time_cell_data_func(self, tree_column, cell, tree_model, iter, func_data):
         epoch = tree_model.get_value(iter, func_data['column'])
         date_string = ctime(epoch)
-        logging.debug(f"time_cell_data_func: {date_string}")
-        logging.debug(f"{type(cell)}=")
         cell.set_property('text', date_string)
+
+    def status_cell_data_func(self, tree_column, cell, tree_model, iter, func_data):
+        status = tree_model.get_value(iter, func_data['column'])
+        status_string = str(FileStatus(status))
+        cell.set_property('text', status_string)
 
     def monitor_switch_cb(self, button, active):
         self._directory_chooser_button.set_sensitive(not button.get_active())
@@ -134,6 +142,27 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             with self._files_dict_lock:
                 self._files_dict.clear()
 
+    def file_created_cb(self, *user_data):
+        file_path = user_data[0]
+        with self._files_dict_lock:
+            if file_path in self._files_dict:
+                logging.warn("f{file_path} has been recreated! Ignoring...")
+            else:
+                logging.debug(f"New file {file_path} created")
+                # add new entry to model
+                _creation_timestamp = time()
+                iter = self._files_tree_model.append(parent=None, row=[
+                    str(PurePath(file_path).relative_to(self._monitored_directory)),
+                    _creation_timestamp,
+                    int(FileStatus.CREATED),
+                    "ignored",
+                    0.0,
+                    ])
+                _row_reference = Gtk.TreeRowReference.new(self._files_tree_model, self._files_tree_model.get_path(iter))
+                _file = File(created=_creation_timestamp, status=FileStatus.CREATED, row_reference=_row_reference)
+                self._files_dict[file_path] = _file
+        return GLib.SOURCE_REMOVE
+
     def monitor_cb(self, monitor, file, other_file, event_type):
         """
         This method is called whenever our monitored directory changed
@@ -143,11 +172,9 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         # file has been created -> add a new object to dict
         if event_type == Gio.FileMonitorEvent.CREATED:
             if (file_type := file.query_file_type(Gio.FileQueryInfoFlags.NONE)) == Gio.FileType.REGULAR:
-                # regular file -> add to queue for processing
-                with self._files_dict_lock:
-                    if file_path in self._files_dict:
-                        logging.warn("f{file_path} has been recreated! Ignoring...")
-                    self._files_dict[file_path] = File(created=time())
+                # new regular file -> add to dict and treemodel
+                # give it very high priority!
+                GLib.idle_add(self.file_created_cb, file_path, priority=GLib.PRIORITY_HIGH)
             elif file_type == Gio.FileType.DIRECTORY:
                 # directory -> add a new file monitor since this is not working recursively
                 pass
@@ -174,17 +201,9 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         """
         with self._files_dict_lock:
             for _filename, _file in self._files_dict.items():
-                if _file.status == FileStatus.CREATED and _file.row_reference == None:
-                    logging.debug(f"files_dict_timeout_cb: {_filename} was created")
-                    # add new entry to model
-                    iter = self._files_tree_model.append(parent=None, row=[
-                        str(PurePath(_filename).relative_to(self._monitored_directory)),
-                        _file.created,
-                        _file.status,
-                        "ignored",
-                        0.0,
-                    ])
-                    _file.row_reference = Gtk.TreeRowReference.new(self._files_tree_model, self._files_tree_model.get_path(iter))
+                logging.debug(f"timeout_cb: {_filename} found as {str(_file.status)}")
+                #if _file.status == FileStatus.CREATED and _file.row_reference == None:
+                #    logging.debug(f"files_dict_timeout_cb: {_filename} was created")
         return GLib.SOURCE_CONTINUE
 
 

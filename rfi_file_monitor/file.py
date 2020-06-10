@@ -13,6 +13,7 @@ class FileStatus(IntEnum):
     REMOVED_FROM_LIST = auto()
 
     def __str__(self):
+        #pylint: disable=no-member
         return self.name.lower().capitalize().replace('_', ' ')
 
 class File(GObject.GObject):

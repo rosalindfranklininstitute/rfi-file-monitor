@@ -28,9 +28,9 @@ setup(
     },
     install_requires=["setuptools", "PyGObject", "boto3"],
     entry_points={
-        #"workflows.services": [
-        #    "DLSPyMcaFitter = pymca_zocalo:DLSPyMcaFitter",
-        #],
+        "rfi_file_monitor.operations": [
+            "DummyOperation = rfi_file_monitor.dummy_operation:DummyOperation",
+        ],
         'console_scripts': [
             'rfi-file-monitor=rfi_file_monitor:main',
         ],

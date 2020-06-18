@@ -244,8 +244,9 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                 logging.debug(f"New file {file_path} created")
                 # add new entry to model
                 _creation_timestamp = time()
+                _relative_file_path = str(PurePath(file_path).relative_to(self._monitored_directory))
                 iter = self._files_tree_model.append(parent=None, row=[
-                    str(PurePath(file_path).relative_to(self._monitored_directory)),
+                    _relative_file_path,
                     _creation_timestamp,
                     int(FileStatus.CREATED),
                     "All",
@@ -263,7 +264,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                         0.0,
                         "0.0 %",
                     ])
-                _file = File(filename=file_path, created=_creation_timestamp, status=FileStatus.CREATED, row_reference=_row_reference)
+                _file = File(filename=file_path, relative_filename=_relative_file_path, created=_creation_timestamp, status=FileStatus.CREATED, row_reference=_row_reference)
                 self._files_dict[file_path] = _file
         return GLib.SOURCE_REMOVE
 
@@ -291,14 +292,14 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         with self._files_dict_lock:
             if file_path not in self._files_dict:
                 logging.warning("f{file_path} has not been created yet! Ignoring...")
-            elif self._files_dict[file_path].props.status != FileStatus.CREATED:
+            elif self._files_dict[file_path].status != FileStatus.CREATED:
                 # looks like this file has been saved again!
                 logging.warning(f"{file_path} has been saved again?? Ignoring!")
             else:
                 logging.debug(f"File {file_path} has been saved")
                 file = self._files_dict[file_path]
-                file.props.status = FileStatus.SAVED
-                path = file.props.row_reference.get_path()
+                file.status = FileStatus.SAVED
+                path = file.row_reference.get_path()
                 self._files_tree_model[path][2] = int(FileStatus.SAVED) 
 
 
@@ -353,9 +354,9 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                     else:
                         # queue the job
                         logging.debug(f"files_dict_timeout_cb: adding {_filename} to queue for future processing")
-                        _file.props.status = FileStatus.QUEUED
-                        path = _file.props.row_reference.get_path()
-                        self._files_tree_model[path][2] = int(_file.props.status)
+                        _file.status = FileStatus.QUEUED
+                        path = _file.row_reference.get_path()
+                        self._files_tree_model[path][2] = int(_file.status)
                 elif _file.status == FileStatus.QUEUED:
                     if self._njobs_running < self.MAX_JOBS:
                         # try and launch a new job

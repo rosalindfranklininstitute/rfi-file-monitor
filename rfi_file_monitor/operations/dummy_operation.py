@@ -6,8 +6,9 @@ import time
 from threading import current_thread
 import logging
 
-from .operation import Operation
-from .file import File
+#pylint: disable=relative-beyond-top-level
+from ..operation import Operation
+from ..file import File
 
 class DummyOperation(Operation):
     NAME = "Dummy Operation"

@@ -40,6 +40,7 @@ class File(GObject.GObject):
         GObject.GObject.__init__(self, *args, **kwargs)
 
     def _update_progressbar_worker_cb(self, index: int, value: float):
+        #pylint: disable=no-member
         #logging.debug(f"_update_progressbar_worker_cb: {index=} {value=}")
         if not self.props.row_reference.valid():
             logging.warning(f"_update_progressbar_worker_cb: {self.props.filename} is invalid!")
@@ -61,21 +62,30 @@ class File(GObject.GObject):
         return GLib.SOURCE_REMOVE
 
     def _update_status_worker_cb(self, index: int, status: FileStatus):
+        #pylint: disable=no-member
         if not self.props.row_reference.valid():
             logging.warning(f"_update_status_worker_cb: {self.props.filename} is invalid!")
             return GLib.SOURCE_REMOVE
 
         model = self.props.row_reference.get_model()
         path = self.props.row_reference.get_path()
+        iter = model.get_iter(path)
 
         if index == -1: # parent
             self.props.status = int(status)
-            model[path][2] = self.props.status
+            iter = model.get_iter(path)
         else:
-            parent_iter = model.get_iter(path)
-            child_iter = model.iter_nth_child(parent_iter, index)
-            model[child_iter][2] = int(status)
+            iter = model.iter_nth_child(iter, index)
+
+        model[iter][2] = int(status)
         
+        # When the operation succeeds, ensure that the progressbars go
+        # to 100 %, which is necessary when the operation doesnt
+        # do any progress updated (which would be unfortunate!)
+        if status == FileStatus.SUCCESS:
+            model[iter][4] = 100.0
+            model[iter][5] = "100.0 %"
+
         return GLib.SOURCE_REMOVE
 
     def update_status(self, index: int, status: FileStatus):

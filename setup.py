@@ -30,6 +30,7 @@ setup(
     entry_points={
         "rfi_file_monitor.operations": [
             "DummyOperation = rfi_file_monitor.operations.dummy_operation:DummyOperation",
+            "S3Uploader = rfi_file_monitor.operations.s3_uploader:S3UploaderOperation",
         ],
         'console_scripts': [
             'rfi-file-monitor=rfi_file_monitor:main',

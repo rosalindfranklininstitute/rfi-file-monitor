@@ -244,6 +244,24 @@ class ApplicationWindow(Gtk.ApplicationWindow):
 
         # play clicked
         elif button == self._monitor_play_button:
+            # carry out preflight checks
+            exception_msgs = []
+            for operation in self._operations_box:
+                try:
+                    operation.preflight_check()
+                except Exception as e:
+                    exception_msgs.append('* ' + str(e))
+            if exception_msgs:
+                for operation in self._operations_box:
+                    operation.postflight_cleanup()
+                dialog = Gtk.MessageDialog(self.get_toplevel(), \
+                    Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT, \
+                    Gtk.MessageType.ERROR, Gtk.ButtonsType.CLOSE, "Operation configuration error(s) found")
+                dialog.props.secondary_text = '\n'.join(exception_msgs)
+                dialog.run()
+                dialog.destroy()
+                return
+
             # cleanup tree model, launch the monitor
             self._files_tree_model.clear()
             self._timeout_id = GLib.timeout_add_seconds(1, self.files_dict_timeout_cb, priority=GLib.PRIORITY_DEFAULT)
@@ -265,9 +283,9 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                 logging.debug(f"New file {file_path} created")
                 # add new entry to model
                 _creation_timestamp = time()
-                _relative_file_path = str(PurePath(file_path).relative_to(self._monitored_directory))
+                _relative_file_path = PurePath(file_path).relative_to(self._monitored_directory)
                 iter = self._files_tree_model.append(parent=None, row=[
-                    _relative_file_path,
+                    str(_relative_file_path),
                     _creation_timestamp,
                     int(FileStatus.CREATED),
                     "All",

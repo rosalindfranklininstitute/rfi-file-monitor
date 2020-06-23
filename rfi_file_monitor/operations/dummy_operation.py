@@ -34,8 +34,4 @@ class DummyOperation(Operation):
 
         # None indicates success, a string failure, with its contents set to an error message
         return None
-
     
-    @property
-    def valid(self):
-        return True

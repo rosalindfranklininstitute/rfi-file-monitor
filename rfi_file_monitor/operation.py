@@ -65,21 +65,22 @@ class Operation(ABC, Gtk.Frame, metaclass=OperationMeta):
         """
         raise NotImplementedError
 
-    @property
-    @abstractmethod
-    def valid(self) -> bool:
+    def preflight_check(self):
         """
-        This property reflects the state of the user-input for the operation.
-        True means that the input is valid, and that this operation is allowed
-        to proceed.
+        This method will be used to check that all widgets have valid information,
+        and should also be used to extract that information into variables that
+        can be used in the run() method, meaning that no Gtk calls will need to be made
+        when calling run() afterwards.
+        Feel free to use it also for initializing other stuff, such as opening connections.
+        
+        If something goes wrong during this method, an exception will be raised.
         """
-        raise NotImplementedError
+        return
 
-    @abstractmethod
-    def set_sensitive(self, state: bool):
+    def postflight_cleanup(self):
         """
-        Use this method to disable those input widgets that should be inactive
-        while monitoring (and processing) is active.
-        Note that this overrides a Gtk.Widget method!
+        Use this method to do some cleanup, usually things that were done in preflight_cleanup().
         """
-        raise NotImplementedError
+        return
+
+    

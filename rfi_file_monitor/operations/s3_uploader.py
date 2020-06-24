@@ -101,18 +101,18 @@ class S3UploaderOperation(Operation):
         self._grid.attach(self._force_bucket_creation_check_button, 2, 3, 1, 1)
 
     def preflight_check(self):
-        client_options = dict()
-        client_options['endpoint_url'] = tmp if (tmp := self._hostname_entry.get_text().strip()) != "" else self._hostname_entry.get_placeholder_text()
-        client_options['verify'] = self._hostname_ssl_verify_check_button.get_active()
-        client_options['aws_access_key_id'] = self._access_key_entry.get_text().strip()
-        client_options['aws_secret_access_key'] = self._secret_key_entry.get_text().strip()
-        logging.debug(f'{client_options=}')
+        self._client_options = dict()
+        self._client_options['endpoint_url'] = tmp if (tmp := self._hostname_entry.get_text().strip()) != "" else self._hostname_entry.get_placeholder_text()
+        self._client_options['verify'] = self._hostname_ssl_verify_check_button.get_active()
+        self._client_options['aws_access_key_id'] = tmp if (tmp := self._access_key_entry.get_text().strip()) != "" else None
+        self._client_options['aws_secret_access_key'] = tmp if (tmp := self._secret_key_entry.get_text().strip()) != "" else None
+        logging.debug(f'{self._client_options=}')
 
         self._bucket_name = self._bucket_name_entry.get_text().strip()
         self._force_bucket_creation = self._force_bucket_creation_check_button.get_active()
 
         # open connection (things can definitely go wrong here!)
-        self._s3_client = boto3.client('s3', **client_options)
+        self._s3_client = boto3.client('s3', **self._client_options)
 
         # check if the bucket exists
         # taken from https://stackoverflow.com/a/47565719

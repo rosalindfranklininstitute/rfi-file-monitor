@@ -5,6 +5,7 @@ from gi.repository import GObject, Gtk, GLib
 
 import logging
 from pathlib import PurePath
+from typing import Final, Dict, Any
 
 @unique
 class FileStatus(IntEnum):
@@ -33,6 +34,11 @@ class File:
         self._created = created
         self._status = status
         self._row_reference = row_reference
+        self._operation_metadata : Final[Dict[int, Dict[str, Any]]] = dict()
+
+    @property
+    def operation_metadata(self) -> Dict[int, Dict[str, Any]]:
+        return self._operation_metadata
 
     @property
     def filename(self) -> str:

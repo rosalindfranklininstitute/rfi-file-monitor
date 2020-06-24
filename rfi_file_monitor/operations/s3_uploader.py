@@ -16,6 +16,7 @@ from pathlib import PurePosixPath
 from threading import current_thread, Lock
 import traceback
 import sys
+import urllib
 
 # useful info from help(boto3.session.Session.client)
 
@@ -155,11 +156,13 @@ class S3UploaderOperation(Operation):
         thread = current_thread()
 
         try:
-            response = self._s3_client.upload_file( \
+            #TODO: do not allow overwriting existing keys in bucket??
+            key = str(PurePosixPath(*file._relative_filename.parts))
+            self._s3_client.upload_file( \
                 file._filename,\
                 self._bucket_name,
-                str(PurePosixPath(*file._relative_filename.parts)),
-                ExtraArgs = None,
+                key,
+                ExtraArgs = None, # TODO: add support for ACL??
                 Config = boto3.s3.transfer.TransferConfig(max_concurrency=1),
                 Callback = S3ProgressPercentage(file, thread, self)
                 )
@@ -167,8 +170,12 @@ class S3UploaderOperation(Operation):
             traceback.print_exc(file=sys.stdout)
             return str(e)
         else:
-            logging.info(f"S3 upload started from {file._filename} to {self._bucket_name} with {response=}")
-
+            #add object URL to metadata
+            parsed_url = urllib.parse.urlparse(self._client_options['endpoint_url'])
+            file.operation_metadata[self.index] = {'s3 object url':
+                f'{parsed_url.scheme}://{self._bucket_name}.{parsed_url.netloc}/{urllib.parse.quote(key)}'}
+            logging.info(f"S3 upload complete from {file._filename} to {self._bucket_name}")
+            logging.debug(f"{file.operation_metadata[self.index]=}")
         return None
 
 # taken from https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-uploading-files.html

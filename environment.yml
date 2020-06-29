@@ -10,3 +10,5 @@ dependencies:
   - boto3
   - munch
   - watchdog
+  - adwaita-icon-theme
+  - librsvg

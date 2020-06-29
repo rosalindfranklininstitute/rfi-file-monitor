@@ -26,10 +26,11 @@ setup(
             '*.png',
         ],
     },
-    install_requires=["setuptools", "PyGObject", "boto3"],
+    install_requires=["setuptools", "PyGObject", "boto3", "munch"],
     entry_points={
         "rfi_file_monitor.operations": [
-            "DummyOperation = rfi_file_monitor.dummy_operation:DummyOperation",
+            "DummyOperation = rfi_file_monitor.operations.dummy_operation:DummyOperation",
+            "S3Uploader = rfi_file_monitor.operations.s3_uploader:S3UploaderOperation",
         ],
         'console_scripts': [
             'rfi-file-monitor=rfi_file_monitor:main',

@@ -1,18 +1,19 @@
 import gi
 gi.require_version("Gtk", "3.0")
-from gi.repository import GLib, Gio, Gtk
+gi.require_version("Gdk", "3.0")
+from gi.repository import GLib, Gio, Gtk, Gdk
 
 import logging
 from collections import OrderedDict
-from threading import RLock
+from threading import RLock, Thread
 from time import time, ctime
 from pathlib import PurePath
 from typing import OrderedDict as OrderedDictType
-from typing import ClassVar, Final, List
+from typing import ClassVar, Final, List, Optional, Any
 import pkg_resources
 import os
 
-from .utils import add_action_entries
+from .utils import add_action_entries, LongTaskWindow
 from .file import FileStatus, File
 from .operation import Operation
 from .job import Job
@@ -31,10 +32,12 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         self._files_dict_lock = RLock()
         self._files_dict: OrderedDictType[str, File] = OrderedDict()
         self._jobs_list: Final[List[Job]] = list()
+        self._njobs_running: Final[int] = 0
+        self._monitor_changed_id: Final[int] = 0
+        self._timeout_id: Final[int] = 0
 
         self.set_default_size(1000, 1000)
 
-        self._njobs_running: Final[int] = 0
 
         # get operations from entry points
         self._known_operations = {
@@ -42,7 +45,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         }
 
         for _name, _class in self._known_operations.items():
-            logging.debug(f"{_name} -> {_class().valid}")
+            logging.debug(f"{_name}")
 
         action_entries = (
             ("close", self.on_close),
@@ -71,19 +74,27 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             hexpand=True, vexpand=False,
             border_width=10, column_spacing=5, row_spacing=5)
         controls_frame.add(controls_grid)
-        self._monitor_switch = Gtk.Switch(active=False,
+        self._monitor_play_button = Gtk.Button(
+            sensitive=False,
+            image=Gtk.Image(icon_name="media-playback-start", icon_size=Gtk.IconSize.DIALOG),
             halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False)
-        controls_grid.attach(self._monitor_switch, 0, 0, 1, 1)
-        self._monitor_switch.connect("notify::active", self.monitor_switch_cb)
-        self._monitor_switch.set_sensitive(False)
+        controls_grid.attach(self._monitor_play_button, 0, 0, 1, 1)
+        self._monitor_play_button.connect("clicked", self.monitor_control_button_clicked_cb)
+        self._monitor_stop_button = Gtk.Button(
+            sensitive=False,
+            image=Gtk.Image(icon_name="media-playback-stop", icon_size=Gtk.IconSize.DIALOG),
+            halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False)
+        controls_grid.attach(self._monitor_stop_button, 1, 0, 1, 1)
+        self._monitor_stop_button.connect("clicked", self.monitor_control_button_clicked_cb)
         self._directory_chooser_button = Gtk.FileChooserButton(
             title="Select a directory for monitoring",
             action=Gtk.FileChooserAction.SELECT_FOLDER,
             create_folders=True,
             halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
             hexpand=True, vexpand=False)
-        controls_grid.attach(self._directory_chooser_button, 1, 0, 5, 1)
+        controls_grid.attach(self._directory_chooser_button, 2, 0, 5, 1)
         self._directory_chooser_button.connect("selection-changed", self.directory_chooser_button_cb)
         
         controls_grid.attach(
@@ -110,20 +121,20 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             self._controls_operations_combo,
             2, 1, 2, 1)
 
-        controls_operations_button = Gtk.Button(
+        self._controls_operations_button = Gtk.Button(
             label="Add",
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False,
         )
-        controls_operations_button.connect("clicked", self.operations_button_cb)
+        self._controls_operations_button.connect("clicked", self.operations_button_cb)
         controls_grid.attach(
-            controls_operations_button,
+            self._controls_operations_button,
             4, 1, 2, 1)
 
         if len(controls_operations_model) > 0:
             self._controls_operations_combo.set_active(0)
         else:
-            controls_operations_button.set_sensitive(False)
+            self._controls_operations_button.set_sensitive(False)
             self._controls_operations_combo.set_sensitive(False)
         
 
@@ -212,18 +223,10 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         status_string = str(FileStatus(status))
         cell.set_property('text', status_string)
 
-    def monitor_switch_cb(self, button, active):
-        self._directory_chooser_button.set_sensitive(not button.get_active())
+    def monitor_control_button_clicked_cb(self, button):
+        # stop clicked
+        if button == self._monitor_stop_button:
 
-        if button.get_active():
-            # cleanup, launch the monitor
-            self._files_tree_model.clear()
-            self._timeout_id = GLib.timeout_add_seconds(1, self.files_dict_timeout_cb, priority=GLib.PRIORITY_DEFAULT)
-
-            monitor_file = Gio.File.new_for_path(self._monitored_directory)
-            self._monitor = monitor_file.monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES)
-            self._monitor_changed_id = self._monitor.connect("changed", self.monitor_cb)
-        else:
             # disable the monitor
             self._monitor.disconnect(self._monitor_changed_id)
             self._monitor = None
@@ -235,17 +238,36 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                 job.should_exit = True
             self._jobs_list.clear()
 
+            self._directory_chooser_button.set_sensitive(True)
+            self._monitor_stop_button.set_sensitive(False)
+            self._monitor_play_button.set_sensitive(True)
+            self._controls_operations_button.set_sensitive(True)
+            for operation in self._operations_box:
+                operation.set_sensitive(True)
+
+        # play clicked
+        elif button == self._monitor_play_button:
+            task_window = LongTaskWindow(self)
+            task_window.set_text("<b>Running preflight check</b>")
+            task_window.show()
+            watch_cursor = Gdk.Cursor.new_for_display(Gdk.Display.get_default(), Gdk.CursorType.WATCH)
+            task_window.get_window().set_cursor(watch_cursor)
+
+            thread = PreflightCheckThread(self, task_window)
+            thread.start()
+
     def file_created_cb(self, *user_data):
         file_path = user_data[0]
         with self._files_dict_lock:
             if file_path in self._files_dict:
-                logging.warning("f{file_path} has been recreated! Ignoring...")
+                logging.warning(f"{file_path} has been recreated! Ignoring...")
             else:
                 logging.debug(f"New file {file_path} created")
                 # add new entry to model
                 _creation_timestamp = time()
+                _relative_file_path = PurePath(file_path).relative_to(self._monitored_directory)
                 iter = self._files_tree_model.append(parent=None, row=[
-                    str(PurePath(file_path).relative_to(self._monitored_directory)),
+                    str(_relative_file_path),
                     _creation_timestamp,
                     int(FileStatus.CREATED),
                     "All",
@@ -263,7 +285,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                         0.0,
                         "0.0 %",
                     ])
-                _file = File(filename=file_path, created=_creation_timestamp, status=FileStatus.CREATED, row_reference=_row_reference)
+                _file = File(filename=file_path, relative_filename=_relative_file_path, created=_creation_timestamp, status=FileStatus.CREATED, row_reference=_row_reference)
                 self._files_dict[file_path] = _file
         return GLib.SOURCE_REMOVE
 
@@ -291,14 +313,14 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         with self._files_dict_lock:
             if file_path not in self._files_dict:
                 logging.warning("f{file_path} has not been created yet! Ignoring...")
-            elif self._files_dict[file_path].props.status != FileStatus.CREATED:
+            elif self._files_dict[file_path].status != FileStatus.CREATED:
                 # looks like this file has been saved again!
                 logging.warning(f"{file_path} has been saved again?? Ignoring!")
             else:
                 logging.debug(f"File {file_path} has been saved")
                 file = self._files_dict[file_path]
-                file.props.status = FileStatus.SAVED
-                path = file.props.row_reference.get_path()
+                file.status = FileStatus.SAVED
+                path = file.row_reference.get_path()
                 self._files_tree_model[path][2] = int(FileStatus.SAVED) 
 
 
@@ -306,9 +328,9 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         if self._monitored_directory and \
             self._monitor is None and \
             len(self._operations_box) > 0:
-            self._monitor_switch.set_sensitive(True)
+            self._monitor_play_button.set_sensitive(True)
         else:
-            self._monitor_switch.set_sensitive(False)
+            self._monitor_play_button.set_sensitive(False)
 
     def operations_button_cb(self, button):
         logging.debug("Clicked operations_button_cb")
@@ -353,9 +375,9 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                     else:
                         # queue the job
                         logging.debug(f"files_dict_timeout_cb: adding {_filename} to queue for future processing")
-                        _file.props.status = FileStatus.QUEUED
-                        path = _file.props.row_reference.get_path()
-                        self._files_tree_model[path][2] = int(_file.props.status)
+                        _file.status = FileStatus.QUEUED
+                        path = _file.row_reference.get_path()
+                        self._files_tree_model[path][2] = int(_file.status)
                 elif _file.status == FileStatus.QUEUED:
                     if self._njobs_running < self.MAX_JOBS:
                         # try and launch a new job
@@ -366,4 +388,49 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                         self._njobs_running += 1
         return GLib.SOURCE_CONTINUE
 
+    def _preflight_check_cb(self, task_window: LongTaskWindow, exception_msgs: Optional[List[str]]):
+        task_window.get_window().set_cursor(None)
+        task_window.destroy()
 
+        if exception_msgs:
+            dialog = Gtk.MessageDialog(self.get_toplevel(), \
+                    Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT, \
+                    Gtk.MessageType.ERROR, Gtk.ButtonsType.CLOSE, "Operation configuration error(s) found")
+            dialog.props.secondary_text = '\n'.join(exception_msgs)
+            dialog.run()
+            dialog.destroy()
+            return
+
+        # cleanup tree model, launch the monitor
+        self._files_tree_model.clear()
+        self._timeout_id = GLib.timeout_add_seconds(1, self.files_dict_timeout_cb, priority=GLib.PRIORITY_DEFAULT)
+
+        monitor_file = Gio.File.new_for_path(self._monitored_directory)
+        self._monitor = monitor_file.monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES)
+        self._monitor_changed_id = self._monitor.connect("changed", self.monitor_cb)
+        self._monitor_stop_button.set_sensitive(True)
+        self._monitor_play_button.set_sensitive(False)
+        self._directory_chooser_button.set_sensitive(False)
+        self._controls_operations_button.set_sensitive(False)
+        for operation in self._operations_box:
+            operation.set_sensitive(False)
+
+class PreflightCheckThread(Thread):
+    def __init__(self, appwindow: ApplicationWindow, task_window: LongTaskWindow):
+        super().__init__()
+        self._appwindow = appwindow 
+        self._task_window = task_window
+
+    def run(self):
+        exception_msgs = []
+        for operation in self._appwindow._operations_box:
+            try:
+                operation.preflight_check()
+            except Exception as e:
+                exception_msgs.append('* ' + str(e))
+
+        if exception_msgs:
+                for operation in self._appwindow._operations_box:
+                    operation.postflight_cleanup()
+        
+        GLib.idle_add(self._appwindow._preflight_check_cb, self._task_window, exception_msgs, priority=GLib.PRIORITY_DEFAULT_IDLE)

@@ -4,6 +4,8 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import GObject, Gtk, GLib
 
 import logging
+from pathlib import PurePath
+from typing import Final, Dict, Any
 
 @unique
 class FileStatus(IntEnum):
@@ -19,34 +21,57 @@ class FileStatus(IntEnum):
         #pylint: disable=no-member
         return self.name.lower().capitalize().replace('_', ' ')
 
-class File(GObject.GObject):
-    filename = GObject.Property(type=str, flags = GObject.ParamFlags.READWRITE) # filename
-    created = GObject.Property(type=int, flags = GObject.ParamFlags.READWRITE) # created timestamp
-    status = GObject.Property(type=int, flags = GObject.ParamFlags.READWRITE, default=FileStatus.CREATED) # status
-    row_reference = GObject.Property(type=Gtk.TreeRowReference, flags=GObject.ParamFlags.READWRITE, default=None)
-    #operation_data = GObject.Property(type=list, flags = GObject.ParamFlags.READWRITE) # operation data
+class File:
+    def __init__(self, \
+        filename: str, \
+        relative_filename: PurePath, \
+        created: int, \
+        status: FileStatus, \
+        row_reference: Gtk.TreeRowReference):
 
+        self._filename = filename
+        self._relative_filename = relative_filename
+        self._created = created
+        self._status = status
+        self._row_reference = row_reference
+        self._operation_metadata : Final[Dict[int, Dict[str, Any]]] = dict()
 
-    @GObject.Property(type=object)
-    def operation_data(self):
-        return self._operation_data
+    @property
+    def operation_metadata(self) -> Dict[int, Dict[str, Any]]:
+        return self._operation_metadata
 
-    @operation_data.setter
-    def operation_data(self, value):
-        print("Calling operation_data setter")
-        self._operation_data = value
+    @property
+    def filename(self) -> str:
+        return self._filename
 
-    def __init__(self, *args, **kwargs):
-        GObject.GObject.__init__(self, *args, **kwargs)
+    @property
+    def relative_filename(self) -> PurePath:
+        return self._relative_filename
+
+    @property
+    def created(self) -> int:
+        return self._created
+
+    @property
+    def status(self) -> FileStatus:
+        return self._status
+
+    @status.setter
+    def status(self, value: FileStatus):
+        self._status = value
+
+    @property
+    def row_reference(self):
+        return self._row_reference
 
     def _update_progressbar_worker_cb(self, index: int, value: float):
         #logging.debug(f"_update_progressbar_worker_cb: {index=} {value=}")
-        if not self.props.row_reference.valid():
-            logging.warning(f"_update_progressbar_worker_cb: {self.props.filename} is invalid!")
+        if not self.row_reference.valid():
+            logging.warning(f"_update_progressbar_worker_cb: {self.filename} is invalid!")
             return GLib.SOURCE_REMOVE
 
-        model = self.props.row_reference.get_model()
-        path = self.props.row_reference.get_path()
+        model = self.row_reference.get_model()
+        path = self.row_reference.get_path()
         parent_iter = model.get_iter(path)
         n_children = model.iter_n_children(parent_iter)
 
@@ -61,21 +86,29 @@ class File(GObject.GObject):
         return GLib.SOURCE_REMOVE
 
     def _update_status_worker_cb(self, index: int, status: FileStatus):
-        if not self.props.row_reference.valid():
-            logging.warning(f"_update_status_worker_cb: {self.props.filename} is invalid!")
+        if not self.row_reference.valid():
+            logging.warning(f"_update_status_worker_cb: {self.filename} is invalid!")
             return GLib.SOURCE_REMOVE
 
-        model = self.props.row_reference.get_model()
-        path = self.props.row_reference.get_path()
+        model = self.row_reference.get_model()
+        path = self.row_reference.get_path()
+        iter = model.get_iter(path)
 
         if index == -1: # parent
-            self.props.status = int(status)
-            model[path][2] = self.props.status
+            self.status = int(status)
+            iter = model.get_iter(path)
         else:
-            parent_iter = model.get_iter(path)
-            child_iter = model.iter_nth_child(parent_iter, index)
-            model[child_iter][2] = int(status)
+            iter = model.iter_nth_child(iter, index)
+
+        model[iter][2] = int(status)
         
+        # When the operation succeeds, ensure that the progressbars go
+        # to 100 %, which is necessary when the operation doesnt
+        # do any progress updated (which would be unfortunate!)
+        if status == FileStatus.SUCCESS:
+            model[iter][4] = 100.0
+            model[iter][5] = "100.0 %"
+
         return GLib.SOURCE_REMOVE
 
     def update_status(self, index: int, status: FileStatus):
@@ -97,21 +130,3 @@ class File(GObject.GObject):
         """
         GLib.idle_add(self._update_progressbar_worker_cb, index, value)
 
-
-
-if __name__ == "__main__":
-    print(str(FileStatus.REMOVED_FROM_LIST))
-    print(FileStatus.REMOVED_FROM_LIST)
-    print(int(FileStatus.REMOVED_FROM_LIST))
-
-    my_file = File(created=1000, operation_data=list())
-    my_file.connect("notify::created", lambda obj, gparamstring: print(f"New created: {obj.created}"))
-    my_file.connect("notify::operation-data", lambda obj, gparamstring: print(f"New operation_data: {obj.operation_data}"))
-    print(f"{my_file.props.created=}")
-    print(f"{my_file.props.status=}")
-    my_file.created = 500
-    print(f"{my_file.props.operation_data=}")
-    my_file.operation_data = [1, 2, 3]
-    #my_file.operation_data[1] = 4
-    my_file.operation_data = "sjalalala"
-    #print(my_file.props.operation_data.__gtype__)

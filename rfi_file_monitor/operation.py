@@ -2,8 +2,10 @@ from abc import ABC, abstractmethod, ABCMeta
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import GObject, Gtk
+from munch import Munch
 
-from typing import Final
+from typing import Final, Union, final
+import logging
 
 from .file import File
 
@@ -31,6 +33,45 @@ class Operation(ABC, Gtk.Frame, metaclass=OperationMeta):
         ))
         Gtk.Frame.__init__(self, *args, **kwargs)
         self._index: Final[int] = 0
+        self._params: Final[Munch[str, Union[str, bool]]] = Munch()
+        self._signal_ids: Final[Munch[str, int]] = Munch()
+        self._widgets: Final[Munch[str, Gtk.Widget]] = Munch()
+
+    def set_sensitive(self, sensitive: bool):
+        for widget in self._widgets.values():
+            widget.set_sensitive(sensitive)
+
+    @final
+    def _entry_changed_cb(self, entry: Gtk.Entry, param_name: str):
+        #pylint: disable=used-before-assignment
+        self._params[param_name] = tmp if (tmp := entry.get_text().strip()) != "" else entry.get_placeholder_text()
+
+    @final
+    def _checkbutton_toggled_cb(self, checkbutton: Gtk.CheckButton, param_name: str):
+        self._params[param_name] = checkbutton.get_active()
+
+    @final
+    def register_widget(self, widget: Gtk.Widget, param_name: str):
+        if isinstance(widget, Gtk.Entry):
+            #pylint: disable=used-before-assignment
+            self._params[param_name] = tmp if (tmp := widget.get_text().strip()) != "" else widget.get_placeholder_text()
+            self._signal_ids[param_name] = widget.connect("changed", self._entry_changed_cb, param_name)
+        elif isinstance(widget, Gtk.CheckButton):
+            self._params[param_name] = widget.get_active()
+            self._signal_ids[param_name] = widget.connect("toggled", self._checkbutton_toggled_cb, param_name)
+        else:
+            raise NotImplementedError(f"register_widget: no support for {type(widget).__name__}")
+
+        self._widgets[param_name] = widget
+
+        return widget
+
+    @property
+    def params(self) -> Munch:
+        """
+        A Munch dict containing the parameters that will be used by run
+        """
+        return self._params
 
     @property
     def index(self) -> int:
@@ -65,21 +106,22 @@ class Operation(ABC, Gtk.Frame, metaclass=OperationMeta):
         """
         raise NotImplementedError
 
-    @property
-    @abstractmethod
-    def valid(self) -> bool:
+    def preflight_check(self):
         """
-        This property reflects the state of the user-input for the operation.
-        True means that the input is valid, and that this operation is allowed
-        to proceed.
+        This method will be used to check that all widgets have valid information,
+        and should also be used to extract that information into variables that
+        can be used in the run() method, meaning that no Gtk calls will need to be made
+        when calling run() afterwards.
+        Feel free to use it also for initializing other stuff, such as opening connections.
+        
+        If something goes wrong during this method, an exception will be raised.
         """
-        raise NotImplementedError
+        return
 
-    @abstractmethod
-    def set_sensitive(self, state: bool):
+    def postflight_cleanup(self):
         """
-        Use this method to disable those input widgets that should be inactive
-        while monitoring (and processing) is active.
-        Note that this overrides a Gtk.Widget method!
+        Use this method to do some cleanup, usually things that were done in preflight_cleanup().
         """
-        raise NotImplementedError
+        return
+
+    

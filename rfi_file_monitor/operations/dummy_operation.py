@@ -6,8 +6,9 @@ import time
 from threading import current_thread
 import logging
 
-from .operation import Operation
-from .file import File
+#pylint: disable=relative-beyond-top-level
+from ..operation import Operation
+from ..file import File
 
 class DummyOperation(Operation):
     NAME = "Dummy Operation"
@@ -33,8 +34,4 @@ class DummyOperation(Operation):
 
         # None indicates success, a string failure, with its contents set to an error message
         return None
-
     
-    @property
-    def valid(self):
-        return True

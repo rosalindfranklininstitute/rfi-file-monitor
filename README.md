@@ -1,5 +1,7 @@
 # RFI-File-Monitor
 
+![CI](https://github.com/rosalindfranklininstitute/rfi-file-monitor/workflows/CI/badge.svg?branch=master&event=push)
+
 ## Installation instructions
 
 Installing this package is easiest when using an [Anaconda](https://www.anaconda.com/products/individual) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html) environment, and works on macOS, Linux and Windows.

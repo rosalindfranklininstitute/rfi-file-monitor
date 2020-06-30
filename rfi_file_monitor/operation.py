@@ -1,11 +1,10 @@
 from abc import ABC, abstractmethod, ABCMeta
 import gi
 gi.require_version("Gtk", "3.0")
-from gi.repository import GObject, Gtk
+from gi.repository import Gtk
 from munch import Munch
 
 from typing import Final, Union, final
-import logging
 
 from .file import File
 

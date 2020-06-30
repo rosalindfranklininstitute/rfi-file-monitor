@@ -3,10 +3,6 @@ from typing import Final
 
 from .file import File, FileStatus
 
-import gi
-gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk
-
 class Job(threading.Thread):
     def __init__(self, appwindow, file: File):
         super().__init__()
@@ -27,7 +23,7 @@ class Job(threading.Thread):
 
             if not self._should_exit and \
                 rv is None and \
-                (rv := operation.run(self._file)) == None:
+                (rv := operation.run(self._file)) is None:
                 # update operation status to success
                 self._file.update_status(index, FileStatus.SUCCESS)
             else:

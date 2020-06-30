@@ -9,13 +9,12 @@ from threading import RLock, Thread
 from time import time, ctime
 from pathlib import PurePath
 from typing import OrderedDict as OrderedDictType
-from typing import ClassVar, Final, List, Optional, Any
+from typing import Final, List, Optional
 import pkg_resources
-import os
+#import os
 
 from .utils import add_action_entries, LongTaskWindow
 from .file import FileStatus, File
-from .operation import Operation
 from .job import Job
 
 class ApplicationWindow(Gtk.ApplicationWindow):

@@ -1,7 +1,9 @@
 import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
-from gi.repository import GLib, Gio, Gtk, Gdk
+from gi.repository import GLib, Gtk, Gdk
+from watchdog.events import FileSystemEventHandler, FileCreatedEvent, FileModifiedEvent
+from watchdog.observers import Observer
 
 import logging
 from collections import OrderedDict
@@ -26,13 +28,12 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._monitor: Final[Gio.FileMonitor] = None
+        self._monitor: Final[Observer] = None
         self._monitored_directory: str = None
         self._files_dict_lock = RLock()
         self._files_dict: OrderedDictType[str, File] = OrderedDict()
         self._jobs_list: Final[List[Job]] = list()
         self._njobs_running: Final[int] = 0
-        self._monitor_changed_id: Final[int] = 0
         self._timeout_id: Final[int] = 0
 
         self.set_default_size(1000, 1000)
@@ -227,7 +228,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         if button == self._monitor_stop_button:
 
             # disable the monitor
-            self._monitor.disconnect(self._monitor_changed_id)
+            self._monitor.stop()
             self._monitor = None
             GLib.source_remove(self._timeout_id)
             with self._files_dict_lock:
@@ -288,30 +289,10 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                 self._files_dict[file_path] = _file
         return GLib.SOURCE_REMOVE
 
-    def monitor_cb(self, monitor, file, other_file, event_type):
-        """
-        This method is called whenever our monitored directory changed
-        """
-        file_path = file.get_path()
-        logging.debug(f"Monitor found {file_path} for event type {event_type}")
-        # file has been created -> add a new object to dict
-        if event_type == Gio.FileMonitorEvent.CREATED:
-            if (file_type := file.query_file_type(Gio.FileQueryInfoFlags.NONE)) == Gio.FileType.REGULAR:
-                # new regular file -> add to dict and treemodel
-                # give it very high priority!
-                GLib.idle_add(self.file_created_cb, file_path, priority=GLib.PRIORITY_HIGH)
-            elif file_type == Gio.FileType.DIRECTORY:
-                # directory -> add a new file monitor since this is not working recursively
-                pass
-        # file has been saved -> kick off pipeline
-        # need to check that this hasnt happened before!
-        elif event_type == Gio.FileMonitorEvent.CHANGES_DONE_HINT:
-            GLib.idle_add(self.file_changes_done_cb, file_path, priority=GLib.PRIORITY_DEFAULT_IDLE)
-
     def file_changes_done_cb(self, file_path):
         with self._files_dict_lock:
             if file_path not in self._files_dict:
-                logging.warning("f{file_path} has not been created yet! Ignoring...")
+                logging.warning(f"{file_path} has not been created yet! Ignoring...")
             elif self._files_dict[file_path].status != FileStatus.CREATED:
                 # looks like this file has been saved again!
                 logging.warning(f"{file_path} has been saved again?? Ignoring!")
@@ -321,7 +302,6 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                 file.status = FileStatus.SAVED
                 path = file.row_reference.get_path()
                 self._files_tree_model[path][2] = int(FileStatus.SAVED) 
-
 
     def update_monitor_switch_sensitivity(self):
         if self._monitored_directory and \
@@ -404,9 +384,9 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         self._files_tree_model.clear()
         self._timeout_id = GLib.timeout_add_seconds(1, self.files_dict_timeout_cb, priority=GLib.PRIORITY_DEFAULT)
 
-        monitor_file = Gio.File.new_for_path(self._monitored_directory)
-        self._monitor = monitor_file.monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES)
-        self._monitor_changed_id = self._monitor.connect("changed", self.monitor_cb)
+        self._monitor = Observer()
+        self._monitor.schedule(EventHandler(self), self._monitored_directory, recursive=False, )
+        self._monitor.start()
         self._monitor_stop_button.set_sensitive(True)
         self._monitor_play_button.set_sensitive(False)
         self._directory_chooser_button.set_sensitive(False)
@@ -433,3 +413,26 @@ class PreflightCheckThread(Thread):
                     operation.postflight_cleanup()
         
         GLib.idle_add(self._appwindow._preflight_check_cb, self._task_window, exception_msgs, priority=GLib.PRIORITY_DEFAULT_IDLE)
+
+class EventHandler(FileSystemEventHandler):
+    def __init__(self, appwindow: ApplicationWindow):
+        self._appwindow = appwindow
+
+    def on_created(self, event):
+        # ignore directories being created
+        if not isinstance(event, FileCreatedEvent):
+            return
+        
+        file_path = event.src_path
+        logging.debug(f"Monitor found {file_path} for event type CREATED")
+        GLib.idle_add(self._appwindow.file_created_cb, file_path, priority=GLib.PRIORITY_HIGH)
+
+    def on_modified(self, event):
+        # ignore directories being modified
+        if not isinstance(event, FileModifiedEvent):
+            return
+
+        file_path = event.src_path
+        logging.debug(f"Monitor found {file_path} for event type MODIFIED")
+        GLib.idle_add(self._appwindow.file_changes_done_cb, file_path, priority=GLib.PRIORITY_DEFAULT_IDLE)
+        

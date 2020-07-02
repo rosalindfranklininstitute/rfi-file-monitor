@@ -13,7 +13,7 @@ from pathlib import PurePath
 from typing import OrderedDict as OrderedDictType
 from typing import Final, List, Optional
 import pkg_resources
-#import os
+import os
 
 from .utils import add_action_entries, LongTaskWindow
 from .file import FileStatus, File
@@ -21,9 +21,8 @@ from .job import Job
 
 class ApplicationWindow(Gtk.ApplicationWindow):
 
-    #MAX_JOBS = len(os.sched_getaffinity(0)) if hasattr(os, 'sched_getaffinity') else os.cpu_count()
-    MAX_JOBS = 2
-    # max of cpus usable by this process
+    #pylint: disable=no-member
+    MAX_JOBS = len(os.sched_getaffinity(0)) if hasattr(os, 'sched_getaffinity') else os.cpu_count()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -188,6 +187,43 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         status_promotion_grid.attach(self._status_promotion_spinbutton, 1, 0, 1, 1)
         status_promotion_grid.attach(Gtk.Label(label='seconds'), 2, 0, 1, 1)
 
+        advanced_options_child.attach(Gtk.Separator(
+                orientation=Gtk.Orientation.HORIZONTAL,
+                halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+                hexpand=True, vexpand=True,
+            ),
+            0, 1, 1, 1
+        )
+
+        max_threads_grid = Gtk.Grid(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            column_spacing=5
+        )
+        advanced_options_child.attach(max_threads_grid, 0, 2, 1, 1)
+        max_threads_grid.attach(Gtk.Label(
+                label='Maximum number of threads to use',
+                halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+                hexpand=False, vexpand=False,
+            ),
+            0, 0, 1, 1,
+        )
+
+        self._max_threads_spinbutton = Gtk.SpinButton(
+            adjustment=Gtk.Adjustment(
+                lower=1,
+                upper=self.MAX_JOBS,
+                value=self.MAX_JOBS//2,
+                page_size=0,
+                step_increment=1),
+            value=self.MAX_JOBS//2,
+            update_policy=Gtk.SpinButtonUpdatePolicy.IF_VALID,
+            numeric=True,
+            climb_rate=1,
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+        )
+        max_threads_grid.attach(self._max_threads_spinbutton, 1, 0, 1, 1)
 
         paned = Gtk.Paned(wide_handle=True,
             orientation=Gtk.Orientation.VERTICAL,
@@ -403,7 +439,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                         logging.debug(f"files_dict_timeout_cb: promoting {_filename} to SAVED")
                         
                 elif _file.status == FileStatus.SAVED:
-                    if self._njobs_running < self.MAX_JOBS:
+                    if self._njobs_running < self._max_threads_spinbutton.get_value_as_int():
                         # launch a new job
                         logging.debug(f"files_dict_timeout_cb: launching new job for {_filename}")
                         job = Job(self, _file)
@@ -417,7 +453,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                         path = _file.row_reference.get_path()
                         self._files_tree_model[path][2] = int(_file.status)
                 elif _file.status == FileStatus.QUEUED:
-                    if self._njobs_running < self.MAX_JOBS:
+                    if self._njobs_running < self._max_threads_spinbutton.get_value_as_int():
                         # try and launch a new job
                         logging.debug(f"files_dict_timeout_cb: launching queued job for {_filename}")
                         job = Job(self, _file)

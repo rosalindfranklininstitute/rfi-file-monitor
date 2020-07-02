@@ -72,21 +72,27 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         controls_grid = Gtk.Grid(
             halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
             hexpand=True, vexpand=False,
+        )
+
+        controls_grid_basic = Gtk.Grid(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
+            hexpand=True, vexpand=True,
             border_width=10, column_spacing=5, row_spacing=5)
         controls_frame.add(controls_grid)
+        controls_grid.attach(controls_grid_basic, 0, 0, 1, 1)
         self._monitor_play_button = Gtk.Button(
             sensitive=False,
             image=Gtk.Image(icon_name="media-playback-start", icon_size=Gtk.IconSize.DIALOG),
-            halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False)
-        controls_grid.attach(self._monitor_play_button, 0, 0, 1, 1)
+        controls_grid_basic.attach(self._monitor_play_button, 0, 0, 1, 1)
         self._monitor_play_button.connect("clicked", self.monitor_control_button_clicked_cb)
         self._monitor_stop_button = Gtk.Button(
             sensitive=False,
             image=Gtk.Image(icon_name="media-playback-stop", icon_size=Gtk.IconSize.DIALOG),
-            halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False)
-        controls_grid.attach(self._monitor_stop_button, 1, 0, 1, 1)
+        controls_grid_basic.attach(self._monitor_stop_button, 1, 0, 1, 1)
         self._monitor_stop_button.connect("clicked", self.monitor_control_button_clicked_cb)
         self._directory_chooser_button = Gtk.FileChooserButton(
             title="Select a directory for monitoring",
@@ -94,10 +100,10 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             create_folders=True,
             halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
             hexpand=True, vexpand=False)
-        controls_grid.attach(self._directory_chooser_button, 2, 0, 5, 1)
+        controls_grid_basic.attach(self._directory_chooser_button, 2, 0, 5, 1)
         self._directory_chooser_button.connect("selection-changed", self.directory_chooser_button_cb)
         
-        controls_grid.attach(
+        controls_grid_basic.attach(
             Gtk.Label(
                 label="Add operation: ",
                 halign=Gtk.Align.END, valign=Gtk.Align.CENTER,
@@ -117,7 +123,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         renderer= Gtk.CellRendererText()
         self._controls_operations_combo.pack_start(renderer, True)
         self._controls_operations_combo.add_attribute(renderer, "text", 0)
-        controls_grid.attach(
+        controls_grid_basic.attach(
             self._controls_operations_combo,
             2, 1, 2, 1)
 
@@ -127,7 +133,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             hexpand=False, vexpand=False,
         )
         self._controls_operations_button.connect("clicked", self.operations_button_cb)
-        controls_grid.attach(
+        controls_grid_basic.attach(
             self._controls_operations_button,
             4, 1, 2, 1)
 
@@ -137,6 +143,51 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             self._controls_operations_button.set_sensitive(False)
             self._controls_operations_combo.set_sensitive(False)
         
+        advanced_options_expander = Gtk.Expander(
+            label='Advanced options',
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False)
+        controls_grid.attach(
+            advanced_options_expander,
+            0, 1, 1, 1
+        )
+        
+        advanced_options_child = Gtk.Grid(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            border_width=10, column_spacing=5, row_spacing=5
+        )
+        advanced_options_expander.add(advanced_options_child)
+        status_promotion_grid = Gtk.Grid(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            column_spacing=5
+        )
+        advanced_options_child.attach(status_promotion_grid, 0, 0, 1, 1)
+        self._status_promotion_checkbutton = Gtk.CheckButton(label='Promote files from \'Created\' to \'Saved\' after',
+                halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+                hexpand=False, vexpand=False)
+        status_promotion_grid.attach(
+            self._status_promotion_checkbutton,
+            0, 0, 1, 1
+        )
+        self._status_promotion_spinbutton = Gtk.SpinButton(
+            adjustment=Gtk.Adjustment(
+                lower=1,
+                upper=3600,
+                value=5,
+                page_size=0,
+                step_increment=1),
+            value=5,
+            update_policy=Gtk.SpinButtonUpdatePolicy.IF_VALID,
+            numeric=True,
+            climb_rate=5,
+            halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+        )
+        status_promotion_grid.attach(self._status_promotion_spinbutton, 1, 0, 1, 1)
+        status_promotion_grid.attach(Gtk.Label(label='seconds'), 2, 0, 1, 1)
+
 
         paned = Gtk.Paned(wide_handle=True,
             orientation=Gtk.Orientation.VERTICAL,
@@ -342,7 +393,15 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             for _filename, _file in self._files_dict.items():
                 #logging.debug(f"timeout_cb: {_filename} found as {str(_file.status)}")
                 if _file.status == FileStatus.CREATED:
-                    logging.debug(f"files_dict_timeout_cb: {_filename} was created")
+                    logging.debug(f"files_dict_timeout_cb: {_filename} was CREATED")
+                    if self._status_promotion_checkbutton.get_active() and \
+                        (time() - _file.created) >  self._status_promotion_spinbutton.get_value_as_int():
+                        # promote to SAVED!
+                        _file.status = FileStatus.SAVED
+                        path = _file.row_reference.get_path()
+                        self._files_tree_model[path][2] = int(FileStatus.SAVED) 
+                        logging.debug(f"files_dict_timeout_cb: promoting {_filename} to SAVED")
+                        
                 elif _file.status == FileStatus.SAVED:
                     if self._njobs_running < self.MAX_JOBS:
                         # launch a new job

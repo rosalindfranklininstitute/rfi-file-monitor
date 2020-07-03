@@ -26,7 +26,7 @@ setup(
             '*.png',
         ],
     },
-    install_requires=["setuptools", "PyGObject", "boto3", "munch"],
+    install_requires=["setuptools", "PyGObject", "boto3", "munch", "watchdog"],
     entry_points={
         "rfi_file_monitor.operations": [
             "DummyOperation = rfi_file_monitor.operations.dummy_operation:DummyOperation",

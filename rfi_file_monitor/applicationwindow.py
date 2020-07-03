@@ -1,7 +1,9 @@
 import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
-from gi.repository import GLib, Gio, Gtk, Gdk
+from gi.repository import GLib, Gtk, Gdk
+from watchdog.events import FileSystemEventHandler, FileCreatedEvent, FileModifiedEvent
+from watchdog.observers import Observer
 
 import logging
 from collections import OrderedDict
@@ -11,28 +13,27 @@ from pathlib import PurePath
 from typing import OrderedDict as OrderedDictType
 from typing import Final, List, Optional
 import pkg_resources
-#import os
+import os
 
-from .utils import add_action_entries, LongTaskWindow
+from .utils import add_action_entries, LongTaskWindow, WidgetParams
 from .file import FileStatus, File
 from .job import Job
 
-class ApplicationWindow(Gtk.ApplicationWindow):
+class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
-    #MAX_JOBS = len(os.sched_getaffinity(0)) if hasattr(os, 'sched_getaffinity') else os.cpu_count()
-    MAX_JOBS = 2
-    # max of cpus usable by this process
+    #pylint: disable=no-member
+    MAX_JOBS = len(os.sched_getaffinity(0)) if hasattr(os, 'sched_getaffinity') else os.cpu_count()
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        logging.debug('Calling ApplicationWindow __init__')
+        Gtk.ApplicationWindow.__init__(self, *args, **kwargs)
+        WidgetParams.__init__(self)
 
-        self._monitor: Final[Gio.FileMonitor] = None
-        self._monitored_directory: str = None
+        self._monitor: Final[Observer] = None
         self._files_dict_lock = RLock()
         self._files_dict: OrderedDictType[str, File] = OrderedDict()
         self._jobs_list: Final[List[Job]] = list()
         self._njobs_running: Final[int] = 0
-        self._monitor_changed_id: Final[int] = 0
         self._timeout_id: Final[int] = 0
 
         self.set_default_size(1000, 1000)
@@ -71,32 +72,38 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         controls_grid = Gtk.Grid(
             halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
             hexpand=True, vexpand=False,
+        )
+
+        controls_grid_basic = Gtk.Grid(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
+            hexpand=True, vexpand=True,
             border_width=10, column_spacing=5, row_spacing=5)
         controls_frame.add(controls_grid)
+        controls_grid.attach(controls_grid_basic, 0, 0, 1, 1)
         self._monitor_play_button = Gtk.Button(
             sensitive=False,
             image=Gtk.Image(icon_name="media-playback-start", icon_size=Gtk.IconSize.DIALOG),
-            halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False)
-        controls_grid.attach(self._monitor_play_button, 0, 0, 1, 1)
+        controls_grid_basic.attach(self._monitor_play_button, 0, 0, 1, 1)
         self._monitor_play_button.connect("clicked", self.monitor_control_button_clicked_cb)
         self._monitor_stop_button = Gtk.Button(
             sensitive=False,
             image=Gtk.Image(icon_name="media-playback-stop", icon_size=Gtk.IconSize.DIALOG),
-            halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False)
-        controls_grid.attach(self._monitor_stop_button, 1, 0, 1, 1)
+        controls_grid_basic.attach(self._monitor_stop_button, 1, 0, 1, 1)
         self._monitor_stop_button.connect("clicked", self.monitor_control_button_clicked_cb)
-        self._directory_chooser_button = Gtk.FileChooserButton(
+        self._directory_chooser_button = self.register_widget(Gtk.FileChooserButton(
             title="Select a directory for monitoring",
             action=Gtk.FileChooserAction.SELECT_FOLDER,
             create_folders=True,
             halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
-            hexpand=True, vexpand=False)
-        controls_grid.attach(self._directory_chooser_button, 2, 0, 5, 1)
+            hexpand=True, vexpand=False), 'monitored_directory')
+        controls_grid_basic.attach(self._directory_chooser_button, 2, 0, 5, 1)
         self._directory_chooser_button.connect("selection-changed", self.directory_chooser_button_cb)
         
-        controls_grid.attach(
+        controls_grid_basic.attach(
             Gtk.Label(
                 label="Add operation: ",
                 halign=Gtk.Align.END, valign=Gtk.Align.CENTER,
@@ -116,7 +123,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         renderer= Gtk.CellRendererText()
         self._controls_operations_combo.pack_start(renderer, True)
         self._controls_operations_combo.add_attribute(renderer, "text", 0)
-        controls_grid.attach(
+        controls_grid_basic.attach(
             self._controls_operations_combo,
             2, 1, 2, 1)
 
@@ -126,7 +133,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             hexpand=False, vexpand=False,
         )
         self._controls_operations_button.connect("clicked", self.operations_button_cb)
-        controls_grid.attach(
+        controls_grid_basic.attach(
             self._controls_operations_button,
             4, 1, 2, 1)
 
@@ -136,6 +143,86 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             self._controls_operations_button.set_sensitive(False)
             self._controls_operations_combo.set_sensitive(False)
         
+        advanced_options_expander = Gtk.Expander(
+            label='Advanced options',
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False)
+        controls_grid.attach(
+            advanced_options_expander,
+            0, 1, 1, 1
+        )
+        
+        advanced_options_child = Gtk.Grid(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            border_width=10, column_spacing=5, row_spacing=5
+        )
+        advanced_options_expander.add(advanced_options_child)
+        status_promotion_grid = Gtk.Grid(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            column_spacing=5
+        )
+        advanced_options_child.attach(status_promotion_grid, 0, 0, 1, 1)
+        status_promotion_checkbutton = self.register_widget(Gtk.CheckButton(label='Promote files from \'Created\' to \'Saved\' after',
+                halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+                hexpand=False, vexpand=False), 'status_promotion_active')
+        status_promotion_grid.attach(
+            status_promotion_checkbutton,
+            0, 0, 1, 1
+        )
+        status_promotion_spinbutton = self.register_widget(Gtk.SpinButton(
+            adjustment=Gtk.Adjustment(
+                lower=1,
+                upper=3600,
+                value=5,
+                page_size=0,
+                step_increment=1),
+            value=5,
+            update_policy=Gtk.SpinButtonUpdatePolicy.IF_VALID,
+            numeric=True,
+            climb_rate=5,
+            halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False), 'status_promotion_delay')
+        status_promotion_grid.attach(status_promotion_spinbutton, 1, 0, 1, 1)
+        status_promotion_grid.attach(Gtk.Label(label='seconds'), 2, 0, 1, 1)
+
+        advanced_options_child.attach(Gtk.Separator(
+                orientation=Gtk.Orientation.HORIZONTAL,
+                halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+                hexpand=True, vexpand=True,
+            ),
+            0, 1, 1, 1
+        )
+
+        max_threads_grid = Gtk.Grid(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            column_spacing=5
+        )
+        advanced_options_child.attach(max_threads_grid, 0, 2, 1, 1)
+        max_threads_grid.attach(Gtk.Label(
+                label='Maximum number of threads to use',
+                halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+                hexpand=False, vexpand=False,
+            ),
+            0, 0, 1, 1,
+        )
+
+        max_threads_spinbutton = self.register_widget(Gtk.SpinButton(
+            adjustment=Gtk.Adjustment(
+                lower=1,
+                upper=self.MAX_JOBS,
+                value=max(self.MAX_JOBS//2, 1),
+                page_size=0,
+                step_increment=1),
+            value=max(self.MAX_JOBS//2, 1),
+            update_policy=Gtk.SpinButtonUpdatePolicy.IF_VALID,
+            numeric=True,
+            climb_rate=1,
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False), 'max_threads')
+        max_threads_grid.attach(max_threads_spinbutton, 1, 0, 1, 1)
 
         paned = Gtk.Paned(wide_handle=True,
             orientation=Gtk.Orientation.VERTICAL,
@@ -227,7 +314,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         if button == self._monitor_stop_button:
 
             # disable the monitor
-            self._monitor.disconnect(self._monitor_changed_id)
+            self._monitor.stop()
             self._monitor = None
             GLib.source_remove(self._timeout_id)
             with self._files_dict_lock:
@@ -264,7 +351,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                 logging.debug(f"New file {file_path} created")
                 # add new entry to model
                 _creation_timestamp = time()
-                _relative_file_path = PurePath(file_path).relative_to(self._monitored_directory)
+                _relative_file_path = PurePath(file_path).relative_to(self.params.monitored_directory)
                 iter = self._files_tree_model.append(parent=None, row=[
                     str(_relative_file_path),
                     _creation_timestamp,
@@ -288,30 +375,10 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                 self._files_dict[file_path] = _file
         return GLib.SOURCE_REMOVE
 
-    def monitor_cb(self, monitor, file, other_file, event_type):
-        """
-        This method is called whenever our monitored directory changed
-        """
-        file_path = file.get_path()
-        logging.debug(f"Monitor found {file_path} for event type {event_type}")
-        # file has been created -> add a new object to dict
-        if event_type == Gio.FileMonitorEvent.CREATED:
-            if (file_type := file.query_file_type(Gio.FileQueryInfoFlags.NONE)) == Gio.FileType.REGULAR:
-                # new regular file -> add to dict and treemodel
-                # give it very high priority!
-                GLib.idle_add(self.file_created_cb, file_path, priority=GLib.PRIORITY_HIGH)
-            elif file_type == Gio.FileType.DIRECTORY:
-                # directory -> add a new file monitor since this is not working recursively
-                pass
-        # file has been saved -> kick off pipeline
-        # need to check that this hasnt happened before!
-        elif event_type == Gio.FileMonitorEvent.CHANGES_DONE_HINT:
-            GLib.idle_add(self.file_changes_done_cb, file_path, priority=GLib.PRIORITY_DEFAULT_IDLE)
-
     def file_changes_done_cb(self, file_path):
         with self._files_dict_lock:
             if file_path not in self._files_dict:
-                logging.warning("f{file_path} has not been created yet! Ignoring...")
+                logging.warning(f"{file_path} has not been created yet! Ignoring...")
             elif self._files_dict[file_path].status != FileStatus.CREATED:
                 # looks like this file has been saved again!
                 logging.warning(f"{file_path} has been saved again?? Ignoring!")
@@ -322,9 +389,8 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                 path = file.row_reference.get_path()
                 self._files_tree_model[path][2] = int(FileStatus.SAVED) 
 
-
     def update_monitor_switch_sensitivity(self):
-        if self._monitored_directory and \
+        if self.params.monitored_directory and \
             self._monitor is None and \
             len(self._operations_box) > 0:
             self._monitor_play_button.set_sensitive(True)
@@ -342,10 +408,9 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         self.update_monitor_switch_sensitivity()
 
     def directory_chooser_button_cb(self, button):
-        if monitored_directory := button.get_filename():
-            self._monitored_directory = monitored_directory
+        if self.params.monitored_directory:
             self.update_monitor_switch_sensitivity()
-            self.set_title(f"Monitoring: {self._monitored_directory}")
+            self.set_title(f"Monitoring: {self.params.monitored_directory}")
 
     def on_minimize(self, action, param):
         self.iconify()
@@ -362,9 +427,17 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             for _filename, _file in self._files_dict.items():
                 #logging.debug(f"timeout_cb: {_filename} found as {str(_file.status)}")
                 if _file.status == FileStatus.CREATED:
-                    logging.debug(f"files_dict_timeout_cb: {_filename} was created")
+                    logging.debug(f"files_dict_timeout_cb: {_filename} was CREATED")
+                    if self.params.status_promotion_active and \
+                        (time() - _file.created) >  self.params.status_promotion_delay:
+                        # promote to SAVED!
+                        _file.status = FileStatus.SAVED
+                        path = _file.row_reference.get_path()
+                        self._files_tree_model[path][2] = int(FileStatus.SAVED) 
+                        logging.debug(f"files_dict_timeout_cb: promoting {_filename} to SAVED")
+                        
                 elif _file.status == FileStatus.SAVED:
-                    if self._njobs_running < self.MAX_JOBS:
+                    if self._njobs_running < self.params.max_threads:
                         # launch a new job
                         logging.debug(f"files_dict_timeout_cb: launching new job for {_filename}")
                         job = Job(self, _file)
@@ -378,7 +451,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                         path = _file.row_reference.get_path()
                         self._files_tree_model[path][2] = int(_file.status)
                 elif _file.status == FileStatus.QUEUED:
-                    if self._njobs_running < self.MAX_JOBS:
+                    if self._njobs_running < self.params.max_threads:
                         # try and launch a new job
                         logging.debug(f"files_dict_timeout_cb: launching queued job for {_filename}")
                         job = Job(self, _file)
@@ -404,9 +477,9 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         self._files_tree_model.clear()
         self._timeout_id = GLib.timeout_add_seconds(1, self.files_dict_timeout_cb, priority=GLib.PRIORITY_DEFAULT)
 
-        monitor_file = Gio.File.new_for_path(self._monitored_directory)
-        self._monitor = monitor_file.monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES)
-        self._monitor_changed_id = self._monitor.connect("changed", self.monitor_cb)
+        self._monitor = Observer()
+        self._monitor.schedule(EventHandler(self), self.params.monitored_directory, recursive=False, )
+        self._monitor.start()
         self._monitor_stop_button.set_sensitive(True)
         self._monitor_play_button.set_sensitive(False)
         self._directory_chooser_button.set_sensitive(False)
@@ -433,3 +506,26 @@ class PreflightCheckThread(Thread):
                     operation.postflight_cleanup()
         
         GLib.idle_add(self._appwindow._preflight_check_cb, self._task_window, exception_msgs, priority=GLib.PRIORITY_DEFAULT_IDLE)
+
+class EventHandler(FileSystemEventHandler):
+    def __init__(self, appwindow: ApplicationWindow):
+        self._appwindow = appwindow
+
+    def on_created(self, event):
+        # ignore directories being created
+        if not isinstance(event, FileCreatedEvent):
+            return
+        
+        file_path = event.src_path
+        logging.debug(f"Monitor found {file_path} for event type CREATED")
+        GLib.idle_add(self._appwindow.file_created_cb, file_path, priority=GLib.PRIORITY_HIGH)
+
+    def on_modified(self, event):
+        # ignore directories being modified
+        if not isinstance(event, FileModifiedEvent):
+            return
+
+        file_path = event.src_path
+        logging.debug(f"Monitor found {file_path} for event type MODIFIED")
+        GLib.idle_add(self._appwindow.file_changes_done_cb, file_path, priority=GLib.PRIORITY_DEFAULT_IDLE)
+        

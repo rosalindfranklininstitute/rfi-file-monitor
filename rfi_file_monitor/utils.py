@@ -1,8 +1,10 @@
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gio, GLib, Gtk
+from munch import Munch
 
-from typing import Callable, Optional, Final, Any, Dict
+from typing import Callable, Optional, Final, Any, Dict, final
+import logging
 
 EXPAND_AND_FILL: Final[Dict[str, Any]] = dict(hexpand=True, vexpand=True, halign=Gtk.Align.FILL, valign=Gtk.Align.FILL)
 
@@ -15,6 +17,72 @@ def add_action_entries(
     action = Gio.SimpleAction.new(action, GLib.VariantType.new(param) if param else None)
     action.connect("activate", callback)
     map.add_action(action)
+
+class WidgetParams:
+    """
+    Inheriting from this class
+    """
+    #pylint: disable=unsubscriptable-object
+    def __init__(self, *args, **kwargs):
+        logging.debug('Calling WidgetParams __init__')
+        super().__init__()
+        self._params: Final[Munch[str, Any]] = Munch()
+        self._signal_ids: Final[Munch[str, int]] = Munch()
+        self._widgets: Final[Munch[str, Gtk.Widget]] = Munch()
+
+    @final
+    def _entry_changed_cb(self, entry: Gtk.Entry, param_name: str):
+        #pylint: disable=used-before-assignment
+        self._params[param_name] = tmp if (tmp := entry.get_text().strip()) != "" else entry.get_placeholder_text()
+
+    @final
+    def _checkbutton_toggled_cb(self, checkbutton: Gtk.CheckButton, param_name: str):
+        self._params[param_name] = checkbutton.get_active()
+
+    @final
+    def _filechooserbutton_selection_changed_cb(self, filechooserbutton: Gtk.FileChooserButton, param_name: str):
+        self._params[param_name] = filechooserbutton.get_filename()
+
+    @final
+    def _spinbutton_value_changed_cb(self, spinbutton: Gtk.SpinButton, param_name: str):
+        self._params[param_name] = spinbutton.get_value()
+
+    @final
+    def register_widget(self, widget: Gtk.Widget, param_name: str):
+        if isinstance(widget, Gtk.SpinButton):
+            self._params[param_name] = widget.get_value()
+            self._signal_ids[param_name] = widget.connect("value-changed", self._spinbutton_value_changed_cb, param_name)
+        elif isinstance(widget, Gtk.CheckButton):
+            self._params[param_name] = widget.get_active()
+            self._signal_ids[param_name] = widget.connect("toggled", self._checkbutton_toggled_cb, param_name)
+        elif isinstance(widget, Gtk.FileChooserButton):
+            self._params[param_name] = widget.get_filename()
+            self._signal_ids[param_name] = widget.connect("selection-changed", self._filechooserbutton_selection_changed_cb, param_name)
+        elif isinstance(widget, Gtk.Entry):
+            #pylint: disable=used-before-assignment
+            self._params[param_name] = tmp if (tmp := widget.get_text().strip()) != "" else widget.get_placeholder_text()
+            self._signal_ids[param_name] = widget.connect("changed", self._entry_changed_cb, param_name)
+        else:
+            raise NotImplementedError(f"register_widget: no support for {type(widget).__name__}")
+
+        self._widgets[param_name] = widget
+        logging.debug(f'Registered {param_name} with value {self._params[param_name]} of type {type(self._params[param_name])}')
+
+        return widget
+
+    @property
+    def params(self) -> Munch:
+        """
+        A Munch dict containing the parameters that will be used by run
+        """
+        return self._params
+
+    @property
+    def widgets(self) -> Munch:
+        """
+        A Munch dict containing the registered widgets
+        """
+        return self._widgets
 
 class LongTaskWindow(Gtk.Window):
     def __init__(self, parent_window: Optional[Gtk.Window] = None, *args, **kwargs):

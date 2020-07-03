@@ -15,20 +15,21 @@ from typing import Final, List, Optional
 import pkg_resources
 import os
 
-from .utils import add_action_entries, LongTaskWindow
+from .utils import add_action_entries, LongTaskWindow, WidgetParams
 from .file import FileStatus, File
 from .job import Job
 
-class ApplicationWindow(Gtk.ApplicationWindow):
+class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
     #pylint: disable=no-member
     MAX_JOBS = len(os.sched_getaffinity(0)) if hasattr(os, 'sched_getaffinity') else os.cpu_count()
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        logging.debug('Calling ApplicationWindow __init__')
+        Gtk.ApplicationWindow.__init__(self, *args, **kwargs)
+        WidgetParams.__init__(self)
 
         self._monitor: Final[Observer] = None
-        self._monitored_directory: str = None
         self._files_dict_lock = RLock()
         self._files_dict: OrderedDictType[str, File] = OrderedDict()
         self._jobs_list: Final[List[Job]] = list()
@@ -93,12 +94,12 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             hexpand=False, vexpand=False)
         controls_grid_basic.attach(self._monitor_stop_button, 1, 0, 1, 1)
         self._monitor_stop_button.connect("clicked", self.monitor_control_button_clicked_cb)
-        self._directory_chooser_button = Gtk.FileChooserButton(
+        self._directory_chooser_button = self.register_widget(Gtk.FileChooserButton(
             title="Select a directory for monitoring",
             action=Gtk.FileChooserAction.SELECT_FOLDER,
             create_folders=True,
             halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
-            hexpand=True, vexpand=False)
+            hexpand=True, vexpand=False), 'monitored_directory')
         controls_grid_basic.attach(self._directory_chooser_button, 2, 0, 5, 1)
         self._directory_chooser_button.connect("selection-changed", self.directory_chooser_button_cb)
         
@@ -163,14 +164,14 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             column_spacing=5
         )
         advanced_options_child.attach(status_promotion_grid, 0, 0, 1, 1)
-        self._status_promotion_checkbutton = Gtk.CheckButton(label='Promote files from \'Created\' to \'Saved\' after',
+        status_promotion_checkbutton = self.register_widget(Gtk.CheckButton(label='Promote files from \'Created\' to \'Saved\' after',
                 halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
-                hexpand=False, vexpand=False)
+                hexpand=False, vexpand=False), 'status_promotion_active')
         status_promotion_grid.attach(
-            self._status_promotion_checkbutton,
+            status_promotion_checkbutton,
             0, 0, 1, 1
         )
-        self._status_promotion_spinbutton = Gtk.SpinButton(
+        status_promotion_spinbutton = self.register_widget(Gtk.SpinButton(
             adjustment=Gtk.Adjustment(
                 lower=1,
                 upper=3600,
@@ -182,9 +183,8 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             numeric=True,
             climb_rate=5,
             halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
-            hexpand=False, vexpand=False,
-        )
-        status_promotion_grid.attach(self._status_promotion_spinbutton, 1, 0, 1, 1)
+            hexpand=False, vexpand=False), 'status_promotion_delay')
+        status_promotion_grid.attach(status_promotion_spinbutton, 1, 0, 1, 1)
         status_promotion_grid.attach(Gtk.Label(label='seconds'), 2, 0, 1, 1)
 
         advanced_options_child.attach(Gtk.Separator(
@@ -209,21 +209,20 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             0, 0, 1, 1,
         )
 
-        self._max_threads_spinbutton = Gtk.SpinButton(
+        max_threads_spinbutton = self.register_widget(Gtk.SpinButton(
             adjustment=Gtk.Adjustment(
                 lower=1,
                 upper=self.MAX_JOBS,
-                value=self.MAX_JOBS//2,
+                value=max(self.MAX_JOBS//2, 1),
                 page_size=0,
                 step_increment=1),
-            value=self.MAX_JOBS//2,
+            value=max(self.MAX_JOBS//2, 1),
             update_policy=Gtk.SpinButtonUpdatePolicy.IF_VALID,
             numeric=True,
             climb_rate=1,
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
-            hexpand=False, vexpand=False,
-        )
-        max_threads_grid.attach(self._max_threads_spinbutton, 1, 0, 1, 1)
+            hexpand=False, vexpand=False), 'max_threads')
+        max_threads_grid.attach(max_threads_spinbutton, 1, 0, 1, 1)
 
         paned = Gtk.Paned(wide_handle=True,
             orientation=Gtk.Orientation.VERTICAL,
@@ -352,7 +351,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                 logging.debug(f"New file {file_path} created")
                 # add new entry to model
                 _creation_timestamp = time()
-                _relative_file_path = PurePath(file_path).relative_to(self._monitored_directory)
+                _relative_file_path = PurePath(file_path).relative_to(self.params.monitored_directory)
                 iter = self._files_tree_model.append(parent=None, row=[
                     str(_relative_file_path),
                     _creation_timestamp,
@@ -391,7 +390,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                 self._files_tree_model[path][2] = int(FileStatus.SAVED) 
 
     def update_monitor_switch_sensitivity(self):
-        if self._monitored_directory and \
+        if self.params.monitored_directory and \
             self._monitor is None and \
             len(self._operations_box) > 0:
             self._monitor_play_button.set_sensitive(True)
@@ -409,10 +408,9 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         self.update_monitor_switch_sensitivity()
 
     def directory_chooser_button_cb(self, button):
-        if monitored_directory := button.get_filename():
-            self._monitored_directory = monitored_directory
+        if self.params.monitored_directory:
             self.update_monitor_switch_sensitivity()
-            self.set_title(f"Monitoring: {self._monitored_directory}")
+            self.set_title(f"Monitoring: {self.params.monitored_directory}")
 
     def on_minimize(self, action, param):
         self.iconify()
@@ -430,8 +428,8 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                 #logging.debug(f"timeout_cb: {_filename} found as {str(_file.status)}")
                 if _file.status == FileStatus.CREATED:
                     logging.debug(f"files_dict_timeout_cb: {_filename} was CREATED")
-                    if self._status_promotion_checkbutton.get_active() and \
-                        (time() - _file.created) >  self._status_promotion_spinbutton.get_value_as_int():
+                    if self.params.status_promotion_active and \
+                        (time() - _file.created) >  self.params.status_promotion_delay:
                         # promote to SAVED!
                         _file.status = FileStatus.SAVED
                         path = _file.row_reference.get_path()
@@ -439,7 +437,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                         logging.debug(f"files_dict_timeout_cb: promoting {_filename} to SAVED")
                         
                 elif _file.status == FileStatus.SAVED:
-                    if self._njobs_running < self._max_threads_spinbutton.get_value_as_int():
+                    if self._njobs_running < self.params.max_threads:
                         # launch a new job
                         logging.debug(f"files_dict_timeout_cb: launching new job for {_filename}")
                         job = Job(self, _file)
@@ -453,7 +451,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                         path = _file.row_reference.get_path()
                         self._files_tree_model[path][2] = int(_file.status)
                 elif _file.status == FileStatus.QUEUED:
-                    if self._njobs_running < self._max_threads_spinbutton.get_value_as_int():
+                    if self._njobs_running < self.params.max_threads:
                         # try and launch a new job
                         logging.debug(f"files_dict_timeout_cb: launching queued job for {_filename}")
                         job = Job(self, _file)
@@ -480,7 +478,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         self._timeout_id = GLib.timeout_add_seconds(1, self.files_dict_timeout_cb, priority=GLib.PRIORITY_DEFAULT)
 
         self._monitor = Observer()
-        self._monitor.schedule(EventHandler(self), self._monitored_directory, recursive=False, )
+        self._monitor.schedule(EventHandler(self), self.params.monitored_directory, recursive=False, )
         self._monitor.start()
         self._monitor_stop_button.set_sensitive(True)
         self._monitor_play_button.set_sensitive(False)

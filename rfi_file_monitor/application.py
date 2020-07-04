@@ -50,6 +50,8 @@ class Application(Gtk.Application):
         accelerators = (
             ("app.quit", ("<Primary>Q", )),
             ("app.new", ("<Primary>N", )),
+            ("win.save", ("<Primary>S", )),
+            ("win.save-as", ("<Primary><Shift>S", )),
             ("win.close", ("<Primary>W", )),
         )
 

@@ -9,6 +9,7 @@ dependencies:
   - pip
   - boto3
   - munch
+  - PyYAML
   - watchdog
   - adwaita-icon-theme
   - librsvg

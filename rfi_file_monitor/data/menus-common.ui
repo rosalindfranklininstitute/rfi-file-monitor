@@ -10,10 +10,10 @@
 						<attribute name="label">_New window</attribute>
 						<attribute name="action">app.new</attribute>
 					</item>
-					<!--<item>
+					<item>
 						<attribute name="label">_Open</attribute>
 						<attribute name="action">app.open</attribute>
-					</item>-->
+					</item>
 					<item>
 						<attribute name="label">_Save</attribute>
 						<attribute name="action">win.save</attribute>

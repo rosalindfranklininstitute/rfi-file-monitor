@@ -423,6 +423,33 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
     def on_close(self, action, param):
         self.destroy()
 
+    def load_from_yaml_dict(self, yaml_dict: dict):
+        # configuration first
+        conf = yaml_dict['configuration']
+        self.update_from_dict(conf)
+
+        # next operations
+        ops = yaml_dict['operations']
+
+        # remove any existing operations in there currently
+        for op in self._operations_box:
+            self._operations_box.remove(op)
+
+        # add the operations
+        for op in ops:
+            for _class in self._known_operations.values():
+                if op['name'] == _class.NAME:
+                    new_operation = _class()
+                    new_operation.index = len(self._operations_box)
+                    self._operations_box.pack_start(new_operation, False, False, 0)
+                    new_operation.update_from_dict(op['params'])
+                    new_operation.show_all()
+                    break
+            else:
+                logging.warning(f"load_from_yaml_dict: no match found for operation {op['name']}")
+
+        self.update_monitor_switch_sensitivity()
+
     def _write_to_yaml(self):
         yaml_dict = dict(configuration=self.params, operations=[dict(name=op.NAME, params=op.params) for op in self._operations_box])
         logging.debug(f'{yaml.safe_dump(yaml_dict)=}')
@@ -456,21 +483,24 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         dialog.add_filter(filter)
 
         if dialog.run() == Gtk.ResponseType.ACCEPT:
-            dialog.destroy()
             self._yaml_file = dialog.get_filename()
+            dialog.destroy()
             # ensure filename ends in .yaml or .yml
             if not self._yaml_file.endswith('.yml') and not self._yaml_file.endswith('.yaml'):
                 self._yaml_file += '.yml'
             try:
                 self._write_to_yaml()
+                logging.info(f'{self._yaml_file} has been written to')
             except Exception as e:
-                dialog = Gtk.MessageDialog(transient_for=self.get_toplevel(),
+                dialog = Gtk.MessageDialog(transient_for=self,
                     modal=True, destroy_with_parent=True,
                     message_type=Gtk.MessageType.ERROR,
                     buttons=Gtk.ButtonsType.CLOSE, text=f"Could not write to {self._yaml_file}",
                     secondary_text=str(e))
                 dialog.run()
-        dialog.destroy()
+                dialog.destroy()
+        else:
+            dialog.destroy()
         
 
     def files_dict_timeout_cb(self, *user_data):

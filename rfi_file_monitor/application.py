@@ -1,11 +1,12 @@
 import gi
-
 gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gio, Gtk, GdkPixbuf
+import yaml
 
 import pkg_resources
 import platform
 import webbrowser
+import logging
 
 from .applicationwindow import ApplicationWindow
 from .utils import add_action_entries
@@ -37,6 +38,7 @@ class Application(Gtk.Application):
         action_entries = (
             ("about", self.on_about),
             ("quit", self.on_quit),
+            ("open", self.on_open),
             ("new", lambda *_: self.do_activate()),
             ("help-url", self.on_help_url, "s")
         )
@@ -50,6 +52,7 @@ class Application(Gtk.Application):
         accelerators = (
             ("app.quit", ("<Primary>Q", )),
             ("app.new", ("<Primary>N", )),
+            ("app.open", ("<Primary>O", )),
             ("win.save", ("<Primary>S", )),
             ("win.save-as", ("<Primary><Shift>S", )),
             ("win.close", ("<Primary>W", )),
@@ -57,6 +60,42 @@ class Application(Gtk.Application):
 
         for accel in accelerators:
             self.set_accels_for_action(accel[0], accel[1])
+
+    def on_open(self, action, param):
+        # fire up file chooser dialog
+        active_window = self.get_active_window()
+        dialog = Gtk.FileChooserNative(
+            modal=True, title='Open monitor configuration YAML file',
+            transient_for=active_window, action=Gtk.FileChooserAction.OPEN)
+        filter = Gtk.FileFilter()
+        filter.add_pattern('*.yml')
+        filter.add_pattern('*.yaml')
+        filter.set_name('YAML file')
+        dialog.add_filter(filter)
+
+        if dialog.run() == Gtk.ResponseType.ACCEPT:
+            yaml_file = dialog.get_filename()
+            dialog.destroy()
+            try:
+                with open(yaml_file, 'r') as f:
+                    yaml_dict = yaml.safe_load(f)
+                logging.debug(f"Open: {yaml_dict=}")
+                if 'configuration' not in yaml_dict or 'operations' not in yaml_dict:
+                    raise Exception("Valid YAML files must contain a dict with keys configuration and operations")
+            except Exception as e:
+                dialog = Gtk.MessageDialog(transient_for=self,
+                    modal=True, destroy_with_parent=True,
+                    message_type=Gtk.MessageType.ERROR,
+                    buttons=Gtk.ButtonsType.CLOSE, text=f"Could not load {yaml_file}",
+                    secondary_text=str(e))
+                dialog.run()
+                dialog.destroy()
+            else:
+                window = ApplicationWindow(application=self, type=Gtk.WindowType.TOPLEVEL)
+                window.load_from_yaml_dict(yaml_dict)
+                window.show_all()
+        else:
+            dialog.destroy()
 
     def do_activate(self):
         window = ApplicationWindow(application=self, title="Unknown Folder", type=Gtk.WindowType.TOPLEVEL)

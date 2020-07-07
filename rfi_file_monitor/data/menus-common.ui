@@ -10,7 +10,7 @@
 						<attribute name="label">_New window</attribute>
 						<attribute name="action">app.new</attribute>
 					</item>
-					<!--<item>
+					<item>
 						<attribute name="label">_Open</attribute>
 						<attribute name="action">app.open</attribute>
 					</item>
@@ -21,7 +21,7 @@
 					<item>
 						<attribute name="label">Save _As</attribute>
 						<attribute name="action">win.save-as</attribute>
-					</item>-->
+					</item>
 					<item>
 						<attribute name="label">Close Window</attribute>
 						<attribute name="action">win.close</attribute>

@@ -4,6 +4,7 @@ gi.require_version("Gdk", "3.0")
 from gi.repository import GLib, Gtk, Gdk
 from watchdog.events import FileSystemEventHandler, FileCreatedEvent, FileModifiedEvent
 from watchdog.observers import Observer
+import yaml
 
 import logging
 from collections import OrderedDict
@@ -36,6 +37,8 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self._njobs_running: Final[int] = 0
         self._timeout_id: Final[int] = 0
 
+        self._yaml_file: Final[str] = None
+
         self.set_default_size(1000, 1000)
 
 
@@ -48,6 +51,8 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             logging.debug(f"{_name}")
 
         action_entries = (
+            ("save", self.on_save),
+            ("save-as", self.on_save_as),
             ("close", self.on_close),
             ("minimize", self.on_minimize),
         )
@@ -418,6 +423,86 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
     def on_close(self, action, param):
         self.destroy()
 
+    def load_from_yaml_dict(self, yaml_dict: dict):
+        # configuration first
+        conf = yaml_dict['configuration']
+        self.update_from_dict(conf)
+
+        # next operations
+        ops = yaml_dict['operations']
+
+        # remove any existing operations in there currently
+        for op in self._operations_box:
+            self._operations_box.remove(op)
+
+        # add the operations
+        for op in ops:
+            for _class in self._known_operations.values():
+                if op['name'] == _class.NAME:
+                    new_operation = _class()
+                    new_operation.index = len(self._operations_box)
+                    self._operations_box.pack_start(new_operation, False, False, 0)
+                    new_operation.update_from_dict(op['params'])
+                    new_operation.show_all()
+                    break
+            else:
+                logging.warning(f"load_from_yaml_dict: no match found for operation {op['name']}")
+
+        self.update_monitor_switch_sensitivity()
+
+    def _write_to_yaml(self):
+        yaml_dict = dict(configuration=self.params, operations=[dict(name=op.NAME, params=op.params) for op in self._operations_box])
+        logging.debug(f'{yaml.safe_dump(yaml_dict)=}')
+        with open(self._yaml_file, 'w') as f:
+            yaml.safe_dump(yaml_dict, f)
+
+    def on_save(self, action, param):
+        if self._yaml_file is None:
+            self.on_save_as(action, param)
+        try:
+            self._write_to_yaml()
+            logging.info(f'{self._yaml_file} has been updated')
+        except Exception as e:
+            dialog = Gtk.MessageDialog(transient_for=self,
+                modal=True, destroy_with_parent=True,
+                message_type=Gtk.MessageType.ERROR,
+                buttons=Gtk.ButtonsType.CLOSE, text=f"Could not write to {self._yaml_file}",
+                secondary_text=str(e))
+            dialog.run()
+            dialog.destroy()
+
+    def on_save_as(self, action, param):
+        # open a file chooser dialog
+        dialog = Gtk.FileChooserNative(
+            modal=True, title='Save monitor configuration to YAML file',
+            transient_for=self, action=Gtk.FileChooserAction.SAVE)
+        filter = Gtk.FileFilter()
+        filter.add_pattern('*.yml')
+        filter.add_pattern('*.yaml')
+        filter.set_name('YAML file')
+        dialog.add_filter(filter)
+
+        if dialog.run() == Gtk.ResponseType.ACCEPT:
+            self._yaml_file = dialog.get_filename()
+            dialog.destroy()
+            # ensure filename ends in .yaml or .yml
+            if not self._yaml_file.endswith('.yml') and not self._yaml_file.endswith('.yaml'):
+                self._yaml_file += '.yml'
+            try:
+                self._write_to_yaml()
+                logging.info(f'{self._yaml_file} has been written to')
+            except Exception as e:
+                dialog = Gtk.MessageDialog(transient_for=self,
+                    modal=True, destroy_with_parent=True,
+                    message_type=Gtk.MessageType.ERROR,
+                    buttons=Gtk.ButtonsType.CLOSE, text=f"Could not write to {self._yaml_file}",
+                    secondary_text=str(e))
+                dialog.run()
+                dialog.destroy()
+        else:
+            dialog.destroy()
+        
+
     def files_dict_timeout_cb(self, *user_data):
         """
         This function runs every second, and will take action based on the status of all files in the dict
@@ -465,10 +550,11 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         task_window.destroy()
 
         if exception_msgs:
-            dialog = Gtk.MessageDialog(self.get_toplevel(), \
-                    Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT, \
-                    Gtk.MessageType.ERROR, Gtk.ButtonsType.CLOSE, "Operation configuration error(s) found")
-            dialog.props.secondary_text = '\n'.join(exception_msgs)
+            dialog = Gtk.MessageDialog(transient_for=self.get_toplevel(),
+                    modal=True, destroy_with_parent=True,
+                    message_type=Gtk.MessageType.ERROR,
+                    buttons=Gtk.ButtonsType.CLOSE, text="Operation configuration error(s) found",
+                    secondary_text='\n'.join(exception_msgs))
             dialog.run()
             dialog.destroy()
             return

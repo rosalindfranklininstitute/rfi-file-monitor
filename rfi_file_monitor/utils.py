@@ -70,6 +70,31 @@ class WidgetParams:
 
         return widget
 
+    def update_from_dict(self, yaml_dict: dict):
+        for param_name, value in yaml_dict.items():
+            if param_name not in self._params:
+                logging.warning(f'update_from_dict: {param_name} not found in widget params!')
+                continue
+        
+            widget = self._widgets[param_name]
+
+            with widget.handler_block(self._signal_ids[param_name]):
+                self._params[param_name] = value
+        
+                if isinstance(widget, Gtk.SpinButton):
+                    widget.set_value(value)
+                elif isinstance(widget, Gtk.CheckButton):
+                    widget.set_active(value)
+                elif isinstance(widget, Gtk.FileChooserButton):
+                    widget.set_filename(value)
+                elif isinstance(widget, Gtk.Entry):
+                    if widget.get_placeholder_text() == value:
+                        widget.set_text("")
+                    else:
+                        widget.set_text(value)
+                else:
+                    raise NotImplementedError(f"update_from_dict: no support for {type(widget).__name__}")
+
     @property
     def params(self) -> Munch:
         """

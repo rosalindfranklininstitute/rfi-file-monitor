@@ -49,6 +49,10 @@ class WidgetParams:
 
     @final
     def register_widget(self, widget: Gtk.Widget, param_name: str):
+
+        if param_name in self._params:
+            raise ValueError("register_widget cannot overwrite existing parameters!")
+
         if isinstance(widget, Gtk.SpinButton):
             self._params[param_name] = widget.get_value()
             self._signal_ids[param_name] = widget.connect("value-changed", self._spinbutton_value_changed_cb, param_name)

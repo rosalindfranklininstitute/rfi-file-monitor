@@ -13,3 +13,4 @@ dependencies:
   - watchdog
   - adwaita-icon-theme
   - librsvg
+  - paramiko

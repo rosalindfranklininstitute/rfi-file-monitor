@@ -14,8 +14,6 @@ import os
 import tempfile
 from pathlib import PurePosixPath
 from threading import current_thread, Lock
-import traceback
-import sys
 import urllib
 
 # useful info from help(boto3.session.Session.client)
@@ -172,7 +170,7 @@ class S3UploaderOperation(Operation):
                 Callback = S3ProgressPercentage(file, thread, self),
                 )
         except Exception as e:
-            traceback.print_exc(file=sys.stdout)
+            logging.exception(f'S3UploaderOperation.run exception')
             return str(e)
         else:
             #add object URL to metadata
@@ -203,4 +201,4 @@ class S3ProgressPercentage(object):
             percentage = (self._seen_so_far / self._size) * 100
             if int(percentage) > self._last_percentage:
                 self._last_percentage = int(percentage)
-                self._file.update_progressbar(self._operation.index, percentage)
+                self._file.update_progressbar(self._operation.index, self._last_percentage)

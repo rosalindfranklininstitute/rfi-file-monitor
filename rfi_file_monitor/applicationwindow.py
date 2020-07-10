@@ -585,6 +585,7 @@ class PreflightCheckThread(Thread):
             try:
                 operation.preflight_check()
             except Exception as e:
+                logging.exception(f"Exception caught from {operation.NAME}")
                 exception_msgs.append('* ' + str(e))
 
         if exception_msgs:

@@ -27,7 +27,6 @@ setup(
         ],
     },
     install_requires=[
-        "setuptools",
         "PyGObject",
         "boto3",
         "munch",

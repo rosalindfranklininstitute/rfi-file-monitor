@@ -13,7 +13,7 @@ from time import time, ctime
 from pathlib import PurePath
 from typing import OrderedDict as OrderedDictType
 from typing import Final, List, Optional
-import pkg_resources
+import importlib.metadata
 import os
 
 from .utils import add_action_entries, LongTaskWindow, WidgetParams
@@ -44,7 +44,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
         # get operations from entry points
         self._known_operations = {
-            e.name: e.load() for e in pkg_resources.iter_entry_points("rfi_file_monitor.operations")
+            e.name: e.load() for e in importlib.metadata.entry_points()['rfi_file_monitor.operations']
         }
 
         for _name, _class in self._known_operations.items():

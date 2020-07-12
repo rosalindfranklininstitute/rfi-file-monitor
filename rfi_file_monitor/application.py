@@ -3,7 +3,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gio, Gtk, GdkPixbuf
 import yaml
 
-import pkg_resources
+import importlib.resources
 import platform
 import webbrowser
 import logging
@@ -27,11 +27,11 @@ class Application(Gtk.Application):
 
         # this may need to be checked on other platforms as well
         if platform.system() == 'Darwin':
-            appmenus_str = pkg_resources.resource_string('rfi_file_monitor', 'data/menus-appmenu.ui').decode("utf-8")
+            appmenus_str = importlib.resources.read_text('rfi_file_monitor.data', 'menus-appmenu.ui')
             builder = Gtk.Builder.new_from_string(appmenus_str, -1)
             self.set_app_menu(builder.get_object("app-menu"))
 
-        commonmenus_str = pkg_resources.resource_string('rfi_file_monitor', 'data/menus-common.ui').decode("utf-8")
+        commonmenus_str = importlib.resources.read_text('rfi_file_monitor.data', 'menus-common.ui')
         builder = Gtk.Builder.new_from_string(commonmenus_str, -1)
         self.set_menubar(builder.get_object("menubar"))
 
@@ -103,8 +103,9 @@ class Application(Gtk.Application):
 
     def on_about(self, action, param):
 
-        logo = GdkPixbuf.Pixbuf.new_from_file_at_scale(
-                pkg_resources.resource_filename('rfi_file_monitor', 'data/RFI-logo-transparent.png'),
+        with importlib.resources.path('rfi_file_monitor.data', 'RFI-logo-transparent.png') as f:
+            logo = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+                str(f),
                 300,
                 -1,
                 True)

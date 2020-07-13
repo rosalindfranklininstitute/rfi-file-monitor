@@ -40,7 +40,8 @@ class Application(Gtk.Application):
             ("quit", self.on_quit),
             ("open", self.on_open),
             ("new", lambda *_: self.do_activate()),
-            ("help-url", self.on_help_url, "s")
+            ("help-url", self.on_help_url, "s"),
+            ('hi', self.on_hi)
         )
 
         # This doesn't work, which is kind of uncool
@@ -124,3 +125,8 @@ class Application(Gtk.Application):
 
     def on_help_url(self, action, param):
         webbrowser.open_new_tab(param.get_string())
+
+    def on_hi(self, action, param):
+
+        hi_dialog = Gtk.MessageDialog(type = Gtk.MessageType.INFO, buttons=Gtk.ButtonsType.CLOSE)
+        hi_dialog.run()

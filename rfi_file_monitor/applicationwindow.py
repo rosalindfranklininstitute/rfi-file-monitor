@@ -54,7 +54,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             ("save", self.on_save),
             ("save-as", self.on_save_as),
             ("close", self.on_close),
-            ("minimize", self.on_minimize),
+            ("minimize", self.on_minimize)
         )
 
         # This doesn't work, which is kind of uncool
@@ -501,7 +501,6 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                 dialog.destroy()
         else:
             dialog.destroy()
-        
 
     def files_dict_timeout_cb(self, *user_data):
         """
@@ -572,6 +571,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self._controls_operations_button.set_sensitive(False)
         for operation in self._operations_box:
             operation.set_sensitive(False)
+
 
 class PreflightCheckThread(Thread):
     def __init__(self, appwindow: ApplicationWindow, task_window: LongTaskWindow):

@@ -9,7 +9,7 @@ import webbrowser
 import logging
 
 from .applicationwindow import ApplicationWindow
-from .utils import add_action_entries, ComboBoxWindow
+from .utils import add_action_entries, SetUpComboBox
 
 class Application(Gtk.Application):
 
@@ -127,6 +127,6 @@ class Application(Gtk.Application):
         webbrowser.open_new_tab(param.get_string())
 
     def on_instr_setup(self, action, param):
-            new_box = ComboBoxWindow()
+            new_box = SetUpComboBox()
             new_box.show_all()
 

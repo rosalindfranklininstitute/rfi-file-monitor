@@ -41,7 +41,7 @@ class Application(Gtk.Application):
             ("open", self.on_open),
             ("new", lambda *_: self.do_activate()),
             ("help-url", self.on_help_url, "s"),
-            ('hi', self.on_hi)
+            ('instr-setup', self.on_instr_setup),
         )
 
         # This doesn't work, which is kind of uncool
@@ -126,7 +126,7 @@ class Application(Gtk.Application):
     def on_help_url(self, action, param):
         webbrowser.open_new_tab(param.get_string())
 
-    def on_hi(self, action, param):
+    def on_instr_setup(self, action, param):
 
         hi_dialog = Gtk.MessageDialog(type = Gtk.MessageType.INFO, buttons=Gtk.ButtonsType.CLOSE)
         hi_dialog.run()

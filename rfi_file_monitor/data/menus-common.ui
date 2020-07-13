@@ -83,10 +83,10 @@
 			<submenu>
 			<attribute name="label">_Preferences</attribute>
 				<section>
-					<attribute name="id">hi</attribute>
+					<attribute name="id">instr-setup</attribute>
 					<item>
 						<attribute name="label">Setup Instrument</attribute>
-						<attribute name="action">app.hi</attribute>
+						<attribute name="action">app.instr-setup</attribute>
 					</item>
 				</section>
 			</submenu>

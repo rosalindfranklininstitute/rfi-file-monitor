@@ -138,3 +138,30 @@ class LongTaskWindow(Gtk.Window):
 
     def set_text(self, text: str):
         self._label.set_markup(text)
+
+class ComboBoxWindow(Gtk.Window):
+    def __init__(self):
+        Gtk.Window.__init__(self, title="Select Instrument")
+
+        self.set_border_width(10)
+
+        name_store = Gtk.ListStore(str)
+        name_list= ['Instrument1', 'Instrument2', 'Instrument3']
+        for nm in name_list:
+            name_store.append([nm])
+
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing =6)
+
+        name_combo = Gtk.ComboBox.new_with_model_and_entry(name_store)
+        name_combo.connect("changed", self.on_name_combo_changed)
+        name_combo.set_entry_text_column(0)
+        vbox.pack_start(name_combo, False, False,  0)
+
+        self.add(vbox)
+
+    def on_name_combo_changed(self, combo):
+        tree_iter = combo.get_active_iter()
+        if tree_iter is not None:
+            model = combo.get_model()
+            name = model[tree_iter][:1]
+            print(name)

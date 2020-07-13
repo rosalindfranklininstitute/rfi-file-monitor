@@ -9,7 +9,7 @@ import webbrowser
 import logging
 
 from .applicationwindow import ApplicationWindow
-from .utils import add_action_entries
+from .utils import add_action_entries, ComboBoxWindow
 
 class Application(Gtk.Application):
 
@@ -127,6 +127,6 @@ class Application(Gtk.Application):
         webbrowser.open_new_tab(param.get_string())
 
     def on_instr_setup(self, action, param):
+            new_box = ComboBoxWindow()
+            new_box.show_all()
 
-        hi_dialog = Gtk.MessageDialog(type = Gtk.MessageType.INFO, buttons=Gtk.ButtonsType.CLOSE)
-        hi_dialog.run()

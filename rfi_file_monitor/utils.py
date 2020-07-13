@@ -5,6 +5,7 @@ from munch import Munch
 
 from typing import Callable, Optional, Final, Any, Dict, final
 import logging
+import yaml
 
 EXPAND_AND_FILL: Final[Dict[str, Any]] = dict(hexpand=True, vexpand=True, halign=Gtk.Align.FILL, valign=Gtk.Align.FILL)
 
@@ -146,7 +147,8 @@ class SetUpComboBox(Gtk.Window):
         self.set_border_width(10)
 
         name_store = Gtk.ListStore(str)
-        name_list= ['Instrument1', 'Instrument2', 'Instrument3']
+
+        name_list= self.get_instruments_from_yaml()
         for nm in name_list:
             name_store.append([nm])
 
@@ -167,3 +169,8 @@ class SetUpComboBox(Gtk.Window):
             model = combo.get_model()
             name = model[tree_iter][:1]
             self.label.set_label("selected instrument: {instrument}".format(instrument=name[0]))
+
+    def get_instruments_from_yaml(self):
+        instr_file= open('rfi-instruments.yaml')
+        instruments= yaml.load(instr_file, Loader=yaml.FullLoader)
+        return instruments.keys()

@@ -165,12 +165,14 @@ class SetUpComboBox(Gtk.Window):
 
     def on_name_combo_changed(self, combo):
         tree_iter = combo.get_active_iter()
-        if tree_iter is not None:
+        if tree_iter:
             model = combo.get_model()
             name = model[tree_iter][:1]
-            self.label.set_label("selected instrument: {instrument}".format(instrument=name[0]))
+            self.label.set_label(f"selected instrument: {name[0]}")
 
     def get_instruments_from_yaml(self):
+
         with open('rfi-instruments.yaml') as instr_file:
             instruments = yaml.load(instr_file, Loader=yaml.FullLoader)
             return instruments.keys()
+

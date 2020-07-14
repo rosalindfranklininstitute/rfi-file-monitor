@@ -47,4 +47,5 @@ setup(
     license="BSD license",
     #test_suite="tests",
     url="https://github.com/rosalindfranklininstitute/rfi-file-monitor",
+    include_package_date=True,
 )

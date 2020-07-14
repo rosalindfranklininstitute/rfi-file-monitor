@@ -152,16 +152,16 @@ class SetUpComboBox(Gtk.Window):
         for nm in name_list:
             name_store.append([nm])
 
-        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing =6)
+        vgrid = Gtk.Grid()
 
         name_combo = Gtk.ComboBox.new_with_model_and_entry(name_store)
         name_combo.connect("changed", self.on_name_combo_changed)
         name_combo.set_entry_text_column(0)
-        vbox.pack_start(name_combo, False, False,  0)
+        vgrid.attach(name_combo, 1,0,2,1)
 
         self.label = Gtk.Label("")
-        vbox.pack_start(self.label , False , False , True)
-        self.add(vbox)
+        vgrid.attach(self.label ,1,2,1,1)
+        self.add(vgrid)
 
     def on_name_combo_changed(self, combo):
         tree_iter = combo.get_active_iter()
@@ -171,6 +171,6 @@ class SetUpComboBox(Gtk.Window):
             self.label.set_label("selected instrument: {instrument}".format(instrument=name[0]))
 
     def get_instruments_from_yaml(self):
-        instr_file= open('rfi-instruments.yaml')
-        instruments= yaml.load(instr_file, Loader=yaml.FullLoader)
-        return instruments.keys()
+        with open('rfi-instruments.yaml') as instr_file:
+            instruments = yaml.load(instr_file, Loader=yaml.FullLoader)
+            return instruments.keys()

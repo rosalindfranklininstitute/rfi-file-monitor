@@ -168,7 +168,7 @@ class SetUpComboBox(Gtk.Window):
         if tree_iter:
             model = combo.get_model()
             name = model[tree_iter][:1]
-            self.label.set_label("selected instrument: {instrument}".format(instrument=name[0]))
+            self.label.set_label(f"selected instrument: {name[0]}")
 
     def get_instruments_from_yaml(self):
         instr_file= open('rfi-instruments.yaml')

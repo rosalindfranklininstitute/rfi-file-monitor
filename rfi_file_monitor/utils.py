@@ -165,7 +165,7 @@ class SetUpComboBox(Gtk.Window):
 
     def on_name_combo_changed(self, combo):
         tree_iter = combo.get_active_iter()
-        if tree_iter is not None:
+        if tree_iter:
             model = combo.get_model()
             name = model[tree_iter][:1]
             self.label.set_label("selected instrument: {instrument}".format(instrument=name[0]))

@@ -40,6 +40,11 @@ setup(
             "S3Uploader = rfi_file_monitor.operations.s3_uploader:S3UploaderOperation",
             "SftpUploader = rfi_file_monitor.operations.sftp_uploader:SftpUploaderOperation",
         ],
+        "rfi_file_monitor.preferences": [
+            "TestBooleanPreference1 = rfi_file_monitor.preferences:TestBooleanPreference1",
+            "TestBooleanPreference2 = rfi_file_monitor.preferences:TestBooleanPreference2",
+            "TestBooleanPreference3 = rfi_file_monitor.preferences:TestBooleanPreference3",
+        ],
         'console_scripts': [
             'rfi-file-monitor=rfi_file_monitor:main',
         ],

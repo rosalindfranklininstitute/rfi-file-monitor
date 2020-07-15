@@ -7,9 +7,13 @@ import importlib.resources
 import platform
 import webbrowser
 import logging
+from typing import Any, Final, Dict, Type
+import importlib.metadata
 
 from .applicationwindow import ApplicationWindow
-from .utils import add_action_entries
+from .utils import add_action_entries, PREFERENCES_CONFIG_FILE
+from .preferences import Preference
+from .preferenceswindow import PreferencesWindow
 
 class Application(Gtk.Application):
 
@@ -40,7 +44,8 @@ class Application(Gtk.Application):
             ("quit", self.on_quit),
             ("open", self.on_open),
             ("new", lambda *_: self.do_activate()),
-            ("help-url", self.on_help_url, "s")
+            ("help-url", self.on_help_url, "s"),
+            ("preferences", self.on_preferences)
         )
 
         # This doesn't work, which is kind of uncool
@@ -60,6 +65,33 @@ class Application(Gtk.Application):
 
         for accel in accelerators:
             self.set_accels_for_action(accel[0], accel[1])
+        
+        # populate dict with preferences found in entry points
+        self._prefs: Final[Dict[Type[Preference], Any]] = dict()
+        for e in importlib.metadata.entry_points()['rfi_file_monitor.preferences']:
+            _class = e.load()
+            self._prefs[_class] = _class.default
+
+        # now, open preferences file and update the prefs dictionary
+        try:
+            with PREFERENCES_CONFIG_FILE.open('r') as f:
+                stored_prefs = yaml.safe_load(f)
+        except FileNotFoundError:
+            pass
+        else:
+            logging.debug(f'Reading preferences from {str(PREFERENCES_CONFIG_FILE)}')
+            for _class in self._prefs.keys():
+                for _key, _value in stored_prefs.items():
+                    if _class.key == _key:
+                        self._prefs[_class] = _value
+                        break
+                else:
+                    logging.warning(f'Could not find a corresponding Preference class for key {_key} from preferences file')
+
+        logging.debug(f'{self._prefs=}')
+
+    def get_preferences(self) -> Dict[Preference, Any]:
+        return self._prefs
 
     def on_open(self, action, param):
         # fire up file chooser dialog
@@ -124,3 +156,15 @@ class Application(Gtk.Application):
 
     def on_help_url(self, action, param):
         webbrowser.open_new_tab(param.get_string())
+
+    def on_preferences(self, action, param):
+        window = PreferencesWindow(
+            self._prefs,
+            modal=False,
+            transient_for=self.get_active_window(),
+		    window_position=Gtk.WindowPosition.CENTER_ON_PARENT,
+            type=Gtk.WindowType.TOPLEVEL,
+		    destroy_with_parent=True,
+            border_width=5,
+            )
+        window.present()

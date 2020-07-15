@@ -2,7 +2,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import GLib, Gtk, Gdk
-from watchdog.events import FileSystemEventHandler, FileCreatedEvent, FileModifiedEvent
+from watchdog.events import FileCreatedEvent, FileModifiedEvent, PatternMatchingEventHandler
 from watchdog.observers import Observer
 import yaml
 
@@ -594,10 +594,12 @@ class PreflightCheckThread(Thread):
         
         GLib.idle_add(self._appwindow._preflight_check_cb, self._task_window, exception_msgs, priority=GLib.PRIORITY_DEFAULT_IDLE)
 
-class EventHandler(FileSystemEventHandler):
+
+class EventHandler(PatternMatchingEventHandler):
     def __init__(self, appwindow: ApplicationWindow):
         self._appwindow = appwindow
-
+        super(EventHandler, self).__init__(ignore_patterns=['*.swp', '*.swx'])
+        
     def on_created(self, event):
         # ignore directories being created
         if not isinstance(event, FileCreatedEvent):

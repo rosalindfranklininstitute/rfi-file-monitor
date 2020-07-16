@@ -3,10 +3,10 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GObject
 import yaml
 
-from typing import Dict, Any, Type
+from typing import Dict, Any, Type, Final
 import logging
 
-from .preferences import Preference, BooleanPreference
+from .preferences import Preference, BooleanPreference, ListPreference
 from .utils import EXPAND_AND_FILL, PREFERENCES_CONFIG_FILE
 
 class PreferenceValueCellRenderer(Gtk.CellRenderer):
@@ -30,12 +30,28 @@ class PreferenceValueCellRenderer(Gtk.CellRenderer):
 
         # our renderers
         self._toggle_renderer = Gtk.CellRendererToggle(activatable=True, radio=False)
+        self._combo_renderer = Gtk.CellRendererCombo(has_entry=False)
+
+        # our combo models
+        self._combo_models: Final[Dict[Type[Preference], Gtk.ListStore]] = dict()
 
         # connect signal handlers
         self._toggle_renderer.connect("toggled", self._toggle_cb)
+        self._combo_renderer.connect("changed", self._changed_cb)
 
     def _get_key_from_model(self, path: str) -> str:
         return self._list_store[path][0]
+
+    def _changed_cb(self, combo: Gtk.CellRendererCombo, path: str, new_iter: Gtk.TreeIter):
+        key: str = self._get_key_from_model(path)
+        pref: Type[Preference] = self._get_class_for_key(key)
+        store = self._combo_models[pref]
+
+        new_value = store[new_iter][0]
+        self._prefs[pref] = new_value
+
+        # update config file
+        self._update_config_file()
 
     def _toggle_cb(self, renderer: Gtk.CellRendererToggle, path: str):
         key: str = self._get_key_from_model(path)
@@ -78,6 +94,25 @@ class PreferenceValueCellRenderer(Gtk.CellRenderer):
             self._renderer.props.mode = Gtk.CellRendererMode.ACTIVATABLE
             self._renderer.props.active = self._prefs[pref]
             self._renderer.props.activatable = True
+        elif issubclass(pref, ListPreference):
+            self._renderer = self._combo_renderer
+            self.props.mode = Gtk.CellRendererMode.EDITABLE
+            current_value = self._prefs[pref]
+
+            if pref not in self._combo_models:
+                # create new model
+                store = Gtk.ListStore(str)
+                for _val in pref.values:
+                    store.append([_val])
+                self._combo_models[pref] = store
+            else:
+                store = self._combo_models[pref]
+
+            self._renderer.props.model = store
+            self._renderer.props.text_column = 0
+            self._renderer.props.editable = True
+            self._renderer.props.mode = Gtk.CellRendererMode.EDITABLE
+            self._renderer.props.text = current_value
         else:
             raise NotImplementedError
 
@@ -86,12 +121,6 @@ class PreferenceValueCellRenderer(Gtk.CellRenderer):
     def do_activate(self, event, widget, path, background_area, cell_area, flags):
         return type(self._renderer).do_activate(self._renderer, event, widget, path, background_area, cell_area, flags)
     
-    def do_editing_canceled(self):
-        type(self._renderer).do_editing_canceled(self._renderer)
-
-    def do_editing_started(self, editable, path):
-        type(self._renderer).do_editing_started(self._renderer, editable, path)
-
     def do_get_aligned_area(self, widget, flags, cell_area):
         return type(self._renderer).do_get_aligned_area(self._renderer, widget, flags, cell_area)
 

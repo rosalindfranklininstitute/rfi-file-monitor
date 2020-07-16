@@ -44,6 +44,7 @@ setup(
             "TestBooleanPreference1 = rfi_file_monitor.preferences:TestBooleanPreference1",
             "TestBooleanPreference2 = rfi_file_monitor.preferences:TestBooleanPreference2",
             "TestBooleanPreference3 = rfi_file_monitor.preferences:TestBooleanPreference3",
+            "TestListPreference1 = rfi_file_monitor.preferences:TestListPreference1",
         ],
         'console_scripts': [
             'rfi-file-monitor=rfi_file_monitor:main',

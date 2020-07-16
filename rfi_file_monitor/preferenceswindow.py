@@ -3,7 +3,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GObject
 import yaml
 
-from typing import Dict, Any, Type, Final
+from typing import Dict, Any, Final
 import logging
 
 from .preferences import Preference, BooleanPreference, ListPreference
@@ -20,7 +20,7 @@ class PreferenceValueCellRenderer(Gtk.CellRenderer):
         self._key = value
         self._set_renderer(value)
 
-    def __init__(self, prefs: Dict[Type[Preference], Any], list_store: Gtk.ListStore, *args, **kwargs):
+    def __init__(self, prefs: Dict[Preference, Any], list_store: Gtk.ListStore, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self._prefs = prefs
@@ -33,7 +33,7 @@ class PreferenceValueCellRenderer(Gtk.CellRenderer):
         self._combo_renderer = Gtk.CellRendererCombo(has_entry=False)
 
         # our combo models
-        self._combo_models: Final[Dict[Type[Preference], Gtk.ListStore]] = dict()
+        self._combo_models: Final[Dict[Preference, Gtk.ListStore]] = dict()
 
         # connect signal handlers
         self._toggle_renderer.connect("toggled", self._toggle_cb)
@@ -44,7 +44,7 @@ class PreferenceValueCellRenderer(Gtk.CellRenderer):
 
     def _changed_cb(self, combo: Gtk.CellRendererCombo, path: str, new_iter: Gtk.TreeIter):
         key: str = self._get_key_from_model(path)
-        pref: Type[Preference] = self._get_class_for_key(key)
+        pref: Preference = self._get_pref_for_key(key)
         store = self._combo_models[pref]
 
         new_value = store[new_iter][0]
@@ -55,7 +55,8 @@ class PreferenceValueCellRenderer(Gtk.CellRenderer):
 
     def _toggle_cb(self, renderer: Gtk.CellRendererToggle, path: str):
         key: str = self._get_key_from_model(path)
-        self._prefs[self._get_class_for_key(key)] = not self._prefs[self._get_class_for_key(key)]
+        pref: Preference = self._get_pref_for_key(key)
+        self._prefs[pref] = not self._prefs[pref]
 
         # update config file
         self._update_config_file()
@@ -64,8 +65,8 @@ class PreferenceValueCellRenderer(Gtk.CellRenderer):
         # write prefs into dictionary format
         yaml_dict = dict()
 
-        for _class, _value in self._prefs.items():
-            yaml_dict[_class.key] = _value
+        for _pref, _value in self._prefs.items():
+            yaml_dict[_pref.key] = _value
 
         try:
             # ensure parent directories of preferences file have been created
@@ -78,23 +79,23 @@ class PreferenceValueCellRenderer(Gtk.CellRenderer):
         except Exception:
             logging.exception(f'Could not write to {str(PREFERENCES_CONFIG_FILE)}')
 
-    def _get_class_for_key(self, key) -> Type[Preference]:
+    def _get_pref_for_key(self, key) -> Preference:
         # given a key, get the corresponding Preference class
         for _pref in self._prefs:
             if _pref.key == key:
                 return _pref
 
     def _set_renderer(self, key: str):
-        pref: Type[Preference] = self._get_class_for_key(key)
+        pref: Preference = self._get_pref_for_key(key)
 
-        if issubclass(pref, BooleanPreference):
+        if isinstance(pref, BooleanPreference):
             self._renderer = self._toggle_renderer
             # the mode has to be set for both self and child!!!
             self.props.mode = Gtk.CellRendererMode.ACTIVATABLE
             self._renderer.props.mode = Gtk.CellRendererMode.ACTIVATABLE
             self._renderer.props.active = self._prefs[pref]
             self._renderer.props.activatable = True
-        elif issubclass(pref, ListPreference):
+        elif isinstance(pref, ListPreference):
             self._renderer = self._combo_renderer
             self.props.mode = Gtk.CellRendererMode.EDITABLE
             current_value = self._prefs[pref]
@@ -152,11 +153,11 @@ class PreferenceValueCellRenderer(Gtk.CellRenderer):
 
 
 class PreferencesWindow(Gtk.Window):
-    def __init__(self, prefs: Dict[Type[Preference], Any], *args, **kwargs):
+    def __init__(self, prefs: Dict[Preference, Any], *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.set_default_size(500, 500)
-        self._prefs: Dict[Type[Preference], Any] = prefs
+        self._prefs: Dict[Preference, Any] = prefs
 
         grid = Gtk.Grid(**EXPAND_AND_FILL)
         self.add(grid)

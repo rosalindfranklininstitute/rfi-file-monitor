@@ -7,7 +7,7 @@ import importlib.resources
 import platform
 import webbrowser
 import logging
-from typing import Any, Final, Dict, Type
+from typing import Any, Final, Dict
 import importlib.metadata
 
 from .applicationwindow import ApplicationWindow
@@ -67,10 +67,10 @@ class Application(Gtk.Application):
             self.set_accels_for_action(accel[0], accel[1])
         
         # populate dict with preferences found in entry points
-        self._prefs: Final[Dict[Type[Preference], Any]] = dict()
+        self._prefs: Final[Dict[Preference, Any]] = dict()
         for e in importlib.metadata.entry_points()['rfi_file_monitor.preferences']:
-            _class = e.load()
-            self._prefs[_class] = _class.default
+            _pref = e.load()
+            self._prefs[_pref] = _pref.default
 
         # now, open preferences file and update the prefs dictionary
         try:
@@ -80,10 +80,10 @@ class Application(Gtk.Application):
             pass
         else:
             logging.debug(f'Reading preferences from {str(PREFERENCES_CONFIG_FILE)}')
-            for _class in self._prefs.keys():
+            for _pref in self._prefs:
                 for _key, _value in stored_prefs.items():
-                    if _class.key == _key:
-                        self._prefs[_class] = _value
+                    if _pref.key == _key:
+                        self._prefs[_pref] = _value
                         break
                 else:
                     logging.warning(f'Could not find a corresponding Preference class for key {_key} from preferences file')

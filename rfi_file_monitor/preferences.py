@@ -1,36 +1,60 @@
 from abc import ABC, abstractmethod
-from typing import Any, Sequence, Dict
+from typing import Any, Sequence, Dict, Optional
 from pathlib import PurePath
 
 import yaml
 
 class Preference(ABC):
-    @property
-    @classmethod
+
     @abstractmethod
-    def key(cls) -> str:
-        pass
+    def __init__(self, key: str, default: Any):
+        self._key: str = key
+        self._default: Any = default
 
     @property
-    @classmethod
-    @abstractmethod
-    def default(cls) -> Any:
-        pass
+    def key(self) -> str:
+        return self._key
+
+    @property
+    def default(self) -> Any:
+        return self._default
 
 class BooleanPreference(Preference):
-    default = False
+    def __init__(self, key: str, default: bool = False):
+        super().__init__(key, default)
+
+TestBooleanPreference1 = BooleanPreference(
+    key = "Boolean Pref1",
+    default = True)
+
+TestBooleanPreference2 = BooleanPreference(
+    key = "Boolean Pref2",
+    default = False)
+
+TestBooleanPreference3 = BooleanPreference(
+    key = "Boolean Pref3")
 
 class ListPreference(Preference):
-    @property
-    @classmethod
-    @abstractmethod
-    def values(cls) -> Sequence[str]:
-        pass
+    def __init__(self, key: str, values: Sequence[str], default: Optional[str] = None):
+        if default and default not in values:
+            raise ValueError('default has to be within values array!')
+        if not default:
+            default = values[0]
+        super().__init__(key, default)
+        self._values = values
 
-class TestListPreference1(ListPreference):
-    key = 'List Pref1'
-    values = ('Option1', 'Option2', 'Option3')
-    default = values[0]
+    @property
+    def values(self) -> Sequence[str]:
+        return self._values
+
+TestListPreference1 = ListPreference(
+    key = 'List Pref1',
+    values = ('Option1', 'Option2', 'Option3'))
+
+TestListPreference2 = ListPreference(
+    key = 'List Pref2',
+    values = ('Option1', 'Option2', 'Option3'),
+    default = 'Option3')
 
 class DictPreference(Preference):
     @property
@@ -66,13 +90,4 @@ class DictFromFilePreference(DictPreference):
                 cls._cache = yaml.safe_load(stream=f)
         return cls._cache
 
-class TestBooleanPreference1(BooleanPreference):
-    key = "Boolean Pref1"
-    default = True
 
-class TestBooleanPreference2(BooleanPreference):
-    key = "Boolean Pref2"
-    default = False
-
-class TestBooleanPreference3(BooleanPreference):
-    key = "Boolean Pref3"

@@ -24,6 +24,7 @@ setup(
         'rfi_file_monitor.data': [
             '*.ui',
             '*.png',
+            '*.yaml'
         ],
     },
     install_requires=[
@@ -46,6 +47,9 @@ setup(
             "TestBooleanPreference3 = rfi_file_monitor.preferences:TestBooleanPreference3",
             "TestListPreference1 = rfi_file_monitor.preferences:TestListPreference1",
             "TestListPreference2 = rfi_file_monitor.preferences:TestListPreference2",
+            "TestDictPreference1 = rfi_file_monitor.preferences:TestDictPreference1",
+            "TestDictPreference2 = rfi_file_monitor.preferences:TestDictPreference2",
+            "TestDictPreference3 = rfi_file_monitor.preferences:TestDictPreference3",
         ],
         'console_scripts': [
             'rfi-file-monitor=rfi_file_monitor:main',

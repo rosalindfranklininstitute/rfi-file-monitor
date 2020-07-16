@@ -6,7 +6,7 @@ import yaml
 from typing import Dict, Any, Final
 import logging
 
-from .preferences import Preference, BooleanPreference, ListPreference
+from .preferences import Preference, BooleanPreference, ListPreference, DictPreference
 from .utils import EXPAND_AND_FILL, PREFERENCES_CONFIG_FILE
 
 class PreferenceValueCellRenderer(Gtk.CellRenderer):
@@ -95,7 +95,7 @@ class PreferenceValueCellRenderer(Gtk.CellRenderer):
             self._renderer.props.mode = Gtk.CellRendererMode.ACTIVATABLE
             self._renderer.props.active = self._prefs[pref]
             self._renderer.props.activatable = True
-        elif isinstance(pref, ListPreference):
+        elif isinstance(pref, ListPreference) or isinstance(pref, DictPreference):
             self._renderer = self._combo_renderer
             self.props.mode = Gtk.CellRendererMode.EDITABLE
             current_value = self._prefs[pref]
@@ -110,10 +110,10 @@ class PreferenceValueCellRenderer(Gtk.CellRenderer):
                 store = self._combo_models[pref]
 
             self._renderer.props.model = store
+            self._renderer.props.text = current_value
             self._renderer.props.text_column = 0
             self._renderer.props.editable = True
             self._renderer.props.mode = Gtk.CellRendererMode.EDITABLE
-            self._renderer.props.text = current_value
         else:
             raise NotImplementedError
 

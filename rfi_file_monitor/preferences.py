@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any, Sequence, Dict, Optional
-from pathlib import PurePath
+import importlib.resources
 
 import yaml
 
@@ -57,37 +57,37 @@ TestListPreference2 = ListPreference(
     default = 'Option3')
 
 class DictPreference(Preference):
-    @property
-    @classmethod
-    @abstractmethod
-    def values(cls) -> Dict[str, Any]:
-        pass
+    def __init__(self, key: str, values: Dict[str, Any], default: Optional[str] = None):
+        if default and default not in values:
+            raise ValueError('default has to be within values dict!')
+        if not default:
+            default = list(values.keys())[0]
+        super().__init__(key, default)
+        self._values = values
 
     @property
+    def values(self) -> Dict[str, Any]:
+        return self._values
+
     @classmethod
-    def default(cls):
-        #pylint: disable=no-member
-        return cls.values.keys()[0]
+    def from_file(cls, key: str, yaml_file, default: Optional[str] = None):
+        with open(yaml_file, 'r') as f:
+            yaml_dict = yaml.safe_load(stream=f)
+        return cls(key, yaml_dict, default)
 
-class DictFromFilePreference(DictPreference):
-    @property
-    @classmethod
-    @abstractmethod
-    def file(cls) -> PurePath:
-        pass
+TestDictPreference1 = DictPreference(
+    key = 'Dict Pref1',
+    values = dict(option1='option1', option2=dict(option2='option2'), option3=list('option3')),
+    default = 'option2'
+)
 
-    @property
-    @classmethod
-    def values(cls) -> Dict[str, Any]:
-        return cls.cache
+TestDictPreference2 = DictPreference(
+    key = 'Dict Pref2',
+    values = dict(option1='option1', option2=dict(option2='option2'), option3=list('option3'))
+)
 
-    @property
-    @classmethod
-    def cache(cls) -> dict:
-        if not hasattr(cls, '_cache'):
-            #pylint: disable=no-member
-            with cls.file.open('r') as f:
-                cls._cache = yaml.safe_load(stream=f)
-        return cls._cache
-
-
+with importlib.resources.path('rfi_file_monitor.data', 'rfi-instruments.yaml') as f:
+    TestDictPreference3 = DictPreference.from_file(
+        key='Dict Pref3 From File',
+        yaml_file=f,
+    )

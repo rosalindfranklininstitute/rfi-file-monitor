@@ -1,0 +1,12 @@
+electron microscope 1:
+  id: 123456
+  type: electron microscope
+  manufacturer: JEOL
+electron microscope 2:
+  id: 321456
+  type: electron microscope
+  manufacturer: JEOL
+nmr 1:
+  id: 234561
+  type: NMR
+  manufacturer: Bruker

@@ -6,7 +6,7 @@ import yaml
 from typing import Dict, Any, Final
 import logging
 
-from .preferences import Preference, BooleanPreference, ListPreference, DictPreference
+from .preferences import Preference, BooleanPreference, ListPreference, DictPreference, StringPreference
 from .utils import EXPAND_AND_FILL, PREFERENCES_CONFIG_FILE
 
 class PreferenceValueCellRenderer(Gtk.CellRenderer):
@@ -31,6 +31,7 @@ class PreferenceValueCellRenderer(Gtk.CellRenderer):
         # our renderers
         self._toggle_renderer = Gtk.CellRendererToggle(activatable=True, radio=False)
         self._combo_renderer = Gtk.CellRendererCombo(has_entry=False)
+        self._text_renderer = Gtk.CellRendererText(editable=True)
 
         # our combo models
         self._combo_models: Final[Dict[Preference, Gtk.ListStore]] = dict()
@@ -38,9 +39,18 @@ class PreferenceValueCellRenderer(Gtk.CellRenderer):
         # connect signal handlers
         self._toggle_renderer.connect("toggled", self._toggle_cb)
         self._combo_renderer.connect("changed", self._changed_cb)
+        self._text_renderer.connect("edited", self._edited_cb)
 
     def _get_key_from_model(self, path: str) -> str:
         return self._list_store[path][0]
+
+    def _edited_cb(self, combo: Gtk.CellRendererText, path: str, new_text: str):
+        key: str = self._get_key_from_model(path)
+        pref: Preference = self._get_pref_for_key(key)
+        self._prefs[pref] = new_text
+
+        # update config file
+        self._update_config_file()
 
     def _changed_cb(self, combo: Gtk.CellRendererCombo, path: str, new_iter: Gtk.TreeIter):
         key: str = self._get_key_from_model(path)
@@ -114,6 +124,13 @@ class PreferenceValueCellRenderer(Gtk.CellRenderer):
             self._renderer.props.text_column = 0
             self._renderer.props.editable = True
             self._renderer.props.mode = Gtk.CellRendererMode.EDITABLE
+        elif isinstance(pref, StringPreference):
+            self._renderer = self._text_renderer
+            self.props.mode = Gtk.CellRendererMode.EDITABLE
+            current_value = self._prefs[pref]
+            self._renderer.props.mode = Gtk.CellRendererMode.EDITABLE
+            self._renderer.props.editable = True
+            self._renderer.props.text = current_value
         else:
             raise NotImplementedError
 

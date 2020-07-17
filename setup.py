@@ -50,6 +50,8 @@ setup(
             "TestDictPreference1 = rfi_file_monitor.preferences:TestDictPreference1",
             "TestDictPreference2 = rfi_file_monitor.preferences:TestDictPreference2",
             "TestDictPreference3 = rfi_file_monitor.preferences:TestDictPreference3",
+            "TestStringPreference1 = rfi_file_monitor.preferences:TestStringPreference1",
+            "TestStringPreference2 = rfi_file_monitor.preferences:TestStringPreference2",
         ],
         'console_scripts': [
             'rfi-file-monitor=rfi_file_monitor:main',

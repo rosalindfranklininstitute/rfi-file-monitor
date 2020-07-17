@@ -101,3 +101,17 @@ with importlib.resources.path('rfi_file_monitor.data', 'rfi-instruments.yaml') a
         yaml_file=f,
         description = 'This is a description for Dict Pref3 From File'
     )
+
+class StringPreference(Preference):
+    def __init__(self, key: str, default: str = '', description: Optional[str] = None):
+        super().__init__(key, default, description)
+
+TestStringPreference1 = StringPreference(
+    key = 'String Pref1',
+    description = 'This is a description for String Pref1',
+)
+
+TestStringPreference2 = StringPreference(
+    key = 'String Pref2',
+    default = 'String Pref2 default value',
+)

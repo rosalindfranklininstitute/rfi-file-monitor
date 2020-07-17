@@ -186,11 +186,11 @@ class PreferencesWindow(Gtk.Window):
             frame,
             0, 0, 1, 1)
         
-        store = Gtk.ListStore(str)
+        store = Gtk.ListStore(str, str)
         for _pref in self._prefs:
-            store.append([_pref.key])
+            store.append([_pref.key, _pref.description])
 
-        tv = Gtk.TreeView(model=store, **EXPAND_AND_FILL)
+        tv = Gtk.TreeView(model=store, tooltip_column=1, **EXPAND_AND_FILL)
         config_page.attach(tv, 0, 1, 1, 1)
 
         key_renderer = Gtk.CellRendererText()

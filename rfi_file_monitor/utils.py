@@ -5,8 +5,11 @@ from munch import Munch
 
 from typing import Callable, Optional, Final, Any, Dict, final
 import logging
+from pathlib import Path
 
 EXPAND_AND_FILL: Final[Dict[str, Any]] = dict(hexpand=True, vexpand=True, halign=Gtk.Align.FILL, valign=Gtk.Align.FILL)
+
+PREFERENCES_CONFIG_FILE = Path(GLib.get_user_config_dir(), 'rfi-file-monitor', 'prefs.yml')
 
 def add_action_entries(
     map: Gio.ActionMap,

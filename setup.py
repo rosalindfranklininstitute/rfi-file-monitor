@@ -24,6 +24,7 @@ setup(
         'rfi_file_monitor.data': [
             '*.ui',
             '*.png',
+            '*.yaml'
         ],
     },
     install_requires=[
@@ -39,6 +40,18 @@ setup(
             "DummyOperation = rfi_file_monitor.operations.dummy_operation:DummyOperation",
             "S3Uploader = rfi_file_monitor.operations.s3_uploader:S3UploaderOperation",
             "SftpUploader = rfi_file_monitor.operations.sftp_uploader:SftpUploaderOperation",
+        ],
+        "rfi_file_monitor.preferences": [
+            "TestBooleanPreference1 = rfi_file_monitor.preferences:TestBooleanPreference1",
+            "TestBooleanPreference2 = rfi_file_monitor.preferences:TestBooleanPreference2",
+            "TestBooleanPreference3 = rfi_file_monitor.preferences:TestBooleanPreference3",
+            "TestListPreference1 = rfi_file_monitor.preferences:TestListPreference1",
+            "TestListPreference2 = rfi_file_monitor.preferences:TestListPreference2",
+            "TestDictPreference1 = rfi_file_monitor.preferences:TestDictPreference1",
+            "TestDictPreference2 = rfi_file_monitor.preferences:TestDictPreference2",
+            "TestDictPreference3 = rfi_file_monitor.preferences:TestDictPreference3",
+            "TestStringPreference1 = rfi_file_monitor.preferences:TestStringPreference1",
+            "TestStringPreference2 = rfi_file_monitor.preferences:TestStringPreference2",
         ],
         'console_scripts': [
             'rfi-file-monitor=rfi_file_monitor:main',

@@ -1,5 +1,6 @@
 name: rfi-file-monitor
 channels:
+  - tom.schoonjans # to be removed when all packages have been updated on conda-forge!
   - conda-forge
 dependencies:
   - python=3.8

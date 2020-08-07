@@ -107,13 +107,21 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             hexpand=True, vexpand=False), 'monitored_directory')
         controls_grid_basic.attach(self._directory_chooser_button, 2, 0, 5, 1)
         self._directory_chooser_button.connect("selection-changed", self.directory_chooser_button_cb)
-        
+
+        controls_grid_basic.attach(
+            Gtk.Separator(
+                orientation=Gtk.Orientation.HORIZONTAL,
+                halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+                hexpand=False, vexpand=True),
+            0, 1, 7, 1)
+
         controls_grid_basic.attach(
             Gtk.Label(
-                label="Add operation: ",
+                label="<b>Add operation: </b>",
+                use_markup=True,
                 halign=Gtk.Align.END, valign=Gtk.Align.CENTER,
                 hexpand=False, vexpand=False),
-            0, 1, 2, 1)
+            0, 2, 2, 1)
         
         controls_operations_model = Gtk.ListStore(str, object)
         for _class in self._known_operations.values():
@@ -130,7 +138,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self._controls_operations_combo.add_attribute(renderer, "text", 0)
         controls_grid_basic.attach(
             self._controls_operations_combo,
-            2, 1, 2, 1)
+            2, 2, 2, 1)
 
         self._controls_operations_button = Gtk.Button(
             label="Add",
@@ -140,7 +148,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self._controls_operations_button.connect("clicked", self.operations_button_cb)
         controls_grid_basic.attach(
             self._controls_operations_button,
-            4, 1, 2, 1)
+            4, 2, 2, 1)
 
         if len(controls_operations_model) > 0:
             self._controls_operations_combo.set_active(0)

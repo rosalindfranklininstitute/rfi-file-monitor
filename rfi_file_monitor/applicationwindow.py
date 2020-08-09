@@ -413,7 +413,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
     def operations_button_cb(self, button):
         logging.debug("Clicked operations_button_cb")
         _class = self._controls_operations_combo.get_model()[self._controls_operations_combo.get_active_iter()][1]
-        new_operation = _class()
+        new_operation = _class(appwindow=self)
         logging.debug(f"{type(new_operation)=}")
         new_operation.index = len(self._operations_box)
         self._operations_box.pack_start(new_operation, False, False, 0)

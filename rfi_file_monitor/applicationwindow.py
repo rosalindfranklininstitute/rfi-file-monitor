@@ -459,7 +459,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self.update_monitor_switch_sensitivity()
 
     def _write_to_yaml(self):
-        yaml_dict = dict(configuration=self.params, operations=[dict(name=op.NAME, params=op.params) for op in self._operations_box])
+        yaml_dict = dict(configuration=self.exportable_params, operations=[dict(name=op.NAME, params=op.exportable_params) for op in self._operations_box])
         logging.debug(f'{yaml.safe_dump(yaml_dict)=}')
         with open(self._yaml_file, 'w') as f:
             yaml.safe_dump(yaml_dict, f)

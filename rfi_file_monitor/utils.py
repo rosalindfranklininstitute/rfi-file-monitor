@@ -1,9 +1,9 @@
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gio, GLib, Gtk
-from munch import Munch
+from munch import Munch, munchify
 
-from typing import Callable, Optional, Final, Any, Dict, final
+from typing import Callable, Optional, Final, Any, Dict, final, List
 import logging
 from pathlib import Path
 
@@ -32,6 +32,7 @@ class WidgetParams:
         self._params: Final[Munch[str, Any]] = Munch()
         self._signal_ids: Final[Munch[str, int]] = Munch()
         self._widgets: Final[Munch[str, Gtk.Widget]] = Munch()
+        self._exportable_params: Final[List[str]] = list()
 
     @final
     def _entry_changed_cb(self, entry: Gtk.Entry, param_name: str):
@@ -51,7 +52,7 @@ class WidgetParams:
         self._params[param_name] = spinbutton.get_value()
 
     @final
-    def register_widget(self, widget: Gtk.Widget, param_name: str):
+    def register_widget(self, widget: Gtk.Widget, param_name: str, exportable: bool = True):
 
         if param_name in self._params:
             raise ValueError("register_widget cannot overwrite existing parameters!")
@@ -73,6 +74,9 @@ class WidgetParams:
             raise NotImplementedError(f"register_widget: no support for {type(widget).__name__}")
 
         self._widgets[param_name] = widget
+        if exportable:
+            self._exportable_params.append(param_name)
+
         logging.debug(f'Registered {param_name} with value {self._params[param_name]} of type {type(self._params[param_name])}')
 
         return widget
@@ -108,6 +112,15 @@ class WidgetParams:
         A Munch dict containing the parameters that will be used by run
         """
         return self._params
+
+    @property
+    def exportable_params(self) -> Munch:
+        """
+        A Munch dict containing those parameters that have been considered safe for exporting.
+        This will typically exclude widgets meant to hold passwords and other secrets.
+        """
+        return munchify({param: self._params[param] for param in self._exportable_params})
+
 
     @property
     def widgets(self) -> Munch:

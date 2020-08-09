@@ -78,7 +78,7 @@ class S3UploaderOperation(Operation):
             visibility=False,
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
-        ), 'secret_key')
+        ), 'secret_key', exportable=False)
         self._grid.attach(widget, 1, 2, 2, 1)
 
         # Bucket name

@@ -107,7 +107,7 @@ class SftpUploaderOperation(Operation):
             visibility=False,
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
-        ), 'password')
+        ), 'password', exportable=False)
         tempgrid.attach(widget, 3, 0, 1, 1)
 
         # Remote directory

@@ -160,9 +160,9 @@ class S3UploaderOperation(Operation):
 
         try:
             #TODO: do not allow overwriting existing keys in bucket??
-            key = str(PurePosixPath(*file._relative_filename.parts))
+            key = str(PurePosixPath(*file.relative_filename.parts))
             self._s3_client.upload_file( \
-                Filename=file._filename,\
+                Filename=file.filename,\
                 Bucket=self.params.bucket_name,
                 Key=key,
                 ExtraArgs = None, # TODO: add support for ACL??

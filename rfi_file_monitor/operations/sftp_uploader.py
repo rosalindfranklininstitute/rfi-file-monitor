@@ -201,9 +201,9 @@ class SftpUploaderOperation(Operation):
                 logging.debug(f"Try opening an sftp connection to {self.params.hostname}")
                 with client.open_sftp() as sftp_client:
                     sftp_client.chdir(self.params.destination)
-                    rel_filename = str(PurePosixPath(*file._relative_filename.parts))
+                    rel_filename = str(PurePosixPath(*file.relative_filename.parts))
                     makedirs(sftp_client, posixpath.dirname(rel_filename))
-                    sftp_client.put(file._filename, rel_filename, callback=SftpProgressPercentage(file, self))
+                    sftp_client.put(file.filename, rel_filename, callback=SftpProgressPercentage(file, self))
                     remote_filename_full = sftp_client.normalize(rel_filename)
                     logging.debug(f"File {remote_filename_full} has been written")
         except Exception as e:

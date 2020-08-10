@@ -28,7 +28,7 @@ class DummyOperation(Operation):
         for i in range(10):
             if thread.should_exit:
                 logging.info(f"Killing thread {thread.name}")
-                return False
+                return str('Thread killed')
             time.sleep(1.0)
             file.update_progressbar(self.index, (i + 1) * 10)
 

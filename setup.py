@@ -40,6 +40,7 @@ setup(
             "DummyOperation = rfi_file_monitor.operations.dummy_operation:DummyOperation",
             "S3Uploader = rfi_file_monitor.operations.s3_uploader:S3UploaderOperation",
             "SftpUploader = rfi_file_monitor.operations.sftp_uploader:SftpUploaderOperation",
+            "LocalCopier = rfi_file_monitor.operations.local_copier:LocalCopierOperation",
         ],
         "rfi_file_monitor.preferences": [
             "TestBooleanPreference1 = rfi_file_monitor.preferences:TestBooleanPreference1",

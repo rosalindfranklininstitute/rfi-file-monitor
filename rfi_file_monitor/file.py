@@ -1,7 +1,7 @@
 from enum import auto, IntEnum, unique
 import gi
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, GLib
+from gi.repository import Gtk, GLib, Gio
 
 import logging
 from pathlib import PurePath
@@ -35,6 +35,11 @@ class File:
         self._status = status
         self._row_reference = row_reference
         self._operation_metadata : Final[Dict[int, Dict[str, Any]]] = dict()
+        self._cancellable = Gio.Cancellable()
+
+    @property
+    def cancellable(self) -> Gio.Cancellable:
+        return self._cancellable
 
     @property
     def operation_metadata(self) -> Dict[int, Dict[str, Any]]:

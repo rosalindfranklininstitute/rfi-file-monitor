@@ -78,7 +78,7 @@ class S3UploaderOperation(Operation):
             visibility=False,
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
-        ), 'secret_key')
+        ), 'secret_key', exportable=False)
         self._grid.attach(widget, 1, 2, 2, 1)
 
         # Bucket name
@@ -160,9 +160,9 @@ class S3UploaderOperation(Operation):
 
         try:
             #TODO: do not allow overwriting existing keys in bucket??
-            key = str(PurePosixPath(*file._relative_filename.parts))
+            key = str(PurePosixPath(*file.relative_filename.parts))
             self._s3_client.upload_file( \
-                Filename=file._filename,\
+                Filename=file.filename,\
                 Bucket=self.params.bucket_name,
                 Key=key,
                 ExtraArgs = None, # TODO: add support for ACL??

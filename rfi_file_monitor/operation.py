@@ -24,6 +24,7 @@ class Operation(ABC, Gtk.Frame, WidgetParams, metaclass=OperationMeta):
 
     @abstractmethod
     def __init__(self, *args, **kwargs):
+        self._appwindow = kwargs.pop('appwindow')
         kwargs.update(dict(
             #label=f"Operation {index}: {self.NAME}",
             halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
@@ -37,6 +38,13 @@ class Operation(ABC, Gtk.Frame, WidgetParams, metaclass=OperationMeta):
     def set_sensitive(self, sensitive: bool):
         for widget in self.widgets.values():
             widget.set_sensitive(sensitive)
+
+    @property
+    def appwindow(self):
+        """
+        Returns the ApplicationWindow instance this operation is a part of
+        """
+        return self._appwindow
 
     @property
     def index(self) -> int:

@@ -171,12 +171,34 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             border_width=10, column_spacing=5, row_spacing=5
         )
         advanced_options_expander.add(advanced_options_child)
+
+        advanced_options_child_row_counter = 0
+
+        self._monitor_recursively_checkbutton = self.register_widget(Gtk.CheckButton(
+            label='Monitor target directory recursively',
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            active=True), 'monitor_recursively')
+        advanced_options_child.attach(self._monitor_recursively_checkbutton, 0, advanced_options_child_row_counter, 1, 1)
+        advanced_options_child_row_counter += 1
+
+        advanced_options_child.attach(Gtk.Separator(
+                orientation=Gtk.Orientation.HORIZONTAL,
+                halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+                hexpand=True, vexpand=True,
+            ),
+            0, advanced_options_child_row_counter, 1, 1
+        )
+        advanced_options_child_row_counter += 1
+
         status_promotion_grid = Gtk.Grid(
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
             column_spacing=5
         )
-        advanced_options_child.attach(status_promotion_grid, 0, 0, 1, 1)
+
+        advanced_options_child.attach(status_promotion_grid, 0, advanced_options_child_row_counter, 1, 1)
+        advanced_options_child_row_counter += 1
         status_promotion_checkbutton = self.register_widget(Gtk.CheckButton(label='Promote files from \'Created\' to \'Saved\' after',
                 halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
                 hexpand=False, vexpand=False), 'status_promotion_active')
@@ -205,15 +227,17 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                 halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
                 hexpand=True, vexpand=True,
             ),
-            0, 1, 1, 1
+            0, advanced_options_child_row_counter, 1, 1
         )
+        advanced_options_child_row_counter += 1
 
         max_threads_grid = Gtk.Grid(
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
             column_spacing=5
         )
-        advanced_options_child.attach(max_threads_grid, 0, 2, 1, 1)
+        advanced_options_child.attach(max_threads_grid, 0, advanced_options_child_row_counter, 1, 1)
+        advanced_options_child_row_counter += 1
         max_threads_grid.attach(Gtk.Label(
                 label='Maximum number of threads to use',
                 halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
@@ -341,6 +365,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             self._monitor_stop_button.set_sensitive(False)
             self._monitor_play_button.set_sensitive(True)
             self._controls_operations_button.set_sensitive(True)
+            self._monitor_recursively_checkbutton.set_sensitive(True)
             for operation in self._operations_box:
                 operation.set_sensitive(True)
 
@@ -413,7 +438,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
     def operations_button_cb(self, button):
         logging.debug("Clicked operations_button_cb")
         _class = self._controls_operations_combo.get_model()[self._controls_operations_combo.get_active_iter()][1]
-        new_operation = _class()
+        new_operation = _class(appwindow=self)
         logging.debug(f"{type(new_operation)=}")
         new_operation.index = len(self._operations_box)
         self._operations_box.pack_start(new_operation, False, False, 0)
@@ -459,7 +484,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self.update_monitor_switch_sensitivity()
 
     def _write_to_yaml(self):
-        yaml_dict = dict(configuration=self.params, operations=[dict(name=op.NAME, params=op.params) for op in self._operations_box])
+        yaml_dict = dict(configuration=self.exportable_params, operations=[dict(name=op.NAME, params=op.exportable_params) for op in self._operations_box])
         logging.debug(f'{yaml.safe_dump(yaml_dict)=}')
         with open(self._yaml_file, 'w') as f:
             yaml.safe_dump(yaml_dict, f)
@@ -572,12 +597,13 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self._timeout_id = GLib.timeout_add_seconds(1, self.files_dict_timeout_cb, priority=GLib.PRIORITY_DEFAULT)
 
         self._monitor = Observer()
-        self._monitor.schedule(EventHandler(self), self.params.monitored_directory, recursive=False, )
+        self._monitor.schedule(EventHandler(self), self.params.monitored_directory, recursive=self.params.monitor_recursively)
         self._monitor.start()
         self._monitor_stop_button.set_sensitive(True)
         self._monitor_play_button.set_sensitive(False)
         self._directory_chooser_button.set_sensitive(False)
         self._controls_operations_button.set_sensitive(False)
+        self._monitor_recursively_checkbutton.set_sensitive(False)
         for operation in self._operations_box:
             operation.set_sensitive(False)
 

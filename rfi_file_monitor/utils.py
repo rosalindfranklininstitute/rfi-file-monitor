@@ -53,7 +53,6 @@ class WidgetParams:
 
     @final
     def _combobox_changed_cb(self,combobox: Gtk.ComboBoxText, param_name: str):
-
         self._params[param_name] = combobox.get_active_text()
 
     @final

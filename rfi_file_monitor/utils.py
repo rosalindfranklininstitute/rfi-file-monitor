@@ -56,7 +56,7 @@ class WidgetParams:
         tree_iter = combobox.get_active_iter()
         if tree_iter is not None:
             model = combobox.get_model()
-        self._params[param_name] = model[tree_iter]
+        self._params[param_name] = model[tree_iter][0]
 
     @final
     def register_widget(self, widget: Gtk.Widget, param_name: str):

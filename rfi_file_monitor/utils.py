@@ -52,14 +52,12 @@ class WidgetParams:
         self._params[param_name] = spinbutton.get_value()
 
     @final
-    def _combobox_changed_cb(self,combobox: Gtk.ComboBox, param_name: str):
-        tree_iter = combobox.get_active_iter()
-        if tree_iter is not None:
-            model = combobox.get_model()
-        self._params[param_name] = model[tree_iter][0]
+    def _combobox_changed_cb(self,combobox: Gtk.ComboBoxText, param_name: str):
+
+        self._params[param_name] = combobox.get_active_text()
 
     @final
-    def register_widget(self, widget: Gtk.Widget, param_name: str):
+    def register_widget(self, widget: Gtk.Widget, param_name: str, exportable: bool = True):
 
         if param_name in self._params:
             raise ValueError("register_widget cannot overwrite existing parameters!")
@@ -77,7 +75,7 @@ class WidgetParams:
             #pylint: disable=used-before-assignment
             self._params[param_name] = tmp if (tmp := widget.get_text().strip()) != "" else widget.get_placeholder_text()
             self._signal_ids[param_name] = widget.connect("changed", self._entry_changed_cb, param_name)
-        elif isinstance(widget, Gtk.ComboBox):
+        elif isinstance(widget, Gtk.ComboBoxText):
             self._params[param_name] = widget.get_active()
             self._params[param_name] =widget.connect('changed', self._combobox_changed_cb, param_name)
         else:
@@ -113,7 +111,7 @@ class WidgetParams:
                         widget.set_text("")
                     else:
                         widget.set_text(value)
-                elif isinstance(widget, Gtk.ComboBox):
+                elif isinstance(widget, Gtk.ComboBoxText):
                     widget.set_active("")
                 else:
                     raise NotImplementedError(f"update_from_dict: no support for {type(widget).__name__}")

@@ -1,14 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="29f968a7-4d89-4742-846a-270171d9869d" name="Default Changelist" comment="" />
+    <list default="true" id="29f968a7-4d89-4742-846a-270171d9869d" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/rfi-file-monitor.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rfi_file_monitor/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/rfi_file_monitor/utils.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
-  </component>
-  <component name="FavoritesManager">
-    <favorites_list name="rfi-file-monitor" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -20,24 +25,17 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="IgnoredFileRootStore">
-    <option name="generatedRoots">
-      <set>
-        <option value="$PROJECT_DIR$/.idea" />
-      </set>
-    </option>
-  </component>
   <component name="ProjectId" id="1drERT8hqPRJFMH320XRJE0rQ61" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
-    <option name="showExcludedFiles" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">
     <property name="ASKED_SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
-    <property name="settings.editor.selected.configurable" value="preferences.fileTypes" />
+    <property name="settings.editor.selected.configurable" value="terminal" />
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
@@ -116,6 +114,7 @@
       </list>
     </recent_temporary>
   </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="SvnConfiguration">
     <configuration />
   </component>
@@ -210,9 +209,10 @@
       <screen x="0" y="28" width="1916" height="909" />
     </state>
     <state x="505" y="28" width="1408" height="842" key="CommitChangelistDialog2/0.28.1916.909@0.28.1916.909" timestamp="1594735325871" />
-    <state x="732" y="229" width="430" height="480" key="FileChooserDialogImpl" timestamp="1593426379542">
-      <screen x="0" y="28" width="1916" height="909" />
+    <state x="734" y="230" width="430" height="480" key="FileChooserDialogImpl" timestamp="1596458869638">
+      <screen x="0" y="0" width="1920" height="1040" />
     </state>
+    <state x="734" y="230" key="FileChooserDialogImpl/0.0.1920.1040@0.0.1920.1040" timestamp="1596458869638" />
     <state x="732" y="229" width="430" height="480" key="FileChooserDialogImpl/0.28.1916.909@0.28.1916.909" timestamp="1593426379542" />
     <state width="1439" height="224" key="GridCell.Tab.0.bottom" timestamp="1593422432884">
       <screen x="0" y="28" width="1916" height="909" />
@@ -230,13 +230,15 @@
       <screen x="0" y="28" width="1916" height="909" />
     </state>
     <state width="1439" height="224" key="GridCell.Tab.0.right/0.28.1916.909@0.28.1916.909" timestamp="1593422432884" />
-    <state x="440" y="108" key="SettingsEditor" timestamp="1594629374198">
-      <screen x="0" y="28" width="1916" height="909" />
+    <state x="441" y="92" key="SettingsEditor" timestamp="1596445586253">
+      <screen x="0" y="0" width="1920" height="1040" />
     </state>
+    <state x="441" y="92" key="SettingsEditor/0.0.1920.1040@0.0.1920.1040" timestamp="1596445586253" />
     <state x="440" y="108" key="SettingsEditor/0.28.1916.909@0.28.1916.909" timestamp="1594629374198" />
-    <state x="599" y="212" width="704" height="522" key="find.popup" timestamp="1594736441428">
-      <screen x="0" y="28" width="1916" height="909" />
+    <state x="600" y="211" width="706" height="801" key="find.popup" timestamp="1597138555593">
+      <screen x="0" y="0" width="1920" height="1040" />
     </state>
+    <state x="600" y="211" width="706" height="801" key="find.popup/0.0.1920.1040@0.0.1920.1040" timestamp="1597138555593" />
     <state x="599" y="212" width="704" height="522" key="find.popup/0.28.1916.909@0.28.1916.909" timestamp="1594736441428" />
     <state x="614" y="219" width="672" height="678" key="search.everywhere.popup" timestamp="1594654259672">
       <screen x="0" y="28" width="1916" height="909" />

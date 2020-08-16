@@ -558,6 +558,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         This function runs every second, and will take action based on the status of all files in the dict
         It runs in the GUI thread, so GUI updates are allowed here.
         """
+        #logging.debug(f"files_dict_timeout_cb enter: {self._njobs_running=} {self.params.max_threads=}")
         with self._files_dict_lock:
             for _filename, _file in self._files_dict.items():
                 #logging.debug(f"timeout_cb: {_filename} found as {str(_file.status)}")
@@ -572,6 +573,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                         logging.debug(f"files_dict_timeout_cb: promoting {_filename} to SAVED")
                         
                 elif _file.status == FileStatus.SAVED:
+                    #logging.debug(f"files_dict_timeout_cb SAVED: {self._njobs_running=} {self.params.max_threads=}")
                     if self._njobs_running < self.params.max_threads:
                         # launch a new job
                         logging.debug(f"files_dict_timeout_cb: launching new job for {_filename}")
@@ -586,6 +588,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                         path = _file.row_reference.get_path()
                         self._files_tree_model[path][2] = int(_file.status)
                 elif _file.status == FileStatus.QUEUED:
+                    #logging.debug(f"files_dict_timeout_cb QUEUED: {self._njobs_running=} {self.params.max_threads=}")
                     if self._njobs_running < self.params.max_threads:
                         # try and launch a new job
                         logging.debug(f"files_dict_timeout_cb: launching queued job for {_filename}")

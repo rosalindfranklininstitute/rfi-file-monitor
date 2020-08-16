@@ -2,7 +2,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import GLib, Gtk, Gdk
-from watchdog.events import FileCreatedEvent, FileModifiedEvent, PatternMatchingEventHandler
+from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
 import yaml
 from pathtools.patterns import match_path

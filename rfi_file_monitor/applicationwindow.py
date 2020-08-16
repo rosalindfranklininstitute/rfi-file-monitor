@@ -5,20 +5,24 @@ from gi.repository import GLib, Gtk, Gdk
 from watchdog.events import FileCreatedEvent, FileModifiedEvent, PatternMatchingEventHandler
 from watchdog.observers import Observer
 import yaml
+from pathtools.patterns import match_path
 
 import logging
 from collections import OrderedDict
 from threading import RLock, Thread
 from time import time, ctime
-from pathlib import PurePath
+from pathlib import PurePath, Path
 from typing import OrderedDict as OrderedDictType
 from typing import Final, List, Optional
 import importlib.metadata
 import os
+import platform
 
 from .utils import add_action_entries, LongTaskWindow, WidgetParams
 from .file import FileStatus, File
 from .job import Job
+
+IGNORE_PATTERNS = ['*.swp', '*.swx'] 
 
 class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
@@ -174,6 +178,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
         self.advanced_options_child_row_counter = 0
 
+        # Monitor recursively
         self._monitor_recursively_checkbutton = self.register_widget(Gtk.CheckButton(
             label='Monitor target directory recursively',
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
@@ -184,6 +189,18 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
         self._add_advanced_options_horizontal_separator()
 
+        # Process existing files in monitored directory
+        self._process_existing_files_checkbutton = self.register_widget(Gtk.CheckButton(
+            label='Process existing files in target directory',
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            active=False), 'process_existing_files')
+        self.advanced_options_child.attach(self._process_existing_files_checkbutton, 0, self.advanced_options_child_row_counter, 1, 1)
+        self.advanced_options_child_row_counter += 1
+
+        self._add_advanced_options_horizontal_separator()
+
+        # Promote created files to saved after # seconds
         status_promotion_grid = Gtk.Grid(
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
@@ -217,6 +234,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
         self._add_advanced_options_horizontal_separator()
 
+        # Set the max number of threads to be used for processing
         max_threads_grid = Gtk.Grid(
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
@@ -362,6 +380,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             self._monitor_play_button.set_sensitive(True)
             self._controls_operations_button.set_sensitive(True)
             self._monitor_recursively_checkbutton.set_sensitive(True)
+            self._process_existing_files_checkbutton.set_sensitive(True)
             for operation in self._operations_box:
                 operation.set_sensitive(True)
 
@@ -373,6 +392,8 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             watch_cursor = Gdk.Cursor.new_for_display(Gdk.Display.get_default(), Gdk.CursorType.WATCH)
             task_window.get_window().set_cursor(watch_cursor)
 
+            # Cleanup tree model
+            self._files_tree_model.clear()
             thread = PreflightCheckThread(self, task_window)
             thread.start()
 
@@ -574,6 +595,48 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                         self._njobs_running += 1
         return GLib.SOURCE_CONTINUE
 
+    def _process_existing_files_cb(self, task_window: LongTaskWindow, existing_files: List[Path]):
+        task_window.set_text('Adding existing files')
+
+        for existing_file in existing_files:
+            file_path = str(existing_file)
+            logging.debug(f'Adding existing file {file_path}')
+
+            # get creation time, or something similar...
+            # https://stackoverflow.com/a/39501288
+            if platform.system() == 'Windows':
+                _creation_timestamp = existing_file.stat().st_ctime
+            else:
+                try:
+                    # this should work on macOS
+                    _creation_timestamp = existing_file.stat().st_birthtime
+                except AttributeError:
+                    _creation_timestamp = existing_file.stat().st_mtime
+            _relative_file_path = existing_file.relative_to(self.params.monitored_directory)
+            iter = self._files_tree_model.append(parent=None, row=[
+                str(_relative_file_path),
+                _creation_timestamp,
+                int(FileStatus.SAVED),
+                "All",
+                0.0,
+                "0.0 %",
+                ])
+            _row_reference = Gtk.TreeRowReference.new(self._files_tree_model, self._files_tree_model.get_path(iter))
+            # create its children, one for each operation
+            for _operation in self._operations_box:
+                self._files_tree_model.append(parent=iter, row=[
+                    "",
+                    0,
+                    int(FileStatus.QUEUED),
+                    _operation.NAME,
+                    0.0,
+                    "0.0 %",
+                ])
+            _file = File(filename=file_path, relative_filename=_relative_file_path, created=_creation_timestamp, status=FileStatus.SAVED, row_reference=_row_reference)
+            self._files_dict[file_path] = _file
+
+        return GLib.SOURCE_REMOVE
+
     def _preflight_check_cb(self, task_window: LongTaskWindow, exception_msgs: Optional[List[str]]):
         task_window.get_window().set_cursor(None)
         task_window.destroy()
@@ -588,8 +651,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             dialog.destroy()
             return
 
-        # cleanup tree model, launch the monitor
-        self._files_tree_model.clear()
+        # Launch the monitor, and set the callback that will be invoked every second
         self._timeout_id = GLib.timeout_add_seconds(1, self.files_dict_timeout_cb, priority=GLib.PRIORITY_DEFAULT)
 
         self._monitor = Observer()
@@ -600,6 +662,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self._directory_chooser_button.set_sensitive(False)
         self._controls_operations_button.set_sensitive(False)
         self._monitor_recursively_checkbutton.set_sensitive(False)
+        self._process_existing_files_checkbutton.set_sensitive(False)
         for operation in self._operations_box:
             operation.set_sensitive(False)
 
@@ -608,6 +671,19 @@ class PreflightCheckThread(Thread):
         super().__init__()
         self._appwindow = appwindow 
         self._task_window = task_window
+
+    def _search_for_existing_files(self, directory: Path) -> List[Path]:
+        rv: List[Path] = list()
+        for child in directory.iterdir():
+            if child.is_file() \
+                and not child.is_symlink() \
+                and match_path(str(child), excluded_patterns=IGNORE_PATTERNS, case_sensitive=False):
+                
+                rv.append(directory.joinpath(child))
+            elif self._appwindow.params.monitor_recursively and child.is_dir() and not child.is_symlink():
+                rv.extend(self._search_for_existing_files(directory.joinpath(child)))
+            
+        return rv
 
     def run(self):
         exception_msgs = []
@@ -619,31 +695,31 @@ class PreflightCheckThread(Thread):
                 exception_msgs.append('* ' + str(e))
 
         if exception_msgs:
-                for operation in self._appwindow._operations_box:
-                    operation.postflight_cleanup()
+            for operation in self._appwindow._operations_box:
+                operation.postflight_cleanup()
         
-        GLib.idle_add(self._appwindow._preflight_check_cb, self._task_window, exception_msgs, priority=GLib.PRIORITY_DEFAULT_IDLE)
+            GLib.idle_add(self._appwindow._preflight_check_cb, self._task_window, exception_msgs, priority=GLib.PRIORITY_DEFAULT_IDLE)
+            return
+        
+        if self._appwindow.params.process_existing_files:
+            existing_files = self._search_for_existing_files(Path(self._appwindow.params.monitored_directory))
+            if existing_files:
+                GLib.idle_add(self._appwindow._process_existing_files_cb, self._task_window, existing_files, priority=GLib.PRIORITY_DEFAULT_IDLE)
+
+        GLib.idle_add(self._appwindow._preflight_check_cb, self._task_window, None, priority=GLib.PRIORITY_DEFAULT_IDLE)
 
 
 class EventHandler(PatternMatchingEventHandler):
     def __init__(self, appwindow: ApplicationWindow):
         self._appwindow = appwindow
-        super(EventHandler, self).__init__(ignore_patterns=['*.swp', '*.swx'])
+        super(EventHandler, self).__init__(ignore_patterns=IGNORE_PATTERNS, ignore_directories=True)
         
     def on_created(self, event):
-        # ignore directories being created
-        if not isinstance(event, FileCreatedEvent):
-            return
-        
         file_path = event.src_path
         logging.debug(f"Monitor found {file_path} for event type CREATED")
         GLib.idle_add(self._appwindow.file_created_cb, file_path, priority=GLib.PRIORITY_HIGH)
 
     def on_modified(self, event):
-        # ignore directories being modified
-        if not isinstance(event, FileModifiedEvent):
-            return
-
         file_path = event.src_path
         logging.debug(f"Monitor found {file_path} for event type MODIFIED")
         GLib.idle_add(self._appwindow.file_changes_done_cb, file_path, priority=GLib.PRIORITY_DEFAULT_IDLE)

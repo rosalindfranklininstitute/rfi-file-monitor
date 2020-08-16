@@ -165,31 +165,24 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             0, 1, 1, 1
         )
         
-        advanced_options_child = Gtk.Grid(
+        self.advanced_options_child = Gtk.Grid(
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
             border_width=10, column_spacing=5, row_spacing=5
         )
-        advanced_options_expander.add(advanced_options_child)
+        advanced_options_expander.add(self.advanced_options_child)
 
-        advanced_options_child_row_counter = 0
+        self.advanced_options_child_row_counter = 0
 
         self._monitor_recursively_checkbutton = self.register_widget(Gtk.CheckButton(
             label='Monitor target directory recursively',
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
             active=True), 'monitor_recursively')
-        advanced_options_child.attach(self._monitor_recursively_checkbutton, 0, advanced_options_child_row_counter, 1, 1)
-        advanced_options_child_row_counter += 1
+        self.advanced_options_child.attach(self._monitor_recursively_checkbutton, 0, self.advanced_options_child_row_counter, 1, 1)
+        self.advanced_options_child_row_counter += 1
 
-        advanced_options_child.attach(Gtk.Separator(
-                orientation=Gtk.Orientation.HORIZONTAL,
-                halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
-                hexpand=True, vexpand=True,
-            ),
-            0, advanced_options_child_row_counter, 1, 1
-        )
-        advanced_options_child_row_counter += 1
+        self._add_advanced_options_horizontal_separator()
 
         status_promotion_grid = Gtk.Grid(
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
@@ -197,8 +190,8 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             column_spacing=5
         )
 
-        advanced_options_child.attach(status_promotion_grid, 0, advanced_options_child_row_counter, 1, 1)
-        advanced_options_child_row_counter += 1
+        self.advanced_options_child.attach(status_promotion_grid, 0, self.advanced_options_child_row_counter, 1, 1)
+        self.advanced_options_child_row_counter += 1
         status_promotion_checkbutton = self.register_widget(Gtk.CheckButton(label='Promote files from \'Created\' to \'Saved\' after',
                 halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
                 hexpand=False, vexpand=False), 'status_promotion_active')
@@ -222,22 +215,15 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         status_promotion_grid.attach(status_promotion_spinbutton, 1, 0, 1, 1)
         status_promotion_grid.attach(Gtk.Label(label='seconds'), 2, 0, 1, 1)
 
-        advanced_options_child.attach(Gtk.Separator(
-                orientation=Gtk.Orientation.HORIZONTAL,
-                halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
-                hexpand=True, vexpand=True,
-            ),
-            0, advanced_options_child_row_counter, 1, 1
-        )
-        advanced_options_child_row_counter += 1
+        self._add_advanced_options_horizontal_separator()
 
         max_threads_grid = Gtk.Grid(
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
             column_spacing=5
         )
-        advanced_options_child.attach(max_threads_grid, 0, advanced_options_child_row_counter, 1, 1)
-        advanced_options_child_row_counter += 1
+        self.advanced_options_child.attach(max_threads_grid, 0, self.advanced_options_child_row_counter, 1, 1)
+        self.advanced_options_child_row_counter += 1
         max_threads_grid.attach(Gtk.Label(
                 label='Maximum number of threads to use',
                 halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
@@ -331,6 +317,16 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         renderer = Gtk.CellRendererProgress()
         column = Gtk.TreeViewColumn("Progress", renderer, value=4, text=5)
         files_tree_view.append_column(column)
+
+    def _add_advanced_options_horizontal_separator(self):
+        self.advanced_options_child.attach(Gtk.Separator(
+                orientation=Gtk.Orientation.HORIZONTAL,
+                halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+                hexpand=True, vexpand=True,
+            ),
+            0, self.advanced_options_child_row_counter, 1, 1
+        )
+        self.advanced_options_child_row_counter += 1
 
     def time_cell_data_func(self, tree_column, cell, tree_model: Gtk.TreeStore, iter, func_data):
         # we currently dont write a timestamp for the individual operations

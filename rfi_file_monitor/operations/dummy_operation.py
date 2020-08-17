@@ -22,6 +22,13 @@ class DummyOperation(Operation):
         )
         self.add(self._grid)
         self._grid.attach(Gtk.Label(label='This is a dummy operation'), 0, 0, 1, 1)
+        combobox = Gtk.ComboBoxText()
+        combobox.append_text('Text1')
+        combobox.append_text('Text2')
+        combobox.append_text('Text3')
+        combobox.set_active(0)
+        self.register_widget(combobox, 'dummy_combo')
+        self._grid.attach(combobox, 0, 1, 1, 1)
 
     def run(self, file: File):
         thread = current_thread()

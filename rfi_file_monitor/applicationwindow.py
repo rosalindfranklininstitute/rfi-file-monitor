@@ -13,7 +13,7 @@ from threading import RLock, Thread
 from time import time, ctime
 from pathlib import PurePath, Path
 from typing import OrderedDict as OrderedDictType
-from typing import Final, List, Optional
+from typing import Final, List, Optional, NamedTuple
 import importlib.metadata
 import os
 import platform
@@ -300,7 +300,6 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             str, # filename, relative to monitored directory
             int, # epoch time
             int, # status as code
-            #str, # status as string
             str, # operation name
             float, # operation progress
             str, # operation progress as string
@@ -407,25 +406,25 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                 # add new entry to model
                 _creation_timestamp = time()
                 _relative_file_path = PurePath(file_path).relative_to(self.params.monitored_directory)
-                iter = self._files_tree_model.append(parent=None, row=[
-                    str(_relative_file_path),
-                    _creation_timestamp,
-                    int(FileStatus.CREATED),
-                    "All",
-                    0.0,
-                    "0.0 %",
-                    ])
+                iter = self._files_tree_model.append(parent=None, row=OutputRow(
+                    relative_filename=str(_relative_file_path),
+                    creation_timestamp=_creation_timestamp,
+                    status=int(FileStatus.CREATED),
+                    operation_name="All",
+                    operation_progress=0.0,
+                    operation_progress_str="0.0 %",
+                ))
                 _row_reference = Gtk.TreeRowReference.new(self._files_tree_model, self._files_tree_model.get_path(iter))
                 # create its children, one for each operation
                 for _operation in self._operations_box:
-                    self._files_tree_model.append(parent=iter, row=[
-                        "",
-                        0,
-                        int(FileStatus.QUEUED),
-                        _operation.NAME,
-                        0.0,
-                        "0.0 %",
-                    ])
+                    self._files_tree_model.append(parent=iter, row=OutputRow(
+                        relative_filename="",
+                        creation_timestamp=0,
+                        status=int(FileStatus.QUEUED),
+                        operation_name=_operation.NAME,
+                        operation_progress=0.0,
+                        operation_progress_str="0.0 %",
+                    ))
                 _file = File(filename=file_path, relative_filename=_relative_file_path, created=_creation_timestamp, status=FileStatus.CREATED, row_reference=_row_reference)
                 self._files_dict[file_path] = _file
         return GLib.SOURCE_REMOVE
@@ -616,25 +615,25 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                 except AttributeError:
                     _creation_timestamp = existing_file.stat().st_mtime
             _relative_file_path = existing_file.relative_to(self.params.monitored_directory)
-            iter = self._files_tree_model.append(parent=None, row=[
-                str(_relative_file_path),
-                _creation_timestamp,
-                int(FileStatus.SAVED),
-                "All",
-                0.0,
-                "0.0 %",
-                ])
+            iter = self._files_tree_model.append(parent=None, row=OutputRow(
+                relative_filename=str(_relative_file_path),
+                creation_timestamp=_creation_timestamp,
+                status=int(FileStatus.SAVED),
+                operation_name="All",
+                operation_progress=0.0,
+                operation_progress_str="0.0 %",
+                ))
             _row_reference = Gtk.TreeRowReference.new(self._files_tree_model, self._files_tree_model.get_path(iter))
             # create its children, one for each operation
             for _operation in self._operations_box:
-                self._files_tree_model.append(parent=iter, row=[
-                    "",
-                    0,
-                    int(FileStatus.QUEUED),
-                    _operation.NAME,
-                    0.0,
-                    "0.0 %",
-                ])
+                self._files_tree_model.append(parent=iter, row=OutputRow(
+                    relative_filename="",
+                    creation_timestamp=0,
+                    status=int(FileStatus.QUEUED),
+                    operation_name=_operation.NAME,
+                    operation_progress=0.0,
+                    operation_progress_str="0.0 %",
+                ))
             _file = File(filename=file_path, relative_filename=_relative_file_path, created=_creation_timestamp, status=FileStatus.SAVED, row_reference=_row_reference)
             self._files_dict[file_path] = _file
 
@@ -727,3 +726,10 @@ class EventHandler(PatternMatchingEventHandler):
         logging.debug(f"Monitor found {file_path} for event type MODIFIED")
         GLib.idle_add(self._appwindow.file_changes_done_cb, file_path, priority=GLib.PRIORITY_DEFAULT_IDLE)
         
+class OutputRow(NamedTuple):
+    relative_filename: str
+    creation_timestamp: int
+    status: int
+    operation_name: str
+    operation_progress: float
+    operation_progress_str: str

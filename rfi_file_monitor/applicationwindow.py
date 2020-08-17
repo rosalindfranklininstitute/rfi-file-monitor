@@ -488,7 +488,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         for op in ops:
             for _class in self._known_operations.values():
                 if op['name'] == _class.NAME:
-                    new_operation = _class()
+                    new_operation = _class(appwindow=self)
                     new_operation.index = len(self._operations_box)
                     self._operations_box.pack_start(new_operation, False, False, 0)
                     new_operation.update_from_dict(op['params'])

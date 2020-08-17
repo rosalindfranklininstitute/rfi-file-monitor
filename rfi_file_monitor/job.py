@@ -38,7 +38,11 @@ class Job(threading.Thread):
             # update job status to failed
             self._file.update_status(-1, FileStatus.FAILURE)
 
-        self._appwindow._njobs_running -= 1
+        # when the thread should exit, don't even bother decreasing njobs_running,
+        # as it will should be set to 0 regardless, and you may end up with negative
+        # njobs_running otherwise...
+        if not self._should_exit:
+            self._appwindow._njobs_running -= 1
 
         return
 

@@ -12,12 +12,13 @@ parser.add_argument('--sleeptime', type=int, help='The time between two files be
 parser.add_argument('--prefix', type=str, help='The prefix that will be used to construct the filenames', default='file')
 parser.add_argument('--extension', type=str, help='The extension that will be used for the filenames', default='.txt')
 parser.add_argument('--nfiles', type=int, help='The number of files that will be generated', default=20)
+parser.add_argument('--startindex', type=int, help='Start numbering files with this number', default=0)
 
 args = parser.parse_args()
 filesize = humanfriendly.parse_size(args.filesize, binary=True)
 
 for i in range(args.nfiles):
-    path = Path(args.destination, f"{args.prefix}{i}{args.extension}")
+    path = Path(args.destination, f"{args.prefix}{i + args.startindex}{args.extension}")
     path.write_bytes(os.urandom(filesize))
     logging.warning(f'Writing {str(path)}')
     time.sleep(args.sleeptime)

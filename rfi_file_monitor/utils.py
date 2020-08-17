@@ -76,8 +76,8 @@ class WidgetParams:
             self._params[param_name] = tmp if (tmp := widget.get_text().strip()) != "" else widget.get_placeholder_text()
             self._signal_ids[param_name] = widget.connect("changed", self._entry_changed_cb, param_name)
         elif isinstance(widget, Gtk.ComboBoxText):
-            self._params[param_name] = widget.get_active()
-            self._params[param_name] =widget.connect('changed', self._combobox_changed_cb, param_name)
+            self._params[param_name] = widget.get_active_text()
+            self._signal_ids[param_name] =widget.connect('changed', self._combobox_changed_cb, param_name)
         else:
             raise NotImplementedError(f"register_widget: no support for {type(widget).__name__}")
 
@@ -112,7 +112,7 @@ class WidgetParams:
                     else:
                         widget.set_text(value)
                 elif isinstance(widget, Gtk.ComboBoxText):
-                    widget.set_active("")
+                        widget.append(value)
                 else:
                     raise NotImplementedError(f"update_from_dict: no support for {type(widget).__name__}")
 

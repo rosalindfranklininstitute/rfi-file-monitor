@@ -111,12 +111,10 @@ class WidgetParams:
                     else:
                         widget.set_text(value)
                 elif isinstance(widget, Gtk.ComboBoxText):
-                    model = widget.get_model()
-                    for n in range(0, len(model)):
-                        path = Gtk.TreePath(n)
-                        iter_out = (model.get_iter(path))
-                        if model[iter_out][0] == value:
-                            widget.set_active_iter(iter_out)
+                    for row in widget.get_model():
+                        if row[0] == value:
+                            widget.set_active_iter(row.iter)
+                            break
                 else:
                     raise NotImplementedError(f"update_from_dict: no support for {type(widget).__name__}")
 

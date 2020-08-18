@@ -2,10 +2,8 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gio, GLib
 
-#pylint: disable=relative-beyond-top-level
 from ..operation import Operation
 from ..file import File
-from ..job import Job
 
 import logging
 import tempfile

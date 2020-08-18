@@ -4,10 +4,8 @@ from gi.repository import Gtk
 import paramiko
 from paramiko import AutoAddPolicy, RejectPolicy
 
-#pylint: disable=relative-beyond-top-level
 from ..operation import Operation
 from ..file import File
-from ..job import Job
 
 import logging
 import os

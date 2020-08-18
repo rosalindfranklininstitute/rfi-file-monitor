@@ -4,7 +4,6 @@ from gi.repository import Gtk
 import boto3
 import botocore
 
-#pylint: disable=relative-beyond-top-level
 from ..operation import Operation
 from ..file import File
 from ..job import Job

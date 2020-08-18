@@ -2,3 +2,4 @@ recursive-exclude * __pycache__
 recursive-exclude * *.py[co]
 exclude rfi_file_monitor.egg-info
 recursive-include rfi_file_monitor/data *
+include LICENSE

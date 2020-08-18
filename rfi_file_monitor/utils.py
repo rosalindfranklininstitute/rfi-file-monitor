@@ -52,6 +52,10 @@ class WidgetParams:
         self._params[param_name] = spinbutton.get_value()
 
     @final
+    def _combobox_changed_cb(self,combobox: Gtk.ComboBoxText, param_name: str):
+        self._params[param_name] = combobox.get_active_text()
+
+    @final
     def register_widget(self, widget: Gtk.Widget, param_name: str, exportable: bool = True):
 
         if param_name in self._params:
@@ -70,6 +74,9 @@ class WidgetParams:
             #pylint: disable=used-before-assignment
             self._params[param_name] = tmp if (tmp := widget.get_text().strip()) != "" else widget.get_placeholder_text()
             self._signal_ids[param_name] = widget.connect("changed", self._entry_changed_cb, param_name)
+        elif isinstance(widget, Gtk.ComboBoxText):
+            self._params[param_name] = widget.get_active_text()
+            self._signal_ids[param_name] =widget.connect('changed', self._combobox_changed_cb, param_name)
         else:
             raise NotImplementedError(f"register_widget: no support for {type(widget).__name__}")
 
@@ -103,6 +110,11 @@ class WidgetParams:
                         widget.set_text("")
                     else:
                         widget.set_text(value)
+                elif isinstance(widget, Gtk.ComboBoxText):
+                    for row in widget.get_model():
+                        if row[0] == value:
+                            widget.set_active_iter(row.iter)
+                            break
                 else:
                     raise NotImplementedError(f"update_from_dict: no support for {type(widget).__name__}")
 

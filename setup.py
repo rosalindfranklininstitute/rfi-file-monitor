@@ -18,7 +18,8 @@ setup(
     python_requires='>=3.8',
     packages=[
         "rfi_file_monitor",
-        "rfi_file_monitor.data"
+        "rfi_file_monitor.data",
+        "rfi_file_monitor.operations"
     ],
     package_data={
         'rfi_file_monitor.data': [

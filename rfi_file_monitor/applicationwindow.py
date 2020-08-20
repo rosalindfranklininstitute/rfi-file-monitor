@@ -18,7 +18,7 @@ import importlib.metadata
 import os
 import platform
 
-from .utils import add_action_entries, LongTaskWindow, WidgetParams
+from .utils import add_action_entries, LongTaskWindow, WidgetParams, get_patterns_from_string
 from .file import FileStatus, File
 from .job import Job
 
@@ -197,6 +197,30 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             active=False), 'process_existing_files')
         self.advanced_options_child.attach(self._process_existing_files_checkbutton, 0, self.advanced_options_child_row_counter, 1, 1)
         self.advanced_options_child_row_counter += 1
+
+        self._add_advanced_options_horizontal_separator()
+
+        # Specify allowed file patterns
+        allowed_patterns_grid = Gtk.Grid(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            column_spacing=5
+        )
+
+        self.advanced_options_child.attach(allowed_patterns_grid, 0, self.advanced_options_child_row_counter, 1, 1)
+        self.advanced_options_child_row_counter += 1
+        allowed_patterns_grid.attach(Gtk.Label(
+                label='Allowed filename patterns',
+                halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+                hexpand=False, vexpand=False,
+            ),
+            0, 0, 1, 1,
+        )
+        self._allowed_patterns_entry = self.register_widget(Gtk.Entry(
+                halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+                hexpand=True, vexpand=False,
+        ), 'allowed_patterns')
+        allowed_patterns_grid.attach(self._allowed_patterns_entry, 1, 0, 1, 1)
 
         self._add_advanced_options_horizontal_separator()
 
@@ -380,6 +404,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             self._controls_operations_button.set_sensitive(True)
             self._monitor_recursively_checkbutton.set_sensitive(True)
             self._process_existing_files_checkbutton.set_sensitive(True)
+            self._allowed_patterns_entry.set_sensitive(True)
             for operation in self._operations_box:
                 operation.set_sensitive(True)
 
@@ -665,6 +690,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self._controls_operations_button.set_sensitive(False)
         self._monitor_recursively_checkbutton.set_sensitive(False)
         self._process_existing_files_checkbutton.set_sensitive(False)
+        self._allowed_patterns_entry.set_sensitive(False)
         for operation in self._operations_box:
             operation.set_sensitive(False)
 
@@ -676,10 +702,11 @@ class PreflightCheckThread(Thread):
 
     def _search_for_existing_files(self, directory: Path) -> List[Path]:
         rv: List[Path] = list()
+        included_patterns = get_patterns_from_string(self._appwindow.params.allowed_patterns)
         for child in directory.iterdir():
             if child.is_file() \
                 and not child.is_symlink() \
-                and match_path(str(child), excluded_patterns=IGNORE_PATTERNS, case_sensitive=False):
+                and match_path(str(child), included_patterns=included_patterns, excluded_patterns=IGNORE_PATTERNS, case_sensitive=False):
                 
                 rv.append(directory.joinpath(child))
             elif self._appwindow.params.monitor_recursively and child.is_dir() and not child.is_symlink():
@@ -714,7 +741,8 @@ class PreflightCheckThread(Thread):
 class EventHandler(PatternMatchingEventHandler):
     def __init__(self, appwindow: ApplicationWindow):
         self._appwindow = appwindow
-        super(EventHandler, self).__init__(ignore_patterns=IGNORE_PATTERNS, ignore_directories=True)
+        included_patterns = get_patterns_from_string(self._appwindow.params.allowed_patterns)
+        super(EventHandler, self).__init__(patterns=included_patterns, ignore_patterns=IGNORE_PATTERNS, ignore_directories=True)
         
     def on_created(self, event):
         file_path = event.src_path

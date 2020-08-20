@@ -21,6 +21,13 @@ def add_action_entries(
     action.connect("activate", callback)
     map.add_action(action)
 
+def get_patterns_from_string(input: str) -> List[str]:
+    if not input or not input.strip():
+        return ['*']
+
+    # multiple patterns are supported, provided they are separated with commas
+    return list(map(lambda x: x.strip(), input.split(',')))
+
 class WidgetParams:
     """
     Inheriting from this class

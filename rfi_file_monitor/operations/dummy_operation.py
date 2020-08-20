@@ -9,6 +9,8 @@ import logging
 from ..operation import Operation
 from ..file import File
 
+logger = logging.getLogger(__name__)
+
 class DummyOperation(Operation):
     NAME = "Dummy Operation"
 
@@ -30,10 +32,11 @@ class DummyOperation(Operation):
         self._grid.attach(combobox, 0, 1, 1, 1)
 
     def run(self, file: File):
+        logger.debug(f'Processing {file.filename}')
         thread = current_thread()
         for i in range(10):
             if thread.should_exit:
-                logging.info(f"Killing thread {thread.name}")
+                logger.info(f"Killing thread {thread.name}")
                 return str('Thread killed')
             time.sleep(1.0)
             file.update_progressbar(self.index, (i + 1) * 10)

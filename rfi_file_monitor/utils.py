@@ -11,6 +11,8 @@ EXPAND_AND_FILL: Final[Dict[str, Any]] = dict(hexpand=True, vexpand=True, halign
 
 PREFERENCES_CONFIG_FILE = Path(GLib.get_user_config_dir(), 'rfi-file-monitor', 'prefs.yml')
 
+logger = logging.getLogger(__name__)
+
 def add_action_entries(
     map: Gio.ActionMap,
     action: str,
@@ -27,7 +29,7 @@ class WidgetParams:
     """
     #pylint: disable=unsubscriptable-object
     def __init__(self, *args, **kwargs):
-        logging.debug('Calling WidgetParams __init__')
+        logger.debug('Calling WidgetParams __init__')
         super().__init__()
         self._params: Final[Munch[str, Any]] = Munch()
         self._signal_ids: Final[Munch[str, int]] = Munch()
@@ -84,14 +86,14 @@ class WidgetParams:
         if exportable:
             self._exportable_params.append(param_name)
 
-        logging.debug(f'Registered {param_name} with value {self._params[param_name]} of type {type(self._params[param_name])}')
+        logger.debug(f'Registered {param_name} with value {self._params[param_name]} of type {type(self._params[param_name])}')
 
         return widget
 
     def update_from_dict(self, yaml_dict: dict):
         for param_name, value in yaml_dict.items():
             if param_name not in self._params:
-                logging.warning(f'update_from_dict: {param_name} not found in widget params!')
+                logger.warning(f'update_from_dict: {param_name} not found in widget params!')
                 continue
         
             widget = self._widgets[param_name]

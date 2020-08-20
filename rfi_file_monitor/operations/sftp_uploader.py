@@ -14,7 +14,7 @@ from pathlib import PurePosixPath
 from stat import S_ISDIR, S_ISREG
 import posixpath
 
-
+logger = logging.getLogger(__name__)
 
 class SftpUploaderOperation(Operation):
     NAME = "SFTP Uploader"
@@ -150,7 +150,7 @@ class SftpUploaderOperation(Operation):
 
     def preflight_check(self):
         # try connecting to server and copy a simple file
-        logging.debug(f"Try opening an ssh connection to {self.params.hostname}")
+        logger.debug(f"Try opening an ssh connection to {self.params.hostname}")
         with paramiko.SSHClient() as client:
             client.load_system_host_keys()
             client.set_missing_host_key_policy(AutoAddPolicy if self.params.auto_add_keys else RejectPolicy)
@@ -159,7 +159,7 @@ class SftpUploaderOperation(Operation):
                 username=self.params.username,
                 password=self.params.password,
                 )
-            logging.debug(f"Try opening an sftp connection to {self.params.hostname}")
+            logger.debug(f"Try opening an sftp connection to {self.params.hostname}")
             with client.open_sftp() as sftp_client:
                 try:
                     sftp_client.chdir(self.params.destination)
@@ -172,7 +172,7 @@ class SftpUploaderOperation(Operation):
                 sftp_client.chdir()
 
                 # try copying a file
-                logging.debug(f"Try uploading a test file to {self.params.destination}")
+                logger.debug(f"Try uploading a test file to {self.params.destination}")
                 with tempfile.NamedTemporaryFile(delete=False) as f:
                     f.write(os.urandom(1024)) # 1 kB
                     tmpfile = f.name
@@ -196,22 +196,22 @@ class SftpUploaderOperation(Operation):
                     username=self.params.username,
                     password=self.params.password,
                     )
-                logging.debug(f"Try opening an sftp connection to {self.params.hostname}")
+                logger.debug(f"Try opening an sftp connection to {self.params.hostname}")
                 with client.open_sftp() as sftp_client:
                     sftp_client.chdir(self.params.destination)
                     rel_filename = str(PurePosixPath(*file.relative_filename.parts))
                     makedirs(sftp_client, posixpath.dirname(rel_filename))
                     sftp_client.put(file.filename, rel_filename, callback=SftpProgressPercentage(file, self))
                     remote_filename_full = sftp_client.normalize(rel_filename)
-                    logging.debug(f"File {remote_filename_full} has been written")
+                    logger.debug(f"File {remote_filename_full} has been written")
         except Exception as e:
-            logging.exception(f'SftpUploaderOperation.run exception')
+            logger.exception(f'SftpUploaderOperation.run exception')
             return str(e)
         else:
             #add object URL to metadata
             file.operation_metadata[self.index] = {'sftp url':
                 f'sftp://{self.params.username}@{self.params.hostname}:{int(self.params.port)}{remote_filename_full}'}
-            logging.debug(f"{file.operation_metadata[self.index]=}")
+            logger.debug(f"{file.operation_metadata[self.index]=}")
         return None
 
 class SftpProgressPercentage(object):

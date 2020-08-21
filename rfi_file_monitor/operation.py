@@ -3,7 +3,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
-from typing import Final
+from typing import Final, Tuple, Union, Type
 
 from .file import File
 from .utils import WidgetParams
@@ -68,6 +68,10 @@ class Operation(ABC, Gtk.Frame, WidgetParams, metaclass=OperationMeta):
         and will be used in the title of this frame.
         """
         raise NotImplementedError
+
+    @classmethod
+    def PREREQUISITES(cls) -> Tuple:
+        return tuple()
 
     @abstractmethod
     def run(self, file: File):

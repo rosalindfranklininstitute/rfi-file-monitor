@@ -17,10 +17,12 @@ from typing import Final, List, Optional, NamedTuple
 import importlib.metadata
 import os
 import platform
+import inspect
 
-from .utils import add_action_entries, LongTaskWindow, WidgetParams
+from .utils import add_action_entries, LongTaskWindow, WidgetParams, class_in_object_iterable
 from .file import FileStatus, File
 from .job import Job
+from .operation import Operation
 
 IGNORE_PATTERNS = ['*.swp', '*.swx'] 
 
@@ -689,7 +691,26 @@ class PreflightCheckThread(Thread):
 
     def run(self):
         exception_msgs = []
-        for operation in self._appwindow._operations_box:
+        for index, operation in enumerate(self._appwindow._operations_box):
+            if index > 0 and operation.PREREQUISITES():
+                preceding_ops = self._appwindow._operations_box.get_children()[0:index]
+                preceding_ops_str = map(lambda op: op.NAME, preceding_ops)
+                for prerequisite in operation.PREREQUISITES():
+                    if inspect.isclass(prerequisite) and \
+                        issubclass(prerequisite, Operation) and \
+                        not class_in_object_iterable(preceding_ops, prerequisite):
+                        
+                        exception_msgs.append(f'* {prerequisite.NAME} must precede {operation.NAME}')
+                        break
+                    elif isinstance(prerequisite, str) and \
+                        prerequisite not in preceding_ops_str:
+
+                        exception_msgs.append(f'* {prerequisite} must precede {operation.NAME}')
+                        break
+            elif operation.PREREQUISITES():
+                prereq = ', '.join(map(lambda x: x if isinstance(x, str) else x.NAME, operation.PREREQUISITES()))
+                exception_msgs.append(f'* Operation {operation.NAME} must be proceded by {prereq}')
+
             try:
                 operation.preflight_check()
             except Exception as e:

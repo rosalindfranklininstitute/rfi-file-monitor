@@ -104,6 +104,8 @@ class WidgetParams:
                 elif isinstance(widget, Gtk.CheckButton):
                     widget.set_active(value)
                 elif isinstance(widget, Gtk.FileChooserButton):
+                    if value is None or not Path(value).exists:
+                        continue
                     widget.set_filename(value)
                 elif isinstance(widget, Gtk.Entry):
                     if widget.get_placeholder_text() == value:

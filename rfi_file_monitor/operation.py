@@ -3,7 +3,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
-from typing import Final, Tuple, Union, Type
+from typing import Final
 
 from .file import File
 from .utils import WidgetParams

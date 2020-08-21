@@ -692,10 +692,10 @@ class PreflightCheckThread(Thread):
     def run(self):
         exception_msgs = []
         for index, operation in enumerate(self._appwindow._operations_box):
-            if index > 0 and operation.PREREQUISITES():
+            if index > 0 and hasattr(operation, 'PREREQUISITES'):
                 preceding_ops = self._appwindow._operations_box.get_children()[0:index]
                 preceding_ops_str = map(lambda op: op.NAME, preceding_ops)
-                for prerequisite in operation.PREREQUISITES():
+                for prerequisite in getattr(operation, 'PREREQUISITES'):
                     if inspect.isclass(prerequisite) and \
                         issubclass(prerequisite, Operation) and \
                         not class_in_object_iterable(preceding_ops, prerequisite):
@@ -707,8 +707,8 @@ class PreflightCheckThread(Thread):
 
                         exception_msgs.append(f'* {prerequisite} must precede {operation.NAME}')
                         break
-            elif operation.PREREQUISITES():
-                prereq = ', '.join(map(lambda x: x if isinstance(x, str) else x.NAME, operation.PREREQUISITES()))
+            elif hasattr(operation, 'PREREQUISITES'):
+                prereq = ', '.join(map(lambda x: x if isinstance(x, str) else x.NAME, getattr(operation, 'PREREQUISITES')))
                 exception_msgs.append(f'* Operation {operation.NAME} must be proceded by {prereq}')
 
             try:

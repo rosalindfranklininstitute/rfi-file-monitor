@@ -69,10 +69,6 @@ class Operation(ABC, Gtk.Frame, WidgetParams, metaclass=OperationMeta):
         """
         raise NotImplementedError
 
-    @classmethod
-    def PREREQUISITES(cls) -> Tuple:
-        return tuple()
-
     @abstractmethod
     def run(self, file: File):
         """

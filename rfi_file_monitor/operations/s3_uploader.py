@@ -8,12 +8,14 @@ from ..operation import Operation
 from ..file import File
 from ..job import Job
 
-import logging
 import os
+import logging
 import tempfile
 from pathlib import PurePosixPath
 from threading import current_thread, Lock
 import urllib
+
+logger = logging.getLogger(__name__)
 
 # useful info from help(boto3.session.Session.client)
 
@@ -104,7 +106,7 @@ class S3UploaderOperation(Operation):
         self._client_options['verify'] = self.params.hostname_ssl_verify
         self._client_options['aws_access_key_id'] = self.params.access_key
         self._client_options['aws_secret_access_key'] = self.params.secret_key
-        logging.debug(f'{self._client_options=}')
+        logger.debug(f'{self._client_options=}')
 
         # open connection (things can definitely go wrong here!)
         self._s3_client = boto3.client('s3', **self._client_options)
@@ -112,19 +114,19 @@ class S3UploaderOperation(Operation):
         # check if the bucket exists
         # taken from https://stackoverflow.com/a/47565719
         try:
-            logging.debug(f"Checking if bucket {self.params.bucket_name} exists")
+            logger.debug(f"Checking if bucket {self.params.bucket_name} exists")
             self._s3_client.head_bucket(Bucket=self.params.bucket_name)
         except botocore.exceptions.ClientError as e:
             # If a client error is thrown, then check that it was a 404 error.
             # If it was a 404 error, then the bucket does not exist.
             error_code = int(e.response['Error']['Code'])
             if error_code == 403:
-                logging.info(f"Bucket {self.params.bucket_name} exists but is not accessible")
+                logger.info(f"Bucket {self.params.bucket_name} exists but is not accessible")
                 raise
             elif error_code == 404:
-                logging.info(f"Bucket {self.params.bucket_name} does not exist")
+                logger.info(f"Bucket {self.params.bucket_name} does not exist")
                 if self.params.force_bucket_creation:
-                    logging.info(f"Trying to create bucket {self.params.bucket_name}")
+                    logger.info(f"Trying to create bucket {self.params.bucket_name}")
                     self._s3_client.create_bucket(Bucket=self.params.bucket_name)
                 else:
                     raise
@@ -132,7 +134,7 @@ class S3UploaderOperation(Operation):
                 raise
         else:
             # try uploading a simple object
-            logging.debug(f"Try uploading a test file to {self.params.bucket_name}")
+            logger.debug(f"Try uploading a test file to {self.params.bucket_name}")
             with tempfile.NamedTemporaryFile(delete=False) as f:
                 f.write(os.urandom(1024)) # 1 kB
                 tmpfile = f.name
@@ -169,15 +171,15 @@ class S3UploaderOperation(Operation):
                 Callback = S3ProgressPercentage(file, thread, self),
                 )
         except Exception as e:
-            logging.exception(f'S3UploaderOperation.run exception')
+            logger.exception(f'S3UploaderOperation.run exception')
             return str(e)
         else:
             #add object URL to metadata
             parsed_url = urllib.parse.urlparse(self._client_options['endpoint_url'])
             file.operation_metadata[self.index] = {'s3 object url':
                 f'{parsed_url.scheme}://{self.params.bucket_name}.{parsed_url.netloc}/{urllib.parse.quote(key)}'}
-            logging.info(f"S3 upload complete from {file._filename} to {self.params.bucket_name}")
-            logging.debug(f"{file.operation_metadata[self.index]=}")
+            logger.info(f"S3 upload complete from {file._filename} to {self.params.bucket_name}")
+            logger.debug(f"{file.operation_metadata[self.index]=}")
         return None
 
 # taken from https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-uploading-files.html

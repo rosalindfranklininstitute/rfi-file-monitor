@@ -7,6 +7,8 @@ import logging
 from pathlib import PurePath
 from typing import Final, Dict, Any
 
+logger = logging.getLogger(__name__)
+
 @unique
 class FileStatus(IntEnum):
     CREATED = auto()
@@ -70,9 +72,9 @@ class File:
         return self._row_reference
 
     def _update_progressbar_worker_cb(self, index: int, value: float):
-        #logging.debug(f"_update_progressbar_worker_cb: {index=} {value=}")
+        #logger.debug(f"_update_progressbar_worker_cb: {index=} {value=}")
         if not self.row_reference.valid():
-            logging.warning(f"_update_progressbar_worker_cb: {self.filename} is invalid!")
+            logger.warning(f"_update_progressbar_worker_cb: {self.filename} is invalid!")
             return GLib.SOURCE_REMOVE
 
         model = self.row_reference.get_model()
@@ -92,7 +94,7 @@ class File:
 
     def _update_status_worker_cb(self, index: int, status: FileStatus):
         if not self.row_reference.valid():
-            logging.warning(f"_update_status_worker_cb: {self.filename} is invalid!")
+            logger.warning(f"_update_status_worker_cb: {self.filename} is invalid!")
             return GLib.SOURCE_REMOVE
 
         model = self.row_reference.get_model()

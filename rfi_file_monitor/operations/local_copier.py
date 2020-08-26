@@ -11,6 +11,8 @@ import os
 from pathlib import Path
 from threading import current_thread
 
+logger = logging.getLogger(__name__)
+
 class LocalCopierOperation(Operation):
     NAME = 'Local Copier'
 
@@ -48,7 +50,7 @@ class LocalCopierOperation(Operation):
         grid.attach(directory_chooser_button, 1, 0, 1, 1)
 
     def preflight_check(self):
-        logging.debug(f'Try copying a test file to the destination folder {self.params.destination_directory}')
+        logger.debug(f'Try copying a test file to the destination folder {self.params.destination_directory}')
 
         # ensure destination is not None
         if self.params.destination_directory is None:
@@ -76,7 +78,7 @@ class LocalCopierOperation(Operation):
             gdestination_file = Gio.File.new_for_path(destination_file)
             gtmpfile.copy(gdestination_file, Gio.FileCopyFlags.NONE)
         except GLib.Error:
-            logging.exception(f'Error copying {tmpfile} to {self.params.destination_directory}')
+            logger.exception(f'Error copying {tmpfile} to {self.params.destination_directory}')
             raise
         else:
             # delete copied file
@@ -95,12 +97,12 @@ class LocalCopierOperation(Operation):
            gdestination_file = Gio.File.new_for_path(str(destination_file))
            gsource_file.copy(gdestination_file, Gio.FileCopyFlags.NONE, file.cancellable, LocalCopyProgressPercentage(file, self))
         except Exception as e:
-            logging.exception(f'LocalCopierOperation.run exception')
+            logger.exception(f'LocalCopierOperation.run exception')
             return str(e)
         else:
             # add destination path to metadata
             file.operation_metadata[self.index] = {'local copy path': destination_file}
-            logging.debug(f"{file.operation_metadata[self.index]=}")
+            logger.debug(f"{file.operation_metadata[self.index]=}")
         return None
 
 class LocalCopyProgressPercentage():

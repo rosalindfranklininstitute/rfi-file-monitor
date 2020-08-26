@@ -15,6 +15,8 @@ from .utils import add_action_entries, PREFERENCES_CONFIG_FILE
 from .preferences import Preference
 from .preferenceswindow import PreferencesWindow
 
+logger = logging.getLogger(__name__)
+
 class Application(Gtk.Application):
 
     def __init__(self, *args, **kwargs):
@@ -79,16 +81,16 @@ class Application(Gtk.Application):
         except FileNotFoundError:
             pass
         else:
-            logging.debug(f'Reading preferences from {str(PREFERENCES_CONFIG_FILE)}')
+            logger.debug(f'Reading preferences from {str(PREFERENCES_CONFIG_FILE)}')
             for _pref in self._prefs:
                 for _key, _value in stored_prefs.items():
                     if _pref.key == _key:
                         self._prefs[_pref] = _value
                         break
                 else:
-                    logging.warning(f'Could not find a corresponding Preference class for key {_key} from preferences file')
+                    logger.warning(f'Could not find a corresponding Preference class for key {_key} from preferences file')
 
-        logging.debug(f'{self._prefs=}')
+        logger.debug(f'{self._prefs=}')
 
     def get_preferences(self) -> Dict[Preference, Any]:
         return self._prefs
@@ -111,7 +113,7 @@ class Application(Gtk.Application):
             try:
                 with open(yaml_file, 'r') as f:
                     yaml_dict = yaml.safe_load(f)
-                logging.debug(f"Open: {yaml_dict=}")
+                logger.debug(f"Open: {yaml_dict=}")
                 if 'configuration' not in yaml_dict or 'operations' not in yaml_dict:
                     raise Exception("Valid YAML files must contain a dict with keys configuration and operations")
             except Exception as e:

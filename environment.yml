@@ -15,3 +15,4 @@ dependencies:
   - adwaita-icon-theme
   - librsvg
   - paramiko
+  - bugsnag

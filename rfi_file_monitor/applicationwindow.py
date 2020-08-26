@@ -19,12 +19,14 @@ import os
 import platform
 import inspect
 
-from .utils import add_action_entries, LongTaskWindow, WidgetParams, class_in_object_iterable
+from .utils import add_action_entries, LongTaskWindow, WidgetParams, class_in_object_iterable, get_patterns_from_string
 from .file import FileStatus, File
 from .job import Job
 from .operation import Operation
 
 IGNORE_PATTERNS = ['*.swp', '*.swx'] 
+
+logger = logging.getLogger(__name__)
 
 class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
@@ -32,7 +34,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
     MAX_JOBS = len(os.sched_getaffinity(0)) if hasattr(os, 'sched_getaffinity') else os.cpu_count()
 
     def __init__(self, *args, **kwargs):
-        logging.debug('Calling ApplicationWindow __init__')
+        logger.debug('Calling ApplicationWindow __init__')
         Gtk.ApplicationWindow.__init__(self, *args, **kwargs)
         WidgetParams.__init__(self)
 
@@ -54,7 +56,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         }
 
         for _name, _class in self._known_operations.items():
-            logging.debug(f"{_name}")
+            logger.debug(f"{_name}")
 
         action_entries = (
             ("save", self.on_save),
@@ -199,6 +201,30 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             active=False), 'process_existing_files')
         self.advanced_options_child.attach(self._process_existing_files_checkbutton, 0, self.advanced_options_child_row_counter, 1, 1)
         self.advanced_options_child_row_counter += 1
+
+        self._add_advanced_options_horizontal_separator()
+
+        # Specify allowed file patterns
+        allowed_patterns_grid = Gtk.Grid(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            column_spacing=5
+        )
+
+        self.advanced_options_child.attach(allowed_patterns_grid, 0, self.advanced_options_child_row_counter, 1, 1)
+        self.advanced_options_child_row_counter += 1
+        allowed_patterns_grid.attach(Gtk.Label(
+                label='Allowed filename patterns',
+                halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+                hexpand=False, vexpand=False,
+            ),
+            0, 0, 1, 1,
+        )
+        self._allowed_patterns_entry = self.register_widget(Gtk.Entry(
+                halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+                hexpand=True, vexpand=False,
+        ), 'allowed_patterns')
+        allowed_patterns_grid.attach(self._allowed_patterns_entry, 1, 0, 1, 1)
 
         self._add_advanced_options_horizontal_separator()
 
@@ -382,6 +408,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             self._controls_operations_button.set_sensitive(True)
             self._monitor_recursively_checkbutton.set_sensitive(True)
             self._process_existing_files_checkbutton.set_sensitive(True)
+            self._allowed_patterns_entry.set_sensitive(True)
             for operation in self._operations_box:
                 operation.set_sensitive(True)
 
@@ -402,9 +429,9 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         file_path = user_data[0]
         with self._files_dict_lock:
             if file_path in self._files_dict:
-                logging.warning(f"{file_path} has been recreated! Ignoring...")
+                logger.warning(f"{file_path} has been recreated! Ignoring...")
             else:
-                logging.debug(f"New file {file_path} created")
+                logger.debug(f"New file {file_path} created")
                 # add new entry to model
                 _creation_timestamp = time()
                 _relative_file_path = PurePath(file_path).relative_to(self.params.monitored_directory)
@@ -434,12 +461,12 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
     def file_changes_done_cb(self, file_path):
         with self._files_dict_lock:
             if file_path not in self._files_dict:
-                logging.warning(f"{file_path} has not been created yet! Ignoring...")
+                logger.warning(f"{file_path} has not been created yet! Ignoring...")
             elif self._files_dict[file_path].status != FileStatus.CREATED:
                 # looks like this file has been saved again!
-                logging.warning(f"{file_path} has been saved again?? Ignoring!")
+                logger.warning(f"{file_path} has been saved again?? Ignoring!")
             else:
-                logging.debug(f"File {file_path} has been saved")
+                logger.debug(f"File {file_path} has been saved")
                 file = self._files_dict[file_path]
                 file.status = FileStatus.SAVED
                 path = file.row_reference.get_path()
@@ -454,10 +481,10 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             self._monitor_play_button.set_sensitive(False)
 
     def operations_button_cb(self, button):
-        logging.debug("Clicked operations_button_cb")
+        logger.debug("Clicked operations_button_cb")
         _class = self._controls_operations_combo.get_model()[self._controls_operations_combo.get_active_iter()][1]
         new_operation = _class(appwindow=self)
-        logging.debug(f"{type(new_operation)=}")
+        logger.debug(f"{type(new_operation)=}")
         new_operation.index = len(self._operations_box)
         self._operations_box.pack_start(new_operation, False, False, 0)
         new_operation.show_all()
@@ -497,13 +524,13 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                     new_operation.show_all()
                     break
             else:
-                logging.warning(f"load_from_yaml_dict: no match found for operation {op['name']}")
+                logger.warning(f"load_from_yaml_dict: no match found for operation {op['name']}")
 
         self.update_monitor_switch_sensitivity()
 
     def _write_to_yaml(self):
         yaml_dict = dict(configuration=self.exportable_params, operations=[dict(name=op.NAME, params=op.exportable_params) for op in self._operations_box])
-        logging.debug(f'{yaml.safe_dump(yaml_dict)=}')
+        logger.debug(f'{yaml.safe_dump(yaml_dict)=}')
         with open(self._yaml_file, 'w') as f:
             yaml.safe_dump(yaml_dict, f)
 
@@ -512,7 +539,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             self.on_save_as(action, param)
         try:
             self._write_to_yaml()
-            logging.info(f'{self._yaml_file} has been updated')
+            logger.info(f'{self._yaml_file} has been updated')
         except Exception as e:
             dialog = Gtk.MessageDialog(transient_for=self,
                 modal=True, destroy_with_parent=True,
@@ -541,7 +568,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                 self._yaml_file += '.yml'
             try:
                 self._write_to_yaml()
-                logging.info(f'{self._yaml_file} has been written to')
+                logger.info(f'{self._yaml_file} has been written to')
             except Exception as e:
                 dialog = Gtk.MessageDialog(transient_for=self,
                     modal=True, destroy_with_parent=True,
@@ -559,40 +586,40 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         This function runs every second, and will take action based on the status of all files in the dict
         It runs in the GUI thread, so GUI updates are allowed here.
         """
-        #logging.debug(f"files_dict_timeout_cb enter: {self._njobs_running=} {self.params.max_threads=}")
+        #logger.debug(f"files_dict_timeout_cb enter: {self._njobs_running=} {self.params.max_threads=}")
         with self._files_dict_lock:
             for _filename, _file in self._files_dict.items():
-                #logging.debug(f"timeout_cb: {_filename} found as {str(_file.status)}")
+                #logger.debug(f"timeout_cb: {_filename} found as {str(_file.status)}")
                 if _file.status == FileStatus.CREATED:
-                    logging.debug(f"files_dict_timeout_cb: {_filename} was CREATED")
+                    logger.debug(f"files_dict_timeout_cb: {_filename} was CREATED")
                     if self.params.status_promotion_active and \
                         (time() - _file.created) >  self.params.status_promotion_delay:
                         # promote to SAVED!
                         _file.status = FileStatus.SAVED
                         path = _file.row_reference.get_path()
                         self._files_tree_model[path][2] = int(FileStatus.SAVED) 
-                        logging.debug(f"files_dict_timeout_cb: promoting {_filename} to SAVED")
+                        logger.debug(f"files_dict_timeout_cb: promoting {_filename} to SAVED")
                         
                 elif _file.status == FileStatus.SAVED:
-                    #logging.debug(f"files_dict_timeout_cb SAVED: {self._njobs_running=} {self.params.max_threads=}")
+                    #logger.debug(f"files_dict_timeout_cb SAVED: {self._njobs_running=} {self.params.max_threads=}")
                     if self._njobs_running < self.params.max_threads:
                         # launch a new job
-                        logging.debug(f"files_dict_timeout_cb: launching new job for {_filename}")
+                        logger.debug(f"files_dict_timeout_cb: launching new job for {_filename}")
                         job = Job(self, _file)
                         self._jobs_list.append(job)
                         job.start()
                         self._njobs_running += 1
                     else:
                         # queue the job
-                        logging.debug(f"files_dict_timeout_cb: adding {_filename} to queue for future processing")
+                        logger.debug(f"files_dict_timeout_cb: adding {_filename} to queue for future processing")
                         _file.status = FileStatus.QUEUED
                         path = _file.row_reference.get_path()
                         self._files_tree_model[path][2] = int(_file.status)
                 elif _file.status == FileStatus.QUEUED:
-                    #logging.debug(f"files_dict_timeout_cb QUEUED: {self._njobs_running=} {self.params.max_threads=}")
+                    #logger.debug(f"files_dict_timeout_cb QUEUED: {self._njobs_running=} {self.params.max_threads=}")
                     if self._njobs_running < self.params.max_threads:
                         # try and launch a new job
-                        logging.debug(f"files_dict_timeout_cb: launching queued job for {_filename}")
+                        logger.debug(f"files_dict_timeout_cb: launching queued job for {_filename}")
                         job = Job(self, _file)
                         self._jobs_list.append(job)
                         job.start()
@@ -604,7 +631,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
         for existing_file in existing_files:
             file_path = str(existing_file)
-            logging.debug(f'Adding existing file {file_path}')
+            logger.debug(f'Adding existing file {file_path}')
 
             # get creation time, or something similar...
             # https://stackoverflow.com/a/39501288
@@ -667,6 +694,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self._controls_operations_button.set_sensitive(False)
         self._monitor_recursively_checkbutton.set_sensitive(False)
         self._process_existing_files_checkbutton.set_sensitive(False)
+        self._allowed_patterns_entry.set_sensitive(False)
         for operation in self._operations_box:
             operation.set_sensitive(False)
 
@@ -678,10 +706,11 @@ class PreflightCheckThread(Thread):
 
     def _search_for_existing_files(self, directory: Path) -> List[Path]:
         rv: List[Path] = list()
+        included_patterns = get_patterns_from_string(self._appwindow.params.allowed_patterns)
         for child in directory.iterdir():
             if child.is_file() \
                 and not child.is_symlink() \
-                and match_path(str(child), excluded_patterns=IGNORE_PATTERNS, case_sensitive=False):
+                and match_path(str(child), included_patterns=included_patterns, excluded_patterns=IGNORE_PATTERNS, case_sensitive=False):
                 
                 rv.append(directory.joinpath(child))
             elif self._appwindow.params.monitor_recursively and child.is_dir() and not child.is_symlink():
@@ -714,7 +743,7 @@ class PreflightCheckThread(Thread):
             try:
                 operation.preflight_check()
             except Exception as e:
-                logging.exception(f"Exception caught from {operation.NAME}")
+                logger.exception(f"Exception caught from {operation.NAME}")
                 exception_msgs.append('* ' + str(e))
 
         if exception_msgs:
@@ -735,16 +764,17 @@ class PreflightCheckThread(Thread):
 class EventHandler(PatternMatchingEventHandler):
     def __init__(self, appwindow: ApplicationWindow):
         self._appwindow = appwindow
-        super(EventHandler, self).__init__(ignore_patterns=IGNORE_PATTERNS, ignore_directories=True)
+        included_patterns = get_patterns_from_string(self._appwindow.params.allowed_patterns)
+        super(EventHandler, self).__init__(patterns=included_patterns, ignore_patterns=IGNORE_PATTERNS, ignore_directories=True)
         
     def on_created(self, event):
         file_path = event.src_path
-        logging.debug(f"Monitor found {file_path} for event type CREATED")
+        logger.debug(f"Monitor found {file_path} for event type CREATED")
         GLib.idle_add(self._appwindow.file_created_cb, file_path, priority=GLib.PRIORITY_HIGH)
 
     def on_modified(self, event):
         file_path = event.src_path
-        logging.debug(f"Monitor found {file_path} for event type MODIFIED")
+        logger.debug(f"Monitor found {file_path} for event type MODIFIED")
         GLib.idle_add(self._appwindow.file_changes_done_cb, file_path, priority=GLib.PRIORITY_DEFAULT_IDLE)
         
 class OutputRow(NamedTuple):

@@ -9,6 +9,8 @@ import logging
 from .preferences import Preference, BooleanPreference, ListPreference, DictPreference, StringPreference
 from .utils import EXPAND_AND_FILL, PREFERENCES_CONFIG_FILE
 
+logger = logging.getLogger(__name__)
+
 class PreferenceValueCellRenderer(Gtk.CellRenderer):
 
     @GObject.Property(type=str)
@@ -84,10 +86,10 @@ class PreferenceValueCellRenderer(Gtk.CellRenderer):
 
             # open for writing
             with PREFERENCES_CONFIG_FILE.open('w') as f:
-                logging.debug(f'Writing preferences to {str(PREFERENCES_CONFIG_FILE)}')
+                logger.debug(f'Writing preferences to {str(PREFERENCES_CONFIG_FILE)}')
                 yaml.safe_dump(data=yaml_dict, stream=f)
         except Exception:
-            logging.exception(f'Could not write to {str(PREFERENCES_CONFIG_FILE)}')
+            logger.exception(f'Could not write to {str(PREFERENCES_CONFIG_FILE)}')
 
     def _get_pref_for_key(self, key) -> Preference:
         # given a key, get the corresponding Preference class

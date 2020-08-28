@@ -70,9 +70,10 @@ class Application(Gtk.Application):
         
         # populate dict with preferences found in entry points
         self._prefs: Final[Dict[Preference, Any]] = dict()
-        for e in importlib.metadata.entry_points()['rfi_file_monitor.preferences']:
-            _pref = e.load()
-            self._prefs[_pref] = _pref.default
+        if 'rfi_file_monitor.preferences' in importlib.metadata.entry_points():
+            for e in importlib.metadata.entry_points()['rfi_file_monitor.preferences']:
+                _pref = e.load()
+                self._prefs[_pref] = _pref.default
 
         # now, open preferences file and update the prefs dictionary
         try:

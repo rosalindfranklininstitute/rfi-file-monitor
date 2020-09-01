@@ -16,6 +16,7 @@ bugsnag.configure(
     app_version=__version__,
     auto_notify=True,
     auto_capture_sessions=True,
+    notify_release_stages=["production"],
 )
 
 # main entrypoint

@@ -20,7 +20,7 @@ filesize = humanfriendly.parse_size(args.filesize, binary=True)
 for i in range(args.nfiles):
     path = Path(args.destination, f"{args.prefix}{i + args.startindex}{args.extension}")
     path.write_bytes(os.urandom(filesize))
-    logger.warning(f'Writing {str(path)}')
+    logging.warning(f'Writing {str(path)}')
     time.sleep(args.sleeptime)
 
 

@@ -3,7 +3,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gio, GLib, Gtk
 from munch import Munch, munchify
 
-from typing import Callable, Optional, Final, Any, Dict, final, List
+from typing import Callable, Optional, Final, Any, Dict, final, List, Iterable
 import logging
 from pathlib import Path
 
@@ -22,6 +22,12 @@ def add_action_entries(
     action = Gio.SimpleAction.new(action, GLib.VariantType.new(param) if param else None)
     action.connect("activate", callback)
     map.add_action(action)
+
+def class_in_object_iterable(iterable: Iterable, klass) -> bool:
+    for _iter in iterable:
+        if isinstance(_iter, klass):
+            return True
+    return False
 
 def get_patterns_from_string(input: str) -> List[str]:
     if not input or not input.strip():

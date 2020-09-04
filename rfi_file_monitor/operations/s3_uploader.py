@@ -100,6 +100,14 @@ class S3UploaderOperation(Operation):
         ), 'force_bucket_creation')
         self._grid.attach(widget, 2, 3, 1, 1)
 
+    def _get_dict_tagset(self, tagtype: str):
+        for metadata_dict in reversed(self.appwindow.preflight_check_metadata.values()):
+            if tagtype in metadata_dict:
+                tags = metadata_dict[tagtype]
+                tagset = [dict(Key=_key, Value=_value) for _key, _value in tags.items()]
+                return dict(TagSet=tagset)
+        return None
+
     def preflight_check(self):
         self._client_options = dict()
         self._client_options['endpoint_url'] = self.params.hostname
@@ -107,6 +115,11 @@ class S3UploaderOperation(Operation):
         self._client_options['aws_access_key_id'] = self.params.access_key
         self._client_options['aws_secret_access_key'] = self.params.secret_key
         logger.debug(f'{self._client_options=}')
+
+        # see https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html#S3.Client.put_bucket_tagging
+        self._bucket_tags = self._get_dict_tagset('bucket_tags')
+        # see https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html#S3.Client.put_object_tagging
+        self._object_tags = self._get_dict_tagset('object_tags')
 
         # open connection (things can definitely go wrong here!)
         self._s3_client = boto3.client('s3', **self._client_options)
@@ -128,6 +141,8 @@ class S3UploaderOperation(Operation):
                 if self.params.force_bucket_creation:
                     logger.info(f"Trying to create bucket {self.params.bucket_name}")
                     self._s3_client.create_bucket(Bucket=self.params.bucket_name)
+                    if self._bucket_tags:
+                        self._s3_client.put_bucket_tagging(Bucket=self.params.bucket_name, Tagging=self._bucket_tags)
                 else:
                     raise
             else:
@@ -145,10 +160,23 @@ class S3UploaderOperation(Operation):
                     Key=os.path.basename(tmpfile),
                     Config = boto3.s3.transfer.TransferConfig(max_concurrency=1),
                     )
+                if self._object_tags:
+                    self._s3_client.put_object_tagging(
+                        Bucket=self.params.bucket_name,
+                        Key=os.path.basename(tmpfile),
+                        Tagging=self._object_tags
+                    )
             except:
                 raise
             else:
                 # if successful, remove it
+                # delete tags first!
+                if self._object_tags:
+                    self._s3_client.delete_object_tagging(
+                        Bucket=self.params.bucket_name,
+                        Key=os.path.basename(tmpfile),
+                        )
+                
                 self._s3_client.delete_object(\
                     Bucket=self.params.bucket_name,
                     Key=os.path.basename(tmpfile),
@@ -170,6 +198,12 @@ class S3UploaderOperation(Operation):
                 Config = boto3.s3.transfer.TransferConfig(max_concurrency=1),
                 Callback = S3ProgressPercentage(file, thread, self),
                 )
+            if self._object_tags:
+                self._s3_client.put_object_tagging(
+                    Bucket=self.params.bucket_name,
+                    Key=key,
+                    Tagging=self._object_tags,
+                    )
         except Exception as e:
             logger.exception(f'S3UploaderOperation.run exception')
             return str(e)

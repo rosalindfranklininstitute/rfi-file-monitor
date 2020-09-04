@@ -7,7 +7,7 @@ from typing import Dict, Any, Final
 import logging
 
 from .preferences import Preference, BooleanPreference, ListPreference, DictPreference, StringPreference
-from .utils import EXPAND_AND_FILL, PREFERENCES_CONFIG_FILE
+from rfi_file_monitor.utils.utils import EXPAND_AND_FILL, PREFERENCES_CONFIG_FILE
 
 logger = logging.getLogger(__name__)
 

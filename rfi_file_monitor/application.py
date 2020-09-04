@@ -11,7 +11,7 @@ from typing import Any, Final, Dict
 import importlib.metadata
 
 from .applicationwindow import ApplicationWindow
-from .utils import add_action_entries, PREFERENCES_CONFIG_FILE
+from rfi_file_monitor.utils.utils import add_action_entries, PREFERENCES_CONFIG_FILE
 from .preferences import Preference
 from .preferenceswindow import PreferencesWindow
 

@@ -13,7 +13,7 @@ from threading import RLock, Thread
 from time import time, ctime
 from pathlib import PurePath, Path
 from typing import OrderedDict as OrderedDictType
-from typing import Final, List, Optional, NamedTuple
+from typing import Final, List, Optional, NamedTuple, Dict, Any
 import importlib.metadata
 import os
 import platform
@@ -44,7 +44,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self._jobs_list: Final[List[Job]] = list()
         self._njobs_running: Final[int] = 0
         self._timeout_id: Final[int] = 0
-
+        self._preflight_check_metadata : Final[Dict[int, Dict[str, Any]]] = dict() 
         self._yaml_file: Final[str] = None
 
         self.set_default_size(1000, 1000)
@@ -698,6 +698,10 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         for operation in self._operations_box:
             operation.set_sensitive(False)
 
+    @property
+    def preflight_check_metadata(self) -> dict:
+        return self._preflight_check_metadata
+
 class PreflightCheckThread(Thread):
     def __init__(self, appwindow: ApplicationWindow, task_window: LongTaskWindow):
         super().__init__()
@@ -720,6 +724,8 @@ class PreflightCheckThread(Thread):
 
     def run(self):
         exception_msgs = []
+        self._appwindow._preflight_check_metadata.clear()
+
         for index, operation in enumerate(self._appwindow._operations_box):
             if index > 0 and hasattr(operation, 'PREREQUISITES'):
                 preceding_ops = self._appwindow._operations_box.get_children()[0:index]

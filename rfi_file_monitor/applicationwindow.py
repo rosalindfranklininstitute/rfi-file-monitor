@@ -19,7 +19,7 @@ import os
 import platform
 import inspect
 
-from rfi_file_monitor.utils.utils import add_action_entries, LongTaskWindow, class_in_object_iterable, get_patterns_from_string
+from rfi_file_monitor.utils import add_action_entries, LongTaskWindow, class_in_object_iterable, get_patterns_from_string
 from rfi_file_monitor.utils.widgetparams import WidgetParams
 from .file import FileStatus, File
 from .job import Job

@@ -43,9 +43,6 @@ class WidgetParams:
     def _combobox_changed_cb(self,combobox: Gtk.ComboBoxText, param_name: str):
         self._params[param_name] = combobox.get_active_text()
 
-    @final
-    def _button_clicked_cb(self, button: Gtk.Button, param_name:str):
-        self._params[param_name] = button.released()
 
     @final
     def register_widget(self, widget: Gtk.Widget, param_name: str, exportable: bool = True):
@@ -69,9 +66,6 @@ class WidgetParams:
         elif isinstance(widget, Gtk.ComboBoxText):
             self._params[param_name] = widget.get_active_text()
             self._signal_ids[param_name] =widget.connect('changed', self._combobox_changed_cb, param_name)
-        elif isinstance(widget, Gtk.Button):
-            self._params[param_name] = widget.clicked()
-            self._signal_ids[param_name] = widget.connect('clicked', self._button_clicked_cb, param_name)
         else:
             raise NotImplementedError(f"register_widget: no support for {type(widget).__name__}")
 

@@ -1,0 +1,12 @@
+{
+    "menu_name": "RFI-File-Monitor",
+    "menu_items":
+    [
+    {
+        "name": "Launch RFI-File-Monitor",
+        "pywscript": "${PYTHON_SCRIPTS}/rfi-file-monitor-script.py",
+        "workdir": "${PERSONALDIR}",
+        "icon": "${MENU_DIR}/RFI-Logo.ico"
+    }
+    ]
+}

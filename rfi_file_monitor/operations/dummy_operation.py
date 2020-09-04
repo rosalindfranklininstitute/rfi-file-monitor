@@ -31,6 +31,40 @@ class DummyOperation(Operation):
         self.register_widget(combobox, 'dummy_combo')
         self._grid.attach(combobox, 0, 1, 1, 1)
 
+        widget = self.register_widget(Gtk.CheckButton(
+            active=False, label="Use bucket tags",
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+        ), 'enable_bucket_tags')
+        self._grid.attach(widget, 0, 2, 1, 1)
+
+        widget = self.register_widget(Gtk.CheckButton(
+            active=False, label="Use object tags",
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+        ), 'enable_object_tags')
+        self._grid.attach(widget, 0, 3, 1, 1)
+
+
+    def preflight_check(self):
+        metadata = dict()
+        if self.params.enable_bucket_tags:
+            metadata['bucket_tags'] = {
+                'owner': 'Tom',
+                'group': 'Toms friends',
+                'experiment name': 'Black magic part1'
+            }
+
+        if self.params.enable_object_tags:
+            metadata['object_tags'] = {
+                'owner': 'Laura',
+                'group': 'Lauras friends',
+                'experiment name': 'Alchemy part2'
+            }
+
+        if metadata:
+            self.appwindow.preflight_check_metadata[self.index] = metadata
+
     def run(self, file: File):
         logger.debug(f'Processing {file.filename}')
         thread = current_thread()

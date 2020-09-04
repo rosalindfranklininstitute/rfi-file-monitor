@@ -6,7 +6,8 @@ from gi.repository import Gtk
 from typing import Final
 
 from .file import File
-from .utils import WidgetParams
+from rfi_file_monitor.utils.widgetparams import WidgetParams
+
 
 #
 # This is my attempt at extending Gtk.Frame with

@@ -24,8 +24,7 @@ class WidgetParams:
 
     @final
     def _entry_changed_cb(self, entry: Gtk.Entry, param_name: str):
-        #pylint: disable=used-before-assignment
-        self._params[param_name] = tmp if (tmp := entry.get_text().strip()) != "" else entry.get_placeholder_text()
+        self._params[param_name] = entry.get_text().strip()
 
     @final
     def _checkbutton_toggled_cb(self, checkbutton: Gtk.CheckButton, param_name: str):
@@ -60,8 +59,7 @@ class WidgetParams:
             self._params[param_name] = widget.get_filename()
             self._signal_ids[param_name] = widget.connect("selection-changed", self._filechooserbutton_selection_changed_cb, param_name)
         elif isinstance(widget, Gtk.Entry):
-            #pylint: disable=used-before-assignment
-            self._params[param_name] = tmp if (tmp := widget.get_text().strip()) != "" else widget.get_placeholder_text()
+            self._params[param_name] = widget.get_text().strip()
             self._signal_ids[param_name] = widget.connect("changed", self._entry_changed_cb, param_name)
         elif isinstance(widget, Gtk.ComboBoxText):
             self._params[param_name] = widget.get_active_text()
@@ -97,10 +95,7 @@ class WidgetParams:
                         continue
                     widget.set_filename(value)
                 elif isinstance(widget, Gtk.Entry):
-                    if widget.get_placeholder_text() == value:
-                        widget.set_text("")
-                    else:
-                        widget.set_text(value)
+                    widget.set_text(value)
                 elif isinstance(widget, Gtk.ComboBoxText):
                     for row in widget.get_model():
                         if row[0] == value:

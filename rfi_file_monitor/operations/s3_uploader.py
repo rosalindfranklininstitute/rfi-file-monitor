@@ -45,7 +45,7 @@ class S3UploaderOperation(Operation):
             hexpand=False, vexpand=False,
         ), 0, 0, 1, 1)
         widget = self.register_widget(Gtk.Entry(
-            placeholder_text="https://s3.amazonaws.com",
+            text="https://s3.amazonaws.com",
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
         ), 'hostname')

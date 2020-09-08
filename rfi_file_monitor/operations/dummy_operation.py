@@ -29,25 +29,62 @@ class DummyOperation(Operation):
         combobox.append_text('Text3')
         combobox.set_active(0)
         self.register_widget(combobox, 'dummy_combo')
-        self._grid.attach(combobox, 0, 1, 1, 1)
+        self._grid.attach(combobox, 0, 1, 2, 1)
 
         widget = self.register_widget(Gtk.CheckButton(
             active=False, label="Use bucket tags",
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
         ), 'enable_bucket_tags')
-        self._grid.attach(widget, 0, 2, 1, 1)
+        self._grid.attach(widget, 0, 2, 2, 1)
 
         widget = self.register_widget(Gtk.CheckButton(
             active=False, label="Use object tags",
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
         ), 'enable_object_tags')
-        self._grid.attach(widget, 0, 3, 1, 1)
+        self._grid.attach(widget, 0, 3, 2, 1)
+
+        widget = self.register_widget(Gtk.CheckButton(
+            active=False, label="Test Echo ACL",
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+        ), 'enable_echo_acl')
+        self._grid.attach(widget, 0, 4, 2, 1)
+
+
+
 
 
     def preflight_check(self):
         metadata = dict()
+
+        if self.params.enable_echo_acl:
+            metadata['bucket_acl_options'] = {
+                'AccessControlPolicy': {
+                    'Grants': [
+                        {
+                            'Grantee': {
+                                'ID': 'rfi-ai',
+                                'Type': 'CanonicalUser',
+                            },
+                            'Permission': 'FULL_CONTROL',
+                        },
+                        {
+                            'Grantee': {
+                                'ID': 'rfi-instrument-xevo',
+                                'Type': 'CanonicalUser',
+                            },
+                            'Permission': 'FULL_CONTROL',
+                        },
+                    ],
+                    'Owner': {
+                        'ID': 'rfi-instrument-xevo',
+                    }
+                },
+            }
+            metadata['object_acl_options'] = metadata['bucket_acl_options']
+
         if self.params.enable_bucket_tags:
             metadata['bucket_tags'] = {
                 'owner': 'Tom',

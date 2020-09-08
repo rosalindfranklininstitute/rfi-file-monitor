@@ -14,10 +14,33 @@ import tempfile
 from pathlib import PurePosixPath
 from threading import current_thread, Lock
 import urllib
+from typing import Sequence
 
 logger = logging.getLogger(__name__)
 
 # useful info from help(boto3.session.Session.client)
+
+ALLOWED_BUCKET_ACL_OPTIONS = (
+    'ACL',
+    'AccessControlPolicy',
+    'GrantFullControl',
+    'GrantRead',
+    'GrantReadACP',
+    'GrantWrite',
+    'GrantWriteACP',
+)
+
+ALLOWED_OBJECT_ACL_OPTIONS = (
+    'ACL',
+    'AccessControlPolicy',
+    'GrantFullControl',
+    'GrantRead',
+    'GrantReadACP',
+    'GrantWrite',
+    'GrantWriteACP',
+    'RequestPayer',
+    'VersionID',
+)
 
 class S3UploaderOperation(Operation):
     NAME = "S3 Uploader"
@@ -108,13 +131,28 @@ class S3UploaderOperation(Operation):
                 return dict(TagSet=tagset)
         return None
 
+    def _get_dict_acl_options(self, resource: str, allow_list: Sequence[str]):
+        for metadata_dict in reversed(self.appwindow.preflight_check_metadata.values()):
+            if resource in metadata_dict:
+                options = metadata_dict[resource]
+                for option in options:
+                    if option not in allow_list:
+                        raise ValueError(f'{option} is not permitted in {resource}')
+                return options
+        return dict()
+
+
     def preflight_check(self):
         self._client_options = dict()
         self._client_options['endpoint_url'] = self.params.hostname
         self._client_options['verify'] = self.params.hostname_ssl_verify
         self._client_options['aws_access_key_id'] = self.params.access_key
         self._client_options['aws_secret_access_key'] = self.params.secret_key
-        logger.debug(f'{self._client_options=}')
+
+        # bucket creation options
+        self._bucket_acl_options = self._get_dict_acl_options('bucket_acl_options', ALLOWED_BUCKET_ACL_OPTIONS)
+        # object creation options
+        self._object_acl_options = self._get_dict_acl_options('object_acl_options', ALLOWED_OBJECT_ACL_OPTIONS)
 
         # see https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html#S3.Client.put_bucket_tagging
         self._bucket_tags = self._get_dict_tagset('bucket_tags')
@@ -143,6 +181,8 @@ class S3UploaderOperation(Operation):
                     self._s3_client.create_bucket(Bucket=self.params.bucket_name)
                     if self._bucket_tags:
                         self._s3_client.put_bucket_tagging(Bucket=self.params.bucket_name, Tagging=self._bucket_tags)
+                    if self._bucket_acl_options:
+                        self._s3_client.put_bucket_acl(Bucket=self.params.bucket_name, **self._bucket_acl_options)
                 else:
                     raise
             else:
@@ -165,6 +205,12 @@ class S3UploaderOperation(Operation):
                         Bucket=self.params.bucket_name,
                         Key=os.path.basename(tmpfile),
                         Tagging=self._object_tags
+                    )
+                if self._object_acl_options:
+                    self._s3_client.put_object_acl(
+                        Bucket=self.params.bucket_name,
+                        Key=os.path.basename(tmpfile),
+                        **self._object_acl_options,
                     )
             except:
                 raise
@@ -194,7 +240,6 @@ class S3UploaderOperation(Operation):
                 Filename=file.filename,\
                 Bucket=self.params.bucket_name,
                 Key=key,
-                ExtraArgs = None, # TODO: add support for ACL??
                 Config = boto3.s3.transfer.TransferConfig(max_concurrency=1),
                 Callback = S3ProgressPercentage(file, thread, self),
                 )
@@ -204,6 +249,12 @@ class S3UploaderOperation(Operation):
                     Key=key,
                     Tagging=self._object_tags,
                     )
+            if self._object_acl_options:
+                self._s3_client.put_object_acl(
+                    Bucket=self.params.bucket_name,
+                    Key=key,
+                    **self._object_acl_options,
+                )
         except Exception as e:
             logger.exception(f'S3UploaderOperation.run exception')
             return str(e)

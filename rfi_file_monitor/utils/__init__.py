@@ -12,6 +12,21 @@ PREFERENCES_CONFIG_FILE = Path(GLib.get_user_config_dir(), 'rfi-file-monitor', '
 
 logger = logging.getLogger(__name__)
 
+def query_metadata(metadata: Dict[int, Dict[str, Any]], key: str, full_dict=False) -> Any:
+    '''
+    Reverse iterates through the metadata until the key is found.
+    When successful, returns the matching dictionary value.
+    If full_dict is True, then the whole dict that the key belongs to is returned.
+    Upon failure, None is returned.
+    '''
+    for metadata_dict in reversed(metadata.values()):
+        if key in metadata_dict:
+            if full_dict:
+                return metadata_dict
+            else:
+                return metadata_dict[key]
+    return None
+
 def add_action_entries(
     map: Gio.ActionMap,
     action: str,

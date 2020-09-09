@@ -7,6 +7,7 @@ import botocore
 from ..operation import Operation
 from ..file import File
 from ..job import Job
+from ..utils import query_metadata
 
 import os
 import logging
@@ -124,22 +125,20 @@ class S3UploaderOperation(Operation):
         self._grid.attach(widget, 2, 3, 1, 1)
 
     def _get_dict_tagset(self, tagtype: str):
-        for metadata_dict in reversed(self.appwindow.preflight_check_metadata.values()):
-            if tagtype in metadata_dict:
-                tags = metadata_dict[tagtype]
-                tagset = [dict(Key=_key, Value=_value) for _key, _value in tags.items()]
-                return dict(TagSet=tagset)
-        return None
+        tags = query_metadata(self.appwindow.preflight_check_metadata, tagtype)
+        if tags is None:
+            return None
+        tagset = [dict(Key=_key, Value=_value) for _key, _value in tags.items()]
+        return dict(TagSet=tagset)
 
     def _get_dict_acl_options(self, resource: str, allow_list: Sequence[str]):
-        for metadata_dict in reversed(self.appwindow.preflight_check_metadata.values()):
-            if resource in metadata_dict:
-                options = metadata_dict[resource]
-                for option in options:
-                    if option not in allow_list:
-                        raise ValueError(f'{option} is not permitted in {resource}')
-                return options
-        return dict()
+        options = query_metadata(self.appwindow.preflight_check_metadata, resource)
+        if options is None:
+            return None
+        for option in options:
+            if option not in allow_list:
+                raise ValueError(f'{option} is not permitted in {resource}')
+        return options
 
 
     def preflight_check(self):

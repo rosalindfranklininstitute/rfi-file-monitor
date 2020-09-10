@@ -140,13 +140,16 @@ class S3UploaderOperation(Operation):
                 raise ValueError(f'{option} is not permitted in {resource}')
         return options
 
+    def _get_client_options(self):
+        client_options = dict()
+        client_options['endpoint_url'] = self.params.hostname
+        client_options['verify'] = self.params.hostname_ssl_verify
+        client_options['aws_access_key_id'] = self.params.access_key
+        client_options['aws_secret_access_key'] = self.params.secret_key
+        return client_options
 
     def preflight_check(self):
-        self._client_options = dict()
-        self._client_options['endpoint_url'] = self.params.hostname
-        self._client_options['verify'] = self.params.hostname_ssl_verify
-        self._client_options['aws_access_key_id'] = self.params.access_key
-        self._client_options['aws_secret_access_key'] = self.params.secret_key
+        client_options = self._get_client_options()
 
         # bucket creation options
         self._bucket_acl_options = self._get_dict_acl_options('bucket_acl_options', ALLOWED_BUCKET_ACL_OPTIONS)
@@ -159,13 +162,13 @@ class S3UploaderOperation(Operation):
         self._object_tags = self._get_dict_tagset('object_tags')
 
         # open connection (things can definitely go wrong here!)
-        self._s3_client = boto3.client('s3', **self._client_options)
+        s3_client = boto3.client('s3', **client_options)
 
         # check if the bucket exists
         # taken from https://stackoverflow.com/a/47565719
         try:
             logger.debug(f"Checking if bucket {self.params.bucket_name} exists")
-            self._s3_client.head_bucket(Bucket=self.params.bucket_name)
+            s3_client.head_bucket(Bucket=self.params.bucket_name)
         except botocore.exceptions.ClientError as e:
             # If a client error is thrown, then check that it was a 404 error.
             # If it was a 404 error, then the bucket does not exist.
@@ -177,11 +180,11 @@ class S3UploaderOperation(Operation):
                 logger.info(f"Bucket {self.params.bucket_name} does not exist")
                 if self.params.force_bucket_creation:
                     logger.info(f"Trying to create bucket {self.params.bucket_name}")
-                    self._s3_client.create_bucket(Bucket=self.params.bucket_name)
+                    s3_client.create_bucket(Bucket=self.params.bucket_name)
                     if self._bucket_tags:
-                        self._s3_client.put_bucket_tagging(Bucket=self.params.bucket_name, Tagging=self._bucket_tags)
+                        s3_client.put_bucket_tagging(Bucket=self.params.bucket_name, Tagging=self._bucket_tags)
                     if self._bucket_acl_options:
-                        self._s3_client.put_bucket_acl(Bucket=self.params.bucket_name, **self._bucket_acl_options)
+                        s3_client.put_bucket_acl(Bucket=self.params.bucket_name, **self._bucket_acl_options)
                 else:
                     raise
             else:
@@ -193,20 +196,20 @@ class S3UploaderOperation(Operation):
                 f.write(os.urandom(1024)) # 1 kB
                 tmpfile = f.name
             try:
-                self._s3_client.upload_file(
+                s3_client.upload_file(
                     Filename=tmpfile,
                     Bucket=self.params.bucket_name,
                     Key=os.path.basename(tmpfile),
                     Config = boto3.s3.transfer.TransferConfig(max_concurrency=1),
                     )
                 if self._object_tags:
-                    self._s3_client.put_object_tagging(
+                    s3_client.put_object_tagging(
                         Bucket=self.params.bucket_name,
                         Key=os.path.basename(tmpfile),
                         Tagging=self._object_tags
                     )
                 if self._object_acl_options:
-                    self._s3_client.put_object_acl(
+                    s3_client.put_object_acl(
                         Bucket=self.params.bucket_name,
                         Key=os.path.basename(tmpfile),
                         **self._object_acl_options,
@@ -217,12 +220,12 @@ class S3UploaderOperation(Operation):
                 # if successful, remove it
                 # delete tags first!
                 if self._object_tags:
-                    self._s3_client.delete_object_tagging(
+                    s3_client.delete_object_tagging(
                         Bucket=self.params.bucket_name,
                         Key=os.path.basename(tmpfile),
                         )
                 
-                self._s3_client.delete_object(\
+                s3_client.delete_object(\
                     Bucket=self.params.bucket_name,
                     Key=os.path.basename(tmpfile),
                     )
@@ -231,11 +234,13 @@ class S3UploaderOperation(Operation):
 
     def run(self, file: File):
         thread = current_thread()
+        client_options = self._get_client_options()
+        s3_client = boto3.client('s3', **client_options)
 
         try:
             #TODO: do not allow overwriting existing keys in bucket??
             key = str(PurePosixPath(*file.relative_filename.parts))
-            self._s3_client.upload_file( \
+            s3_client.upload_file( \
                 Filename=file.filename,\
                 Bucket=self.params.bucket_name,
                 Key=key,
@@ -243,27 +248,31 @@ class S3UploaderOperation(Operation):
                 Callback = S3ProgressPercentage(file, thread, self),
                 )
             if self._object_tags:
-                self._s3_client.put_object_tagging(
+                s3_client.put_object_tagging(
                     Bucket=self.params.bucket_name,
                     Key=key,
                     Tagging=self._object_tags,
                     )
             if self._object_acl_options:
-                self._s3_client.put_object_acl(
+                s3_client.put_object_acl(
                     Bucket=self.params.bucket_name,
                     Key=key,
                     **self._object_acl_options,
                 )
         except Exception as e:
             logger.exception(f'S3UploaderOperation.run exception')
+            del s3_client
+            del client_options
             return str(e)
         else:
             #add object URL to metadata
-            parsed_url = urllib.parse.urlparse(self._client_options['endpoint_url'])
+            parsed_url = urllib.parse.urlparse(client_options['endpoint_url'])
             file.operation_metadata[self.index] = {'s3 object url':
                 f'{parsed_url.scheme}://{self.params.bucket_name}.{parsed_url.netloc}/{urllib.parse.quote(key)}'}
             logger.info(f"S3 upload complete from {file._filename} to {self.params.bucket_name}")
             logger.debug(f"{file.operation_metadata[self.index]=}")
+            del s3_client
+            del client_options
         return None
 
 # taken from https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-uploading-files.html

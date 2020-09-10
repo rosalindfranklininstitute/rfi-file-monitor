@@ -150,7 +150,7 @@ class Application(Gtk.Application):
             modal=True,
             authors=["Tom Schoonjans"],
             logo=logo,
-            version="0.1.4",
+            version="0.1.5",
             )
         about_dialog.present()
 

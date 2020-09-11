@@ -35,20 +35,6 @@ class Operation(ABC, Gtk.Frame, WidgetParams, metaclass=OperationMeta):
         Gtk.Frame.__init__(self, *args, **kwargs)
         WidgetParams.__init__(self)
         self._index: Final[int] = 0
-        self._grid = Gtk.Grid(
-            row_spacing=5,
-            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
-            hexpand=True, vexpand=False
-        )
-        self.add(self._grid)
-
-        remove_operation = Gtk.Button(label='X')
-        remove_operation.connect('clicked', self.click_to_remove)
-        self._grid.attach(remove_operation, 0, 5, 2, 1)
-
-    def click_to_remove(self, remove_operation):
-        self.destroy()
-        remove_operation.destroy()
 
     def set_sensitive(self, sensitive: bool):
         for widget in self.widgets.values():

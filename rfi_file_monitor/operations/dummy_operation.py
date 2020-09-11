@@ -47,8 +47,8 @@ class DummyOperation(Operation):
         ), 'enable_echo_acl')
         self._grid.attach(widget, 0, 4, 2, 1)
 
-
-
+        button = Gtk.Button.new_with_label('Remove')
+        self._grid_attach(widget, 0,5,2,1)
 
 
     def preflight_check(self):

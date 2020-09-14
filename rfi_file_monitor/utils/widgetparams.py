@@ -126,3 +126,4 @@ class WidgetParams:
         A Munch dict containing the registered widgets
         """
         return self._widgets
+

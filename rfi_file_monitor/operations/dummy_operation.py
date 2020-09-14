@@ -120,3 +120,4 @@ class DummyOperation(Operation):
        self._grid.destroy()
        self.destroy()
        self.appwindow.show()
+       self._index = None

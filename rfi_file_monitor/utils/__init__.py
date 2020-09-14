@@ -19,6 +19,8 @@ def query_metadata(metadata: Dict[int, Dict[str, Any]], key: str, full_dict=Fals
     If full_dict is True, then the whole dict that the key belongs to is returned.
     Upon failure, None is returned.
     '''
+    if metadata is None:
+        return None
     for metadata_dict in reversed(metadata.values()):
         if key in metadata_dict:
             if full_dict:

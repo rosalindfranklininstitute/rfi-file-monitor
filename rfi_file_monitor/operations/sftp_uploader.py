@@ -3,6 +3,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 import paramiko
 from paramiko import AutoAddPolicy, RejectPolicy
+from munch import Munch
 
 from ..operation import Operation
 from ..file import File
@@ -148,60 +149,65 @@ class SftpUploaderOperation(Operation):
         ), 'auto_add_keys')
         tempgrid.attach(widget, 0, 0, 1, 1)
 
-    def preflight_check(self):
+    @classmethod
+    def _preflight_check(cls, params: Munch):
         # try connecting to server and copy a simple file
-        logger.debug(f"Try opening an ssh connection to {self.params.hostname}")
+        logger.debug(f"Try opening an ssh connection to {params.hostname}")
         with paramiko.SSHClient() as client:
             client.load_system_host_keys()
-            client.set_missing_host_key_policy(AutoAddPolicy if self.params.auto_add_keys else RejectPolicy)
-            client.connect(self.params.hostname,
-                port=int(self.params.port),
-                username=self.params.username,
-                password=self.params.password,
+            client.set_missing_host_key_policy(AutoAddPolicy if params.auto_add_keys else RejectPolicy)
+            client.connect(params.hostname,
+                port=int(params.port),
+                username=params.username,
+                password=params.password,
                 )
-            logger.debug(f"Try opening an sftp connection to {self.params.hostname}")
+            logger.debug(f"Try opening an sftp connection to {params.hostname}")
             with client.open_sftp() as sftp_client:
                 try:
-                    sftp_client.chdir(self.params.destination)
+                    sftp_client.chdir(params.destination)
                 except IOError:
-                    if self.params.force_folder_creation:
-                        makedirs(sftp_client, self.params.destination)
+                    if params.force_folder_creation:
+                        makedirs(sftp_client, params.destination)
                     else:
                         raise
                 # cd back to home folder
                 sftp_client.chdir()
 
                 # try copying a file
-                logger.debug(f"Try uploading a test file to {self.params.destination}")
+                logger.debug(f"Try uploading a test file to {params.destination}")
                 with tempfile.NamedTemporaryFile(delete=False) as f:
                     f.write(os.urandom(1024)) # 1 kB
                     tmpfile = f.name
                 try:
-                    sftp_client.put(tmpfile, self.params.destination + '/' + os.path.basename(tmpfile))
+                    sftp_client.put(tmpfile, params.destination + '/' + os.path.basename(tmpfile))
                 except:
                     raise
                 else:
                     # if successful, remove it
-                    sftp_client.remove(self.params.destination + '/' + os.path.basename(tmpfile))
+                    sftp_client.remove(params.destination + '/' + os.path.basename(tmpfile))
                 finally:
                     os.unlink(tmpfile)
 
-    def run(self, file: File):
+    def preflight_check(self):
+        self._preflight_check(self.params)
+
+    @classmethod
+    def _run(cls, file: File, params: Munch, operation_index: int):
         try:
             with paramiko.SSHClient() as client:
                 client.load_system_host_keys()
-                client.set_missing_host_key_policy(AutoAddPolicy if self.params.auto_add_keys else RejectPolicy)
-                client.connect(self.params.hostname,
-                    port=int(self.params.port),
-                    username=self.params.username,
-                    password=self.params.password,
+                client.set_missing_host_key_policy(AutoAddPolicy if params.auto_add_keys else RejectPolicy)
+                client.connect(params.hostname,
+                    port=int(params.port),
+                    username=params.username,
+                    password=params.password,
                     )
-                logger.debug(f"Try opening an sftp connection to {self.params.hostname}")
+                logger.debug(f"Try opening an sftp connection to {params.hostname}")
                 with client.open_sftp() as sftp_client:
-                    sftp_client.chdir(self.params.destination)
+                    sftp_client.chdir(params.destination)
                     rel_filename = str(PurePosixPath(*file.relative_filename.parts))
                     makedirs(sftp_client, posixpath.dirname(rel_filename))
-                    sftp_client.put(file.filename, rel_filename, callback=SftpProgressPercentage(file, self))
+                    sftp_client.put(file.filename, rel_filename, callback=SftpProgressPercentage(file, operation_index))
                     remote_filename_full = sftp_client.normalize(rel_filename)
                     logger.debug(f"File {remote_filename_full} has been written")
         except Exception as e:
@@ -209,23 +215,27 @@ class SftpUploaderOperation(Operation):
             return str(e)
         else:
             #add object URL to metadata
-            file.operation_metadata[self.index] = {'sftp url':
-                f'sftp://{self.params.username}@{self.params.hostname}:{int(self.params.port)}{remote_filename_full}'}
-            logger.debug(f"{file.operation_metadata[self.index]=}")
+            file.operation_metadata[operation_index] = {'sftp url':
+                f'sftp://{params.username}@{params.hostname}:{int(params.port)}{remote_filename_full}'}
+            logger.debug(f"{file.operation_metadata[operation_index]=}")
         return None
+
+    def run(self, file: File):
+        return self._run(file, self.params, self.index)
+
 
 class SftpProgressPercentage(object):
 
-    def __init__(self, file: File, operation: Operation):
+    def __init__(self, file: File, operation_index: int):
         self._file = file
         self._last_percentage = 0
-        self._operation = operation
+        self._operation_index = operation_index
 
     def __call__(self, bytes_so_far: int, bytes_total: int):
         percentage = (bytes_so_far / bytes_total) * 100
         if int(percentage) > self._last_percentage:
             self._last_percentage = int(percentage)
-            self._file.update_progressbar(self._operation.index, self._last_percentage)
+            self._file.update_progressbar(self._operation_index, self._last_percentage)
 
 
 # the following methods have been inspired by pysftp

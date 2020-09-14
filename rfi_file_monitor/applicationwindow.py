@@ -524,11 +524,20 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
     def remove_operations_button_cb(self, button):
         _class = self.controls_operations_live_combo.get_model()[self.controls_operations_live_combo.get_active_iter()][1]
-        for op in self._operations_box.get_children():
+        self.controls_operations_live.remove(self.controls_operations_live_combo.get_active_iter())
+        self.controls_operations_live_combo.set_model(self.controls_operations_live)
+        ops = self._operations_box.get_children()
+        for op in ops:
             if op.NAME == _class.NAME:
-                op.destroy_operation()
-                op.index = None
-            else:
+                op_to_remove = op
+                break
+        old_index = op_to_remove.index
+        self._operations_box.remove(op_to_remove)
+        self._operations_box.resize_children()
+        op_to_remove.destroy_operation()
+
+        for op in self._operations_box.get_children():
+            if op.index > old_index:
                 op.index = op.index -1 # reordering all the indices of the ops.
 
     def directory_chooser_button_cb(self, button):

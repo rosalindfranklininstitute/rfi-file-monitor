@@ -534,7 +534,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         old_index = op_to_remove.index
         self._operations_box.remove(op_to_remove)
         self._operations_box.resize_children()
-        op_to_remove.destroy_operation()
+
 
         for op in self._operations_box.get_children():
             if op.index > old_index:

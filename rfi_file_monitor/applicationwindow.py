@@ -527,6 +527,9 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         for op in self._operations_box.get_children():
             if op.NAME == _class.NAME:
                 op.destroy_operation()
+                op.index = None
+            else:
+                op.index = op.index -1 # reordering all the indices of the ops.
 
     def directory_chooser_button_cb(self, button):
         if self.params.monitored_directory:

@@ -183,11 +183,15 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
         self.controls_operations_live_combo.pack_start(renderer, True)
         self.controls_operations_live_combo.add_attribute(renderer, "text", 0)
-        controls_grid.attach(self.controls_operations_live_combo, 1,2,2,1)
+        controls_grid.attach(self.controls_operations_live_combo, 2,3,2,1)
 
-        self.remove_operation = Gtk.Button(label='Remove')
-        controls_grid.attach(self.remove_operation, 3,2, 1, 1)
+        self.remove_operation = Gtk.Button(label='Remove',
+                                           halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+                                           hexpand=False, vexpand=False,
+                                           )
+        controls_grid.attach(self.remove_operation, 4, 3, 2, 1)
         self.remove_operation.connect('clicked', self.remove_operations_button_cb)
+
 
         advanced_options_expander = Gtk.Expander(
             label='Advanced options',
@@ -520,7 +524,9 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
     def remove_operations_button_cb(self, button):
         _class = self.controls_operations_live_combo.get_model()[self.controls_operations_live_combo.get_active_iter()][1]
-        print(_class.NAME)
+        for op in self._operations_box.get_children():
+            if op.NAME == _class.NAME:
+                op.destroy_operation()
 
     def directory_chooser_button_cb(self, button):
         if self.params.monitored_directory:

@@ -112,12 +112,3 @@ class DummyOperation(Operation):
         # None indicates success, a string failure, with its contents set to an error message
         return None
 
-    def destroy_operation(self):
-
-       for widget in self._grid.get_children():
-            widget.destroy()
-
-       self._grid.destroy()
-       self.destroy()
-       self.appwindow.show()
-       self._index = None

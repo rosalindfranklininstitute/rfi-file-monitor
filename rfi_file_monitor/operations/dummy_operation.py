@@ -16,7 +16,12 @@ class DummyOperation(Operation):
 
     def __init__(self, *args, **kwargs):
         Operation.__init__(self, *args, **kwargs)
-
+        self._grid = Gtk.Grid(
+            row_spacing=5,
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False
+        )
+        self.add(self._grid)
         self._grid.attach(Gtk.Label(label='This is a dummy operation'), 0, 0, 1, 1)
         combobox = Gtk.ComboBoxText()
         combobox.append_text('Text1')
@@ -46,9 +51,6 @@ class DummyOperation(Operation):
             hexpand=True, vexpand=False,
         ), 'enable_echo_acl')
         self._grid.attach(widget, 0, 4, 2, 1)
-
-        button = Gtk.Button.new_with_label('Remove')
-        self._grid_attach(widget, 0,5,2,1)
 
 
     def preflight_check(self):

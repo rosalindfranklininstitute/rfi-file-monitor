@@ -164,16 +164,41 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         else:
             self._controls_operations_button.set_sensitive(False)
             self._controls_operations_combo.set_sensitive(False)
-        
+
+        controls_grid_basic.attach(
+            Gtk.Label(
+                label="<b>Remove operation: </b>",
+                use_markup=True,
+                halign=Gtk.Align.END, valign=Gtk.Align.CENTER,
+                hexpand=False, vexpand=False),
+            0, 3, 2, 1)
+
+        self.controls_operations_live = Gtk.ListStore(str, object)
+
+        self.controls_operations_live_combo = Gtk.ComboBox(
+            model=self.controls_operations_live,
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+        )
+
+        self.controls_operations_live_combo.pack_start(renderer, True)
+        self.controls_operations_live_combo.add_attribute(renderer, "text", 0)
+        controls_grid.attach(self.controls_operations_live_combo, 1,2,2,1)
+
+        self.remove_operation = Gtk.Button(label='Remove')
+        controls_grid.attach(self.remove_operation, 3,2, 1, 1)
+        self.remove_operation.connect('clicked', self.remove_operations_button_cb)
+
         advanced_options_expander = Gtk.Expander(
             label='Advanced options',
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False)
         controls_grid.attach(
             advanced_options_expander,
-            0, 1, 1, 1
+            0, 4, 1, 1
         )
-        
+
+
         self.advanced_options_child = Gtk.Grid(
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
@@ -490,6 +515,12 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self._operations_box.pack_start(new_operation, False, False, 0)
         new_operation.show_all()
         self.update_monitor_switch_sensitivity()
+        self.controls_operations_live.append([_class.NAME, _class])
+        self.controls_operations_live_combo.set_model(self.controls_operations_live)
+
+    def remove_operations_button_cb(self, button):
+        _class = self.controls_operations_live_combo.get_model()[self.controls_operations_live_combo.get_active_iter()][1]
+        print(_class.NAME)
 
     def directory_chooser_button_cb(self, button):
         if self.params.monitored_directory:

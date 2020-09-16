@@ -5,7 +5,7 @@ from gi.repository import Gtk, GLib, Gio
 
 import logging
 from pathlib import PurePath
-from typing import Final, Dict, Any
+from typing import Final, Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +92,7 @@ class File:
         
         return GLib.SOURCE_REMOVE
 
-    def _update_status_worker_cb(self, index: int, status: FileStatus):
+    def _update_status_worker_cb(self, index: int, status: FileStatus, error):
         if not self.row_reference.valid():
             logger.warning(f"_update_status_worker_cb: {self.filename} is invalid!")
             return GLib.SOURCE_REMOVE
@@ -117,16 +117,17 @@ class File:
             model[iter][5] = "100.0 %"
         elif status == FileStatus.FAILURE:
             model[iter][6] = "red"
+            model[iter][7] = error
 
         return GLib.SOURCE_REMOVE
 
-    def update_status(self, index: int, status: FileStatus):
+    def update_status(self, index: int, status: FileStatus, error: Optional[str] = None):
         """
         When an operation has finished, update the status of the corresponding
         entry in the treemodel.
         An index of -1 refers to the parent entry, 0 or higher refers to a child.
         """
-        GLib.idle_add(self._update_status_worker_cb, index, status)
+        GLib.idle_add(self._update_status_worker_cb, index, status, error)
 
     def update_progressbar(self, index: int, value: float):
         """

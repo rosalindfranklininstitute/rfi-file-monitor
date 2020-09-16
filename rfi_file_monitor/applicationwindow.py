@@ -333,6 +333,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             float, # operation progress
             str, # operation progress as string
             str, # background color
+            str, # error message
         )
 
         files_scrolled_window = Gtk.ScrolledWindow(
@@ -364,6 +365,8 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         renderer = Gtk.CellRendererProgress()
         column = Gtk.TreeViewColumn("Progress", renderer, value=4, text=5, cell_background=6)
         files_tree_view.append_column(column)
+
+        files_tree_view.set_tooltip_column(column=7)
 
     def _add_advanced_options_horizontal_separator(self):
         self.advanced_options_child.attach(Gtk.Separator(
@@ -445,6 +448,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                     operation_progress=0.0,
                     operation_progress_str="0.0 %",
                     background_color=None,
+                    error_message="",
                 ))
                 _row_reference = Gtk.TreeRowReference.new(self._files_tree_model, self._files_tree_model.get_path(iter))
                 # create its children, one for each operation
@@ -457,6 +461,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                         operation_progress=0.0,
                         operation_progress_str="0.0 %",
                         background_color=None,
+                        error_message="",
                     ))
                 _file = File(filename=file_path, relative_filename=_relative_file_path, created=_creation_timestamp, status=FileStatus.CREATED, row_reference=_row_reference)
                 self._files_dict[file_path] = _file
@@ -656,6 +661,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                 operation_progress=0.0,
                 operation_progress_str="0.0 %",
                 background_color=None,
+                error_message="",
                 ))
             _row_reference = Gtk.TreeRowReference.new(self._files_tree_model, self._files_tree_model.get_path(iter))
             # create its children, one for each operation
@@ -668,6 +674,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                     operation_progress=0.0,
                     operation_progress_str="0.0 %",
                     background_color=None,
+                    error_message="",
                 ))
             _file = File(filename=file_path, relative_filename=_relative_file_path, created=_creation_timestamp, status=FileStatus.SAVED, row_reference=_row_reference)
             self._files_dict[file_path] = _file
@@ -797,3 +804,4 @@ class OutputRow(NamedTuple):
     operation_progress: float
     operation_progress_str: str
     background_color: str
+    error_message: str

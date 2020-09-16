@@ -28,7 +28,7 @@ class Job(threading.Thread):
                 self._file.update_status(index, FileStatus.SUCCESS)
             else:
                 # update operation status to failed
-                self._file.update_status(index, FileStatus.FAILURE)
+                self._file.update_status(index, FileStatus.FAILURE, rv)
 
         # update global operation status
         if rv is None:
@@ -36,7 +36,7 @@ class Job(threading.Thread):
             self._file.update_status(-1, FileStatus.SUCCESS)
         else:
             # update job status to failed
-            self._file.update_status(-1, FileStatus.FAILURE)
+            self._file.update_status(-1, FileStatus.FAILURE, rv)
 
         # when the thread should exit, don't even bother decreasing njobs_running,
         # as it will should be set to 0 regardless, and you may end up with negative

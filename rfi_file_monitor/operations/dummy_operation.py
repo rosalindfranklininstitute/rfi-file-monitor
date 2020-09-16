@@ -111,7 +111,7 @@ class DummyOperation(Operation):
                 logger.info(f"Killing thread {thread.name}")
                 return str('Thread killed')
             time.sleep(1.0)
-            if random() < 0.1:
+            if random() < 0.05:
                 return "Unfavorable RNG!!!"
             file.update_progressbar(self.index, (i + 1) * 10)
 

@@ -31,7 +31,6 @@ requirements:
     - adwaita-icon-theme
     - librsvg
     - bugsnag
-    - glib <2.66.0 # remove when Atk is rebuilt
 
 test:
   imports:

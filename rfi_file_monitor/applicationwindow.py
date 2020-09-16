@@ -183,13 +183,13 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
         self.controls_operations_live_combo.pack_start(renderer, True)
         self.controls_operations_live_combo.add_attribute(renderer, "text", 0)
-        controls_grid.attach(self.controls_operations_live_combo, 2,3,2,1)
+        controls_grid_basic.attach(self.controls_operations_live_combo, 2,3,2,1)
 
         self.remove_operation = Gtk.Button(label='Remove',
                                            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
                                            hexpand=False, vexpand=False,
                                            )
-        controls_grid.attach(self.remove_operation, 4, 3, 2, 1)
+        controls_grid_basic.attach(self.remove_operation, 4, 3, 2, 1)
         self.remove_operation.connect('clicked', self.remove_operations_button_cb)
 
 

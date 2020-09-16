@@ -115,6 +115,8 @@ class File:
         if status == FileStatus.SUCCESS:
             model[iter][4] = 100.0
             model[iter][5] = "100.0 %"
+        elif status == FileStatus.FAILURE:
+            model[iter][6] = "red"
 
         return GLib.SOURCE_REMOVE
 

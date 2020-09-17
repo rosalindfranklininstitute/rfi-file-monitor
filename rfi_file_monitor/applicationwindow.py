@@ -519,13 +519,12 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self._operations_box.pack_start(new_operation, False, False, 0)
         new_operation.show_all()
         self.update_monitor_switch_sensitivity()
-        self.controls_operations_live.append([_class.NAME, _class])
+        self.controls_operations_live.append([f'Operation {new_operation.index+1}:{_class.NAME}', _class])
         self.controls_operations_live_combo.set_model(self.controls_operations_live)
 
     def remove_operations_button_cb(self, button):
         _class = self.controls_operations_live_combo.get_model()[self.controls_operations_live_combo.get_active_iter()][1]
-        self.controls_operations_live.remove(self.controls_operations_live_combo.get_active_iter())
-        self.controls_operations_live_combo.set_model(self.controls_operations_live)
+
         ops = self._operations_box.get_children()
         for op in ops:
             if op.NAME == _class.NAME:
@@ -534,6 +533,12 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         old_index = op_to_remove.index
         self._operations_box.remove(op_to_remove)
         self._operations_box.resize_children()
+
+        self.controls_operations_live.clear()
+        for child in self._operations_box.get_children():
+            if child:
+                self.controls_operations_live.append([f'Operation {child.index}:{child.NAME}', child])
+        self.controls_operations_live_combo.set_model(self.controls_operations_live)
 
 
         for op in self._operations_box.get_children():

@@ -230,22 +230,22 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self._add_advanced_options_horizontal_separator()
 
         # Promote created files to saved after # seconds
-        status_promotion_grid = Gtk.Grid(
+        created_status_promotion_grid = Gtk.Grid(
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
             column_spacing=5
         )
 
-        self.advanced_options_child.attach(status_promotion_grid, 0, self.advanced_options_child_row_counter, 1, 1)
+        self.advanced_options_child.attach(created_status_promotion_grid, 0, self.advanced_options_child_row_counter, 1, 1)
         self.advanced_options_child_row_counter += 1
-        status_promotion_checkbutton = self.register_widget(Gtk.CheckButton(label='Promote files from \'Created\' to \'Saved\' after',
+        created_status_promotion_checkbutton = self.register_widget(Gtk.CheckButton(label='Promote files from \'Created\' to \'Saved\' after',
                 halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
-                hexpand=False, vexpand=False), 'status_promotion_active')
-        status_promotion_grid.attach(
-            status_promotion_checkbutton,
+                hexpand=False, vexpand=False), 'created_status_promotion_active')
+        created_status_promotion_grid.attach(
+            created_status_promotion_checkbutton,
             0, 0, 1, 1
         )
-        status_promotion_spinbutton = self.register_widget(Gtk.SpinButton(
+        created_status_promotion_spinbutton = self.register_widget(Gtk.SpinButton(
             adjustment=Gtk.Adjustment(
                 lower=1,
                 upper=3600,
@@ -257,9 +257,9 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             numeric=True,
             climb_rate=5,
             halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
-            hexpand=False, vexpand=False), 'status_promotion_delay')
-        status_promotion_grid.attach(status_promotion_spinbutton, 1, 0, 1, 1)
-        status_promotion_grid.attach(Gtk.Label(label='seconds'), 2, 0, 1, 1)
+            hexpand=False, vexpand=False), 'created_status_promotion_delay')
+        created_status_promotion_grid.attach(created_status_promotion_spinbutton, 1, 0, 1, 1)
+        created_status_promotion_grid.attach(Gtk.Label(label='seconds'), 2, 0, 1, 1)
 
         self._add_advanced_options_horizontal_separator()
 
@@ -593,8 +593,8 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                 #logger.debug(f"timeout_cb: {_filename} found as {str(_file.status)}")
                 if _file.status == FileStatus.CREATED:
                     logger.debug(f"files_dict_timeout_cb: {_filename} was CREATED")
-                    if self.params.status_promotion_active and \
-                        (time() - _file.created) >  self.params.status_promotion_delay:
+                    if self.params.created_status_promotion_active and \
+                        (time() - _file.created) >  self.params.created_status_promotion_delay:
                         # promote to SAVED!
                         _file.status = FileStatus.SAVED
                         path = _file.row_reference.get_path()

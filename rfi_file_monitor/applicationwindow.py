@@ -519,31 +519,21 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self._operations_box.pack_start(new_operation, False, False, 0)
         new_operation.show_all()
         self.update_monitor_switch_sensitivity()
-        self.controls_operations_live.append([f'Operation {new_operation.index+1}:{_class.NAME}', _class])
+        self.controls_operations_live.append([f' {new_operation.props.label}:{new_operation.NAME}', new_operation])
         self.controls_operations_live_combo.set_model(self.controls_operations_live)
 
     def remove_operations_button_cb(self, button):
-        _class = self.controls_operations_live_combo.get_model()[self.controls_operations_live_combo.get_active_iter()][1]
+        op_to_remove = self.controls_operations_live_combo.get_model()[self.controls_operations_live_combo.get_active_iter()][1]
 
-        ops = self._operations_box.get_children()
-        for op in ops:
-            if op.NAME == _class.NAME:
-                op_to_remove = op
-                break
-        old_index = op_to_remove.index
         self._operations_box.remove(op_to_remove)
         self._operations_box.resize_children()
 
         self.controls_operations_live.clear()
-        for child in self._operations_box.get_children():
-            if child:
-                self.controls_operations_live.append([f'Operation {child.index}:{child.NAME}', child])
-        self.controls_operations_live_combo.set_model(self.controls_operations_live)
-
-
-        for op in self._operations_box.get_children():
-            if op.index > old_index:
+        for op in self._operations_box:
+            if op.index > op_to_remove.index:
                 op.index = op.index -1 # reordering all the indices of the ops.
+            self.controls_operations_live.append([f' {op.props.label}:{op.NAME}', op])
+            self.controls_operations_live_combo.set_model(self.controls_operations_live)
 
     def directory_chooser_button_cb(self, button):
         if self.params.monitored_directory:

@@ -180,9 +180,9 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False,
         )
-
-        self.controls_operations_live_combo.pack_start(renderer, True)
-        self.controls_operations_live_combo.add_attribute(renderer, "text", 0)
+        live_renderer = Gtk.CellRendererText()
+        self.controls_operations_live_combo.pack_start(live_renderer, True)
+        self.controls_operations_live_combo.add_attribute(live_renderer, "text", 0)
         controls_grid_basic.attach(self.controls_operations_live_combo, 2,3,2,1)
 
         self.remove_operation = Gtk.Button(label='Remove',
@@ -519,7 +519,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self._operations_box.pack_start(new_operation, False, False, 0)
         new_operation.show_all()
         self.update_monitor_switch_sensitivity()
-        self.controls_operations_live.append([f' {new_operation.props.label}:{new_operation.NAME}', new_operation])
+        self.controls_operations_live.append([ new_operation.get_label(), new_operation])
         self.controls_operations_live_combo.set_model(self.controls_operations_live)
 
     def remove_operations_button_cb(self, button):
@@ -532,7 +532,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         for op in self._operations_box:
             if op.index > op_to_remove.index:
                 op.index = op.index -1 # reordering all the indices of the ops.
-            self.controls_operations_live.append([f' {op.props.label}:{op.NAME}', op])
+            self.controls_operations_live.append([op.get_label(), op])
             self.controls_operations_live_combo.set_model(self.controls_operations_live)
 
     def directory_chooser_button_cb(self, button):

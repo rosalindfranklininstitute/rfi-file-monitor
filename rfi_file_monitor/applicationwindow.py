@@ -263,6 +263,40 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
         self._add_advanced_options_horizontal_separator()
 
+        # Delay promoting saved files to queued for # seconds
+        saved_status_promotion_grid = Gtk.Grid(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            column_spacing=5
+        )
+
+        self.advanced_options_child.attach(saved_status_promotion_grid, 0, self.advanced_options_child_row_counter, 1, 1)
+        self.advanced_options_child_row_counter += 1
+        saved_status_promotion_checkbutton = self.register_widget(Gtk.CheckButton(label='Delay promoting files from \'Saved\' to \'Queued\' for',
+                halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+                hexpand=False, vexpand=False), 'saved_status_promotion_active')
+        saved_status_promotion_grid.attach(
+            saved_status_promotion_checkbutton,
+            0, 0, 1, 1
+        )
+        saved_status_promotion_spinbutton = self.register_widget(Gtk.SpinButton(
+            adjustment=Gtk.Adjustment(
+                lower=1,
+                upper=3600,
+                value=5,
+                page_size=0,
+                step_increment=1),
+            value=5,
+            update_policy=Gtk.SpinButtonUpdatePolicy.IF_VALID,
+            numeric=True,
+            climb_rate=5,
+            halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False), 'saved_status_promotion_delay')
+        saved_status_promotion_grid.attach(saved_status_promotion_spinbutton, 1, 0, 1, 1)
+        saved_status_promotion_grid.attach(Gtk.Label(label='seconds'), 2, 0, 1, 1)
+
+        self._add_advanced_options_horizontal_separator()
+        
         # Set the max number of threads to be used for processing
         max_threads_grid = Gtk.Grid(
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
@@ -470,6 +504,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                 logger.debug(f"File {file_path} has been saved")
                 file = self._files_dict[file_path]
                 file.status = FileStatus.SAVED
+                file.saved = time() 
                 path = file.row_reference.get_path()
                 self._files_tree_model[path][2] = int(FileStatus.SAVED) 
 
@@ -597,20 +632,14 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                         (time() - _file.created) >  self.params.created_status_promotion_delay:
                         # promote to SAVED!
                         _file.status = FileStatus.SAVED
+                        _file.saved = time()
                         path = _file.row_reference.get_path()
                         self._files_tree_model[path][2] = int(FileStatus.SAVED) 
                         logger.debug(f"files_dict_timeout_cb: promoting {_filename} to SAVED")
                         
                 elif _file.status == FileStatus.SAVED:
-                    #logger.debug(f"files_dict_timeout_cb SAVED: {self._njobs_running=} {self.params.max_threads=}")
-                    if self._njobs_running < self.params.max_threads:
-                        # launch a new job
-                        logger.debug(f"files_dict_timeout_cb: launching new job for {_filename}")
-                        job = Job(self, _file)
-                        self._jobs_list.append(job)
-                        job.start()
-                        self._njobs_running += 1
-                    else:
+                    if not(self.params.saved_status_promotion_active and \
+                        (time() - _file.saved) <  self.params.saved_status_promotion_delay):
                         # queue the job
                         logger.debug(f"files_dict_timeout_cb: adding {_filename} to queue for future processing")
                         _file.status = FileStatus.QUEUED
@@ -665,6 +694,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                     operation_progress_str="0.0 %",
                 ))
             _file = File(filename=file_path, relative_filename=_relative_file_path, created=_creation_timestamp, status=FileStatus.SAVED, row_reference=_row_reference)
+            _file.saved = time()
             self._files_dict[file_path] = _file
 
         return GLib.SOURCE_REMOVE

@@ -38,6 +38,7 @@ class File:
         self._row_reference = row_reference
         self._operation_metadata : Final[Dict[int, Dict[str, Any]]] = dict()
         self._cancellable = Gio.Cancellable()
+        self._saved : int = 0
 
     @property
     def cancellable(self) -> Gio.Cancellable:
@@ -58,6 +59,14 @@ class File:
     @property
     def created(self) -> int:
         return self._created
+
+    @property
+    def saved(self) -> int:
+        return self._saved
+
+    @saved.setter
+    def saved(self, value: int):
+        self._saved = value
 
     @property
     def status(self) -> FileStatus:

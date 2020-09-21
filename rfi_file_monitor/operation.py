@@ -98,4 +98,8 @@ class Operation(ABC, Gtk.Frame, WidgetParams, metaclass=OperationMeta):
         """
         return
 
-    
+    def destroy_operation(self):
+        """
+        use this method to remove widgets from the GUI and widget registry
+        """
+        return

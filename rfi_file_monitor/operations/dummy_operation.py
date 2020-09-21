@@ -54,9 +54,6 @@ class DummyOperation(Operation):
         self._grid.attach(widget, 0, 4, 2, 1)
 
 
-
-
-
     def preflight_check(self):
         metadata = dict()
 
@@ -117,4 +114,4 @@ class DummyOperation(Operation):
 
         # None indicates success, a string failure, with its contents set to an error message
         return None
-    
+

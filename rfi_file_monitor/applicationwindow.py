@@ -154,7 +154,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False,
         )
-        self._controls_operations_button.connect("clicked", self.operations_button_cb)
+        self._controls_operations_button.connect("clicked", self.add_operations_button_cb)
         controls_grid_basic.attach(
             self._controls_operations_button,
             4, 2, 2, 1)
@@ -164,16 +164,46 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         else:
             self._controls_operations_button.set_sensitive(False)
             self._controls_operations_combo.set_sensitive(False)
-        
+
+        controls_grid_basic.attach(
+            Gtk.Label(
+                label="<b>Remove operation: </b>",
+                use_markup=True,
+                halign=Gtk.Align.END, valign=Gtk.Align.CENTER,
+                hexpand=False, vexpand=False),
+            0, 3, 2, 1)
+
+        self.controls_operations_live = Gtk.ListStore(str, object)
+
+        self.controls_operations_live_combo = Gtk.ComboBox(
+            model=self.controls_operations_live,
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+        )
+        live_renderer = Gtk.CellRendererText()
+        self.controls_operations_live_combo.pack_start(live_renderer, True)
+        self.controls_operations_live_combo.add_attribute(live_renderer, "text", 0)
+        controls_grid_basic.attach(self.controls_operations_live_combo, 2,3,2,1)
+
+        self.remove_operation = Gtk.Button(label='Remove',
+                                           halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+                                           hexpand=False, vexpand=False,
+                                           )
+        controls_grid_basic.attach(self.remove_operation, 4, 3, 2, 1)
+        self.remove_operation.connect('clicked', self.remove_operations_button_cb)
+        self.remove_operation.set_sensitive(False)
+
+
         advanced_options_expander = Gtk.Expander(
             label='Advanced options',
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False)
         controls_grid.attach(
             advanced_options_expander,
-            0, 1, 1, 1
+            0, 4, 1, 1
         )
-        
+
+
         self.advanced_options_child = Gtk.Grid(
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
@@ -524,8 +554,8 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         else:
             self._monitor_play_button.set_sensitive(False)
 
-    def operations_button_cb(self, button):
-        logger.debug("Clicked operations_button_cb")
+    def add_operations_button_cb(self, button):
+        logger.debug("Clicked add_operations_button_cb")
         _class = self._controls_operations_combo.get_model()[self._controls_operations_combo.get_active_iter()][1]
         new_operation = _class(appwindow=self)
         logger.debug(f"{type(new_operation)=}")
@@ -533,6 +563,30 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self._operations_box.pack_start(new_operation, False, False, 0)
         new_operation.show_all()
         self.update_monitor_switch_sensitivity()
+        iter = self.controls_operations_live.append([ new_operation.get_label(), new_operation])
+        self.controls_operations_live_combo.set_active_iter(iter)
+        self.remove_operation.set_sensitive(True)
+
+    def remove_operations_button_cb(self, button):
+        iter = self.controls_operations_live_combo.get_active_iter()
+        op_to_remove = self.controls_operations_live[iter][1]
+        self.controls_operations_live.remove(iter)
+
+        self._operations_box.remove(op_to_remove)
+        self._operations_box.resize_children()
+
+        self.update_monitor_switch_sensitivity()
+
+        if len(self._operations_box) == 0:
+            button.set_sensitive(False)
+            return
+
+        self.controls_operations_live.clear()
+        for op in self._operations_box:
+            if op.index > op_to_remove.index:
+                op.index = op.index -1 # reordering all the indices of the ops.
+            iter = self.controls_operations_live.append([op.get_label(), op])
+        self.controls_operations_live_combo.set_active_iter(iter)
 
     def directory_chooser_button_cb(self, button):
         if self.params.monitored_directory:
@@ -556,8 +610,10 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         # remove any existing operations in there currently
         for op in self._operations_box:
             self._operations_box.remove(op)
+        self.controls_operations_live.clear()
 
         # add the operations
+        iter = None
         for op in ops:
             for _class in self._known_operations.values():
                 if op['name'] == _class.NAME:
@@ -566,9 +622,14 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                     self._operations_box.pack_start(new_operation, False, False, 0)
                     new_operation.update_from_dict(op['params'])
                     new_operation.show_all()
+                    iter = self.controls_operations_live.append([ new_operation.get_label(), new_operation])
                     break
             else:
                 logger.warning(f"load_from_yaml_dict: no match found for operation {op['name']}")
+
+        if iter:
+            self.controls_operations_live_combo.set_active_iter(iter)
+            self.remove_operation.set_sensitive(True)
 
         self.update_monitor_switch_sensitivity()
 

@@ -5,6 +5,7 @@ from gi.repository import Gtk
 import time
 from threading import current_thread
 import logging
+from random import random
 
 from ..operation import Operation
 from ..file import File
@@ -110,6 +111,8 @@ class DummyOperation(Operation):
                 logger.info(f"Killing thread {thread.name}")
                 return str('Thread killed')
             time.sleep(1.0)
+            if random() < 0.05:
+                return "Unfavorable RNG!!!"
             file.update_progressbar(self.index, (i + 1) * 10)
 
         # None indicates success, a string failure, with its contents set to an error message

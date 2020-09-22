@@ -256,6 +256,28 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                 hexpand=True, vexpand=False,
         ), 'allowed_patterns')
         allowed_patterns_grid.attach(self._allowed_patterns_entry, 1, 0, 1, 1)
+        self._add_advanced_options_horizontal_separator()
+        # Specify allowed file patterns
+        ignore_patterns_grid = Gtk.Grid(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            column_spacing=5
+        )
+
+        self.advanced_options_child.attach(ignore_patterns_grid, 0, self.advanced_options_child_row_counter, 1, 2)
+        self.advanced_options_child_row_counter += 1
+        ignore_patterns_grid.attach(Gtk.Label(
+            label='Ignored filename patterns',
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+        ),
+            0, 0, 1, 1,
+        )
+        self._ignored_patterns_entry = self.register_widget(Gtk.Entry(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+        ), 'ignore_patterns')
+        ignore_patterns_grid.attach(self._ignored_patterns_entry, 1, 0, 1, 1)
 
         self._add_advanced_options_horizontal_separator()
 
@@ -812,13 +834,15 @@ class PreflightCheckThread(Thread):
         self._appwindow = appwindow 
         self._task_window = task_window
 
+
     def _search_for_existing_files(self, directory: Path) -> List[Path]:
         rv: List[Path] = list()
         included_patterns = get_patterns_from_string(self._appwindow.params.allowed_patterns)
+        ignore_patterns = IGNORE_PATTERNS + get_patterns_from_string(self._appwindow.params.ignore_patterns)
         for child in directory.iterdir():
             if child.is_file() \
                 and not child.is_symlink() \
-                and match_path(str(child), included_patterns=included_patterns, excluded_patterns=IGNORE_PATTERNS, case_sensitive=False):
+                and match_path(str(child), included_patterns=included_patterns, excluded_patterns=ignore_patterns, case_sensitive=False):
                 
                 rv.append(directory.joinpath(child))
             elif self._appwindow.params.monitor_recursively and child.is_dir() and not child.is_symlink():
@@ -875,7 +899,8 @@ class EventHandler(PatternMatchingEventHandler):
     def __init__(self, appwindow: ApplicationWindow):
         self._appwindow = appwindow
         included_patterns = get_patterns_from_string(self._appwindow.params.allowed_patterns)
-        super(EventHandler, self).__init__(patterns=included_patterns, ignore_patterns=IGNORE_PATTERNS, ignore_directories=True)
+        ignore_patterns = IGNORE_PATTERNS+ get_patterns_from_string(self._appwindow.params.ignore_patterns)
+        super(EventHandler, self).__init__(patterns=included_patterns, ignore_patterns=ignore_patterns, ignore_directories=True)
         
     def on_created(self, event):
         file_path = event.src_path

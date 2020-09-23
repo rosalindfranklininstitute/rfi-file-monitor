@@ -127,7 +127,7 @@ class S3UploaderOperation(Operation):
 
     @classmethod
     def _get_dict_tagset(cls, preflight_check_metadata: Dict[int, Dict[str, Any]], tagtype: str) -> dict:
-        tags = (preflight_check_metadata, tagtype)
+        tags = query_metadata(preflight_check_metadata, tagtype)
         if tags is None:
             return None
         tagset = [dict(Key=_key, Value=_value) for _key, _value in tags.items()]

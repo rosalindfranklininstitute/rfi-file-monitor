@@ -52,6 +52,12 @@ def get_patterns_from_string(input: str) -> List[str]:
     # multiple patterns are supported, provided they are separated with commas
     return list(map(lambda x: x.strip(), input.split(',')))
 
+def get_ignore_patterns_from_string(input: str, defaults=[]) -> List[str]:
+    if not input or not input.strip():
+        return defaults
+    # multiple patterns are supported, provided they are separated with commas
+    return list(map(lambda x: x.strip(), input.split(','))) + defaults
+
 
 class LongTaskWindow(Gtk.Window):
     def __init__(self, parent_window: Optional[Gtk.Window] = None, *args, **kwargs):

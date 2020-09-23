@@ -838,7 +838,12 @@ class PreflightCheckThread(Thread):
     def _search_for_existing_files(self, directory: Path) -> List[Path]:
         rv: List[Path] = list()
         included_patterns = get_patterns_from_string(self._appwindow.params.allowed_patterns)
-        ignore_patterns = IGNORE_PATTERNS + get_patterns_from_string(self._appwindow.params.ignore_patterns)
+        ignore_pattern_strings =  get_patterns_from_string(self._appwindow.params.ignore_patterns)
+
+        if ignore_pattern_strings == ['*']:
+            ignore_patterns = IGNORE_PATTERNS
+        else:
+            ignore_patterns = IGNORE_PATTERNS + ignore_pattern_strings
         for child in directory.iterdir():
             if child.is_file() \
                 and not child.is_symlink() \

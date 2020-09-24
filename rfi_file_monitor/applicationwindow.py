@@ -19,7 +19,7 @@ import os
 import platform
 import inspect
 
-from rfi_file_monitor.utils import add_action_entries, LongTaskWindow, class_in_object_iterable, get_patterns_from_string, get_ignore_patterns_from_string
+from rfi_file_monitor.utils import add_action_entries, LongTaskWindow, class_in_object_iterable, get_patterns_from_string
 from rfi_file_monitor.utils.widgetparams import WidgetParams
 from .file import FileStatus, File
 from .job import Job
@@ -840,7 +840,7 @@ class PreflightCheckThread(Thread):
     def _search_for_existing_files(self, directory: Path) -> List[Path]:
         rv: List[Path] = list()
         included_patterns = get_patterns_from_string(self._appwindow.params.allowed_patterns)
-        ignore_pattern_strings = get_ignore_patterns_from_string(self._appwindow.params.ignore_patterns, IGNORE_PATTERNS)
+        ignore_pattern_strings = get_patterns_from_string(self._appwindow.params.ignore_patterns, defaults=IGNORE_PATTERNS)
         for child in directory.iterdir():
             if child.is_file() \
                 and not child.is_symlink() \
@@ -902,7 +902,7 @@ class EventHandler(PatternMatchingEventHandler):
     def __init__(self, appwindow: ApplicationWindow):
         self._appwindow = appwindow
         included_patterns = get_patterns_from_string(self._appwindow.params.allowed_patterns)
-        ignore_patterns =  get_ignore_patterns_from_string(self._appwindow.params.ignore_patterns,IGNORE_PATTERNS)
+        ignore_patterns =  get_patterns_from_string(self._appwindow.params.ignore_patterns,defaults =IGNORE_PATTERNS)
         super(EventHandler, self).__init__(patterns=included_patterns, ignore_patterns=ignore_patterns, ignore_directories=True)
         
     def on_created(self, event):

@@ -53,7 +53,7 @@ def get_patterns_from_string(input: str, defaults: List =None) -> List[str]:
             # multiple patterns are supported, provided they are separated with commas
             return list(map(lambda x: x.strip(), input.split(',')))
     else:
-         if input:
+         if input or input.strip():
              return list(map(lambda x: x.strip(), input.split(','))) + defaults
          else:
             return defaults

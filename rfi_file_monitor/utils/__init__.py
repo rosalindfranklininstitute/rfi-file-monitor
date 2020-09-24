@@ -54,7 +54,7 @@ def get_patterns_from_string(input: str, defaults: List =None) -> List[str]:
     else:
         if input or input.strip():
              return list(map(lambda x: x.strip(), input.split(','))) + defaults
-         else:
+        else:
             return defaults
 
 

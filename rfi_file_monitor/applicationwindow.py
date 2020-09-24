@@ -326,16 +326,16 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
         self.advanced_options_child.attach(saved_status_promotion_grid, 0, self.advanced_options_child_row_counter, 1, 1)
         self.advanced_options_child_row_counter += 1
-        saved_status_promotion_checkbutton = self.register_widget(Gtk.CheckButton(label='Delay promoting files from \'Saved\' to \'Queued\' for',
+        label = Gtk.Label(label='Delay promoting files from \'Saved\' to \'Queued\' for',
                 halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
-                hexpand=False, vexpand=False), 'saved_status_promotion_active')
+                hexpand=False, vexpand=False)
         saved_status_promotion_grid.attach(
-            saved_status_promotion_checkbutton,
+            label,
             0, 0, 1, 1
         )
         saved_status_promotion_spinbutton = self.register_widget(Gtk.SpinButton(
             adjustment=Gtk.Adjustment(
-                lower=1,
+                lower=2,
                 upper=3600,
                 value=5,
                 page_size=0,
@@ -740,8 +740,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                         logger.debug(f"files_dict_timeout_cb: promoting {_filename} to SAVED")
                         
                 elif _file.status == FileStatus.SAVED:
-                    if not(self.params.saved_status_promotion_active and \
-                        (time() - _file.saved) <  self.params.saved_status_promotion_delay):
+                    if (time() - _file.saved) > self.params.saved_status_promotion_delay:
                         # queue the job
                         logger.debug(f"files_dict_timeout_cb: adding {_filename} to queue for future processing")
                         _file.status = FileStatus.QUEUED

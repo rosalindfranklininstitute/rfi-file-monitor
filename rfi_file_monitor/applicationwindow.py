@@ -13,7 +13,7 @@ from threading import RLock, Thread
 from time import time, ctime
 from pathlib import PurePath, Path
 from typing import OrderedDict as OrderedDictType
-from typing import Final, List, Optional, NamedTuple, Dict, Any
+from typing import Final, List, Optional, Dict, Any
 import importlib.metadata
 import os
 import platform

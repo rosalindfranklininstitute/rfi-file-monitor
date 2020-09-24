@@ -557,18 +557,27 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
     def file_changes_done_cb(self, file_path):
         with self._files_dict_lock:
-            if file_path not in self._files_dict:
-                logger.warning(f"{file_path} has not been created yet! Ignoring...")
-            elif self._files_dict[file_path].status != FileStatus.CREATED:
-                # looks like this file has been saved again!
-                logger.warning(f"{file_path} has been saved again?? Ignoring!")
-            else:
-                logger.debug(f"File {file_path} has been saved")
+            try:
                 file = self._files_dict[file_path]
+            except KeyError:
+                logger.warning(f"{file_path} has not been created yet! Ignoring...")
+                return
+
+            logger.debug(f"{file.status=}")
+
+            if file.status == FileStatus.SAVED:
+                # looks like this file has been saved again!
+                # update saved timestamp
+                logger.debug(f"File {file_path} has been saved again")
+                file.saved = time()
+            elif file.status == FileStatus.CREATED:
+                logger.debug(f"File {file_path} has been saved")
                 file.status = FileStatus.SAVED
                 file.saved = time() 
                 path = file.row_reference.get_path()
                 self._files_tree_model[path][2] = int(FileStatus.SAVED) 
+            else:
+                logger.warning(f"File {file_path} has been saved again after it was queued for processing!!")
 
     def update_monitor_switch_sensitivity(self):
         if self.params.monitored_directory and \

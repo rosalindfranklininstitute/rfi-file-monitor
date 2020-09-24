@@ -53,6 +53,13 @@ class DummyOperation(Operation):
         ), 'enable_echo_acl')
         self._grid.attach(widget, 0, 4, 2, 1)
 
+        widget = self.register_widget(Gtk.CheckButton(
+            active=False, label="Fail randomly",
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+        ), 'enable_random_fails')
+        self._grid.attach(widget, 0, 5, 2, 1)
+
 
     def preflight_check(self):
         metadata = dict()
@@ -108,7 +115,7 @@ class DummyOperation(Operation):
                 logger.info(f"Killing thread {thread.name}")
                 return str('Thread killed')
             time.sleep(1.0)
-            if random() < 0.05:
+            if self.params.enable_random_fails and random() < 0.05:
                 return "Unfavorable RNG!!!"
             file.update_progressbar(self.index, (i + 1) * 10)
 

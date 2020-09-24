@@ -111,7 +111,7 @@ class File:
         iter = model.get_iter(path)
 
         if index == -1: # parent
-            self.status = int(status)
+            self.status = status
             iter = model.get_iter(path)
         else:
             iter = model.iter_nth_child(iter, index)

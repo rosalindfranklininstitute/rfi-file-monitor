@@ -173,6 +173,7 @@ class S3UploaderOperation(Operation):
         # taken from https://stackoverflow.com/a/47565719
         try:
             logger.debug(f"Checking if bucket {params.bucket_name} exists")
+
             s3_client.head_bucket(Bucket=params.bucket_name)
         except botocore.exceptions.ClientError as e:
             # If a client error is thrown, then check that it was a 404 error.

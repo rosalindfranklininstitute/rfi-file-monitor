@@ -45,12 +45,16 @@ def class_in_object_iterable(iterable: Iterable, klass) -> bool:
             return True
     return False
 
-def get_patterns_from_string(input: str) -> List[str]:
-    if not input or not input.strip():
+def get_patterns_from_string(input: str,defaults =[]) -> List[str]:
+    if not input or not input.strip() and not defaults:
         return ['*']
-
+    elif input and defaults:
+         return list(map(lambda x: x.strip(), input.split(','))) + defaults
+    elif not input and defaults:
+        return defaults
+    else:
     # multiple patterns are supported, provided they are separated with commas
-    return list(map(lambda x: x.strip(), input.split(',')))
+        return list(map(lambda x: x.strip(), input.split(',')))
 
 
 class LongTaskWindow(Gtk.Window):

@@ -47,13 +47,12 @@ def class_in_object_iterable(iterable: Iterable, klass) -> bool:
 
 def get_patterns_from_string(input: str, defaults: List =None) -> List[str]:
     if not defaults:
-        if not input or not input.strip():
-            return ['*']
-        else:
-            # multiple patterns are supported, provided they are separated with commas
+        if input or  input.strip():
             return list(map(lambda x: x.strip(), input.split(',')))
+        else:
+            return ['*']
     else:
-         if input or input.strip():
+        if input or input.strip():
              return list(map(lambda x: x.strip(), input.split(','))) + defaults
          else:
             return defaults

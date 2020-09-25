@@ -13,11 +13,12 @@ from threading import RLock, Thread
 from time import time, ctime
 from pathlib import PurePath, Path
 from typing import OrderedDict as OrderedDictType
-from typing import Final, List, Optional, NamedTuple, Dict, Any
+from typing import Final, List, Optional, Dict, Any
 import importlib.metadata
 import os
 import platform
 import inspect
+from dataclasses import dataclass, astuple as dc_astuple
 
 from rfi_file_monitor.utils import add_action_entries, LongTaskWindow, class_in_object_iterable, get_patterns_from_string
 from rfi_file_monitor.utils.widgetparams import WidgetParams
@@ -326,16 +327,16 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
         self.advanced_options_child.attach(saved_status_promotion_grid, 0, self.advanced_options_child_row_counter, 1, 1)
         self.advanced_options_child_row_counter += 1
-        saved_status_promotion_checkbutton = self.register_widget(Gtk.CheckButton(label='Delay promoting files from \'Saved\' to \'Queued\' for',
+        label = Gtk.Label(label='Delay promoting files from \'Saved\' to \'Queued\' for',
                 halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
-                hexpand=False, vexpand=False), 'saved_status_promotion_active')
+                hexpand=False, vexpand=False)
         saved_status_promotion_grid.attach(
-            saved_status_promotion_checkbutton,
+            label,
             0, 0, 1, 1
         )
         saved_status_promotion_spinbutton = self.register_widget(Gtk.SpinButton(
             adjustment=Gtk.Adjustment(
-                lower=1,
+                lower=2,
                 upper=3600,
                 value=5,
                 page_size=0,
@@ -528,47 +529,50 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                 # add new entry to model
                 _creation_timestamp = time()
                 _relative_file_path = PurePath(file_path).relative_to(self.params.monitored_directory)
-                iter = self._files_tree_model.append(parent=None, row=OutputRow(
+                outputrow = OutputRow(
                     relative_filename=str(_relative_file_path),
                     creation_timestamp=_creation_timestamp,
                     status=int(FileStatus.CREATED),
                     operation_name="All",
-                    operation_progress=0.0,
-                    operation_progress_str="0.0 %",
-                    background_color=None,
-                    error_message="",
-                ))
+                )
+                iter = self._files_tree_model.append(parent=None, row=dc_astuple(outputrow))
                 _row_reference = Gtk.TreeRowReference.new(self._files_tree_model, self._files_tree_model.get_path(iter))
                 # create its children, one for each operation
                 for _operation in self._operations_box:
-                    self._files_tree_model.append(parent=iter, row=OutputRow(
+                    outputrow = OutputRow(
                         relative_filename="",
                         creation_timestamp=0,
                         status=int(FileStatus.QUEUED),
                         operation_name=_operation.NAME,
-                        operation_progress=0.0,
-                        operation_progress_str="0.0 %",
-                        background_color=None,
-                        error_message="",
-                    ))
+                    )
+                    self._files_tree_model.append(parent=iter, row=dc_astuple(outputrow))
                 _file = File(filename=file_path, relative_filename=_relative_file_path, created=_creation_timestamp, status=FileStatus.CREATED, row_reference=_row_reference)
                 self._files_dict[file_path] = _file
         return GLib.SOURCE_REMOVE
 
     def file_changes_done_cb(self, file_path):
         with self._files_dict_lock:
-            if file_path not in self._files_dict:
-                logger.warning(f"{file_path} has not been created yet! Ignoring...")
-            elif self._files_dict[file_path].status != FileStatus.CREATED:
-                # looks like this file has been saved again!
-                logger.warning(f"{file_path} has been saved again?? Ignoring!")
-            else:
-                logger.debug(f"File {file_path} has been saved")
+            try:
                 file = self._files_dict[file_path]
+            except KeyError:
+                logger.warning(f"{file_path} has not been created yet! Ignoring...")
+                return
+
+            logger.debug(f"{file.status=}")
+
+            if file.status == FileStatus.SAVED:
+                # looks like this file has been saved again!
+                # update saved timestamp
+                logger.debug(f"File {file_path} has been saved again")
+                file.saved = time()
+            elif file.status == FileStatus.CREATED:
+                logger.debug(f"File {file_path} has been saved")
                 file.status = FileStatus.SAVED
                 file.saved = time() 
                 path = file.row_reference.get_path()
                 self._files_tree_model[path][2] = int(FileStatus.SAVED) 
+            else:
+                logger.warning(f"File {file_path} has been saved again after it was queued for processing!!")
 
     def update_monitor_switch_sensitivity(self):
         if self.params.monitored_directory and \
@@ -731,8 +735,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                         logger.debug(f"files_dict_timeout_cb: promoting {_filename} to SAVED")
                         
                 elif _file.status == FileStatus.SAVED:
-                    if not(self.params.saved_status_promotion_active and \
-                        (time() - _file.saved) <  self.params.saved_status_promotion_delay):
+                    if (time() - _file.saved) > self.params.saved_status_promotion_delay:
                         # queue the job
                         logger.debug(f"files_dict_timeout_cb: adding {_filename} to queue for future processing")
                         _file.status = FileStatus.QUEUED
@@ -767,29 +770,23 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                 except AttributeError:
                     _creation_timestamp = existing_file.stat().st_mtime
             _relative_file_path = existing_file.relative_to(self.params.monitored_directory)
-            iter = self._files_tree_model.append(parent=None, row=OutputRow(
+            outputrow = OutputRow(
                 relative_filename=str(_relative_file_path),
                 creation_timestamp=_creation_timestamp,
                 status=int(FileStatus.SAVED),
                 operation_name="All",
-                operation_progress=0.0,
-                operation_progress_str="0.0 %",
-                background_color=None,
-                error_message="",
-                ))
+            )
+            iter = self._files_tree_model.append(parent=None, row=dc_astuple(outputrow))
             _row_reference = Gtk.TreeRowReference.new(self._files_tree_model, self._files_tree_model.get_path(iter))
             # create its children, one for each operation
             for _operation in self._operations_box:
-                self._files_tree_model.append(parent=iter, row=OutputRow(
+                outputrow = OutputRow(
                     relative_filename="",
                     creation_timestamp=0,
                     status=int(FileStatus.QUEUED),
                     operation_name=_operation.NAME,
-                    operation_progress=0.0,
-                    operation_progress_str="0.0 %",
-                    background_color=None,
-                    error_message="",
-                ))
+                )
+                self._files_tree_model.append(parent=iter, row=dc_astuple(outputrow))
             _file = File(filename=file_path, relative_filename=_relative_file_path, created=_creation_timestamp, status=FileStatus.SAVED, row_reference=_row_reference)
             _file.saved = time()
             self._files_dict[file_path] = _file
@@ -915,12 +912,13 @@ class EventHandler(PatternMatchingEventHandler):
         logger.debug(f"Monitor found {file_path} for event type MODIFIED")
         GLib.idle_add(self._appwindow.file_changes_done_cb, file_path, priority=GLib.PRIORITY_DEFAULT_IDLE)
         
-class OutputRow(NamedTuple):
+@dataclass
+class OutputRow:
     relative_filename: str
     creation_timestamp: int
     status: int
     operation_name: str
-    operation_progress: float
-    operation_progress_str: str
-    background_color: str
-    error_message: str
+    operation_progress: float = 0.0
+    operation_progress_str: str = "0.0 %"
+    background_color: str = None
+    error_message: str = ""

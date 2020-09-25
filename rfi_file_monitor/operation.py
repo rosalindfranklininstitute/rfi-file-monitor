@@ -21,6 +21,9 @@ from rfi_file_monitor.utils.widgetparams import WidgetParams
 class OperationMeta(ABCMeta, type(Gtk.Frame)):
     pass
 
+class SkippedOperation(Exception):
+    pass
+
 class Operation(ABC, Gtk.Frame, WidgetParams, metaclass=OperationMeta):
 
     @abstractmethod

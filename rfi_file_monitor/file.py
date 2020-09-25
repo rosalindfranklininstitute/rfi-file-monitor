@@ -17,6 +17,7 @@ class FileStatus(IntEnum):
     RUNNING = auto()
     SUCCESS = auto()
     FAILURE = auto()
+    SKIPPED = auto()
     REMOVED_FROM_LIST = auto()
 
     def __str__(self):
@@ -101,7 +102,7 @@ class File:
         
         return GLib.SOURCE_REMOVE
 
-    def _update_status_worker_cb(self, index: int, status: FileStatus, error):
+    def _update_status_worker_cb(self, index: int, status: FileStatus, message):
         if not self.row_reference.valid():
             logger.warning(f"_update_status_worker_cb: {self.filename} is invalid!")
             return GLib.SOURCE_REMOVE
@@ -126,17 +127,20 @@ class File:
             model[iter][5] = "100.0 %"
         elif status == FileStatus.FAILURE:
             model[iter][6] = "red"
-            model[iter][7] = error
+            model[iter][7] = message
+        elif status == FileStatus.SKIPPED:
+            model[iter][6] = "grey"
+            model[iter][7] = message
 
         return GLib.SOURCE_REMOVE
 
-    def update_status(self, index: int, status: FileStatus, error: Optional[str] = None):
+    def update_status(self, index: int, status: FileStatus, message: Optional[str] = None):
         """
         When an operation has finished, update the status of the corresponding
         entry in the treemodel.
         An index of -1 refers to the parent entry, 0 or higher refers to a child.
         """
-        GLib.idle_add(self._update_status_worker_cb, index, status, error)
+        GLib.idle_add(self._update_status_worker_cb, index, status, message)
 
     def update_progressbar(self, index: int, value: float):
         """

@@ -7,7 +7,7 @@ from threading import current_thread
 import logging
 from random import random
 
-from ..operation import Operation
+from ..operation import Operation, SkippedOperation
 from ..file import File
 
 logger = logging.getLogger(__name__)
@@ -59,6 +59,13 @@ class DummyOperation(Operation):
             hexpand=True, vexpand=False,
         ), 'enable_random_fails')
         self._grid.attach(widget, 0, 5, 2, 1)
+
+        widget = self.register_widget(Gtk.CheckButton(
+            active=False, label="Skip randomly",
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+        ), 'enable_random_skips')
+        self._grid.attach(widget, 0, 6, 2, 1)
 
 
     def preflight_check(self):
@@ -115,8 +122,12 @@ class DummyOperation(Operation):
                 logger.info(f"Killing thread {thread.name}")
                 return str('Thread killed')
             time.sleep(1.0)
-            if self.params.enable_random_fails and random() < 0.05:
+
+            if self.params.enable_random_fails and random() < 0.02:
                 return "Unfavorable RNG!!!"
+            elif self.params.enable_random_skips and random() < 0.02:
+                raise SkippedOperation("Unfavorable RNG!")
+
             file.update_progressbar(self.index, (i + 1) * 10)
 
         # None indicates success, a string failure, with its contents set to an error message

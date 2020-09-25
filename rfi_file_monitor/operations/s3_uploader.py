@@ -2,10 +2,11 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 import boto3
+import boto3.s3.transfer
 import botocore
 from munch import Munch
 
-from ..operation import Operation
+from ..operation import Operation, SkippedOperation
 from ..file import File
 from ..job import Job
 from ..utils import query_metadata
@@ -13,7 +14,8 @@ from ..utils import query_metadata
 import os
 import logging
 import tempfile
-from pathlib import PurePosixPath
+import hashlib
+from pathlib import PurePosixPath, Path
 from threading import current_thread, Lock
 import urllib
 from typing import Sequence, Dict, Any
@@ -43,6 +45,10 @@ ALLOWED_OBJECT_ACL_OPTIONS = (
     'RequestPayer',
     'VersionID',
 )
+
+KB = 1024
+MB = KB * KB
+TransferConfig = boto3.s3.transfer.TransferConfig(max_concurrency=1, multipart_chunksize=8*MB, multipart_threshold=8*MB)
 
 class S3UploaderOperation(Operation):
     NAME = "S3 Uploader"
@@ -126,6 +132,32 @@ class S3UploaderOperation(Operation):
         self._grid.attach(widget, 2, 3, 1, 1)
 
     @classmethod
+    def _calculate_etag(cls, file: File):
+        # taken from https://stackoverflow.com/a/52300584
+        with Path(file.filename).open('rb') as f:
+            md5hash = hashlib.md5()
+            filesize = 0
+            block_count = 0
+            md5string = b''
+            for block in iter(lambda: f.read(TransferConfig.multipart_chunksize), b''):
+                md5hash = hashlib.md5()
+                md5hash.update(block)
+                md5string += md5hash.digest()
+                filesize += len(block)
+                block_count += 1
+
+        if filesize > TransferConfig.multipart_threshold:
+            md5hash = hashlib.md5()
+            md5hash.update(md5string)
+            md5hash = md5hash.hexdigest() + "-" + str(block_count)
+        else:
+            md5hash = md5hash.hexdigest()
+
+        return md5hash
+
+
+
+    @classmethod
     def _get_dict_tagset(cls, preflight_check_metadata: Dict[int, Dict[str, Any]], tagtype: str) -> dict:
         tags = query_metadata(preflight_check_metadata, tagtype)
         if tags is None:
@@ -205,7 +237,7 @@ class S3UploaderOperation(Operation):
                 Filename=tmpfile,
                 Bucket=params.bucket_name,
                 Key=os.path.basename(tmpfile),
-                Config = boto3.s3.transfer.TransferConfig(max_concurrency=1),
+                Config=TransferConfig,
                 )
             if object_tags:
                 s3_client.put_object_tagging(
@@ -251,15 +283,35 @@ class S3UploaderOperation(Operation):
         # see https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html#S3.Client.put_object_tagging
         object_tags = cls._get_dict_tagset(preflight_check_metadata, 'object_tags')
 
+        key = str(PurePosixPath(*file.relative_filename.parts))
+
+        # Check if file already exists and is identical
+        # Inspired by: https://stackoverflow.com/questions/6591047/etag-definition-changed-in-amazon-s3
         try:
-            #TODO: do not allow overwriting existing keys in bucket??
-            key = str(PurePosixPath(*file.relative_filename.parts))
+            response = s3_client.head_object(
+                Bucket=params.bucket_name,
+                Key=key,
+            )
+        except botocore.exceptions.ClientError as e:
+            # key not found, which is fine
+            if int(e.response['Error']['Code']) != 404:
+                return str(e)
+        else:
+            if 'ETag' in response:
+                remote_etag = response['ETag'][1:-1] # get rid of those extra quotes
+                local_etag = cls._calculate_etag(file)
+                if remote_etag == local_etag:
+                    raise SkippedOperation('File has been uploaded already')
+            else:
+                logger.warning(f'ETag not found in head_object response for {params.bucket_name}/{key}')
+
+        try:
             s3_client.upload_file( \
                 Filename=file.filename,\
                 Bucket=params.bucket_name,
                 Key=key,
-                Config = boto3.s3.transfer.TransferConfig(max_concurrency=1),
-                Callback = S3ProgressPercentage(file, thread, operation_index),
+                Config=TransferConfig,
+                Callback=S3ProgressPercentage(file, thread, operation_index),
                 )
             if object_tags:
                 s3_client.put_object_tagging(

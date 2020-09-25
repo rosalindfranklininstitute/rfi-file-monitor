@@ -46,8 +46,6 @@ class Job(threading.Thread):
                     # The only reason to catch it here is to avoid it taking the app down...
                     rv = str(e)
                     logger.exception("run() exception caught!")
-            elif isinstance(rv, SkippedOperation):
-                pass
             else:
                 # If we get here then an error was returned in a previous operation already
                 rv = self.ERROR_MESSAGE
@@ -57,11 +55,9 @@ class Job(threading.Thread):
                 self._file.update_status(index, FileStatus.SUCCESS)
             elif isinstance(rv, SkippedOperation):
                 # update operation status to skipped
-                if global_rv is None:
-                    global_rv = rv
-                    self._file.update_status(index, FileStatus.SKIPPED, str(rv))
-                else:
-                    self._file.update_status(index, FileStatus.SKIPPED, self.SKIPPED_MESSAGE)
+                self._file.update_status(index, FileStatus.SKIPPED, str(rv))
+                # reset rv to None to ensure the other operations are run
+                rv = None
             else:
                 # update operation status to failed
                 self._file.update_status(index, FileStatus.FAILURE, rv)
@@ -72,8 +68,6 @@ class Job(threading.Thread):
         if global_rv is None:
             # update job status to success
             self._file.update_status(-1, FileStatus.SUCCESS)
-        elif isinstance(rv, SkippedOperation):
-            self._file.update_status(-1, FileStatus.SKIPPED, str(global_rv))
         else:
             # update job status to failed
             self._file.update_status(-1, FileStatus.FAILURE, global_rv)

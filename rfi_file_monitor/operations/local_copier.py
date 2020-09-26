@@ -2,8 +2,9 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gio, GLib
 
-from ..operation import Operation
+from ..operation import Operation, SkippedOperation
 from ..file import File
+from ..utils import get_md5
 
 import logging
 import tempfile
@@ -90,12 +91,25 @@ class LocalCopierOperation(Operation):
     def run(self, file: File):
 
         try:
-           gsource_file = Gio.File.new_for_path(file.filename)
-           destination_file = Path(self.params.destination_directory, *file.relative_filename.parts)
-           # make parent directories if necessary
-           destination_file.parent.mkdir(parents=True, exist_ok=True)
-           gdestination_file = Gio.File.new_for_path(str(destination_file))
-           gsource_file.copy(gdestination_file, Gio.FileCopyFlags.NONE, file.cancellable, LocalCopyProgressPercentage(file, self))
+            gsource_file = Gio.File.new_for_path(file.filename)
+            destination_file = Path(self.params.destination_directory, *file.relative_filename.parts)
+
+            # skip if the file has been copied already
+            if destination_file.exists() and \
+                Path(file.filename).stat().st_size == destination_file.stat().st_size:
+                # calculate checksums
+                local_md5 = get_md5(file.filename)
+                copy_md5 = get_md5(destination_file)
+
+                if local_md5 == copy_md5:
+                    raise SkippedOperation('File has been copied already')
+
+            # make parent directories if necessary
+            destination_file.parent.mkdir(parents=True, exist_ok=True)
+            gdestination_file = Gio.File.new_for_path(str(destination_file))
+            gsource_file.copy(gdestination_file, Gio.FileCopyFlags.NONE, file.cancellable, LocalCopyProgressPercentage(file, self))
+        except SkippedOperation:
+            raise
         except Exception as e:
             logger.exception(f'LocalCopierOperation.run exception')
             return str(e)

@@ -297,13 +297,11 @@ class S3UploaderOperation(Operation):
             if int(e.response['Error']['Code']) != 404:
                 return str(e)
         else:
-            if 'ETag' in response:
+            if Path(file.filename).stat().st_size == int(response['ContentLength']):
                 remote_etag = response['ETag'][1:-1] # get rid of those extra quotes
                 local_etag = cls._calculate_etag(file)
                 if remote_etag == local_etag:
                     raise SkippedOperation('File has been uploaded already')
-            else:
-                logger.warning(f'ETag not found in head_object response for {params.bucket_name}/{key}')
 
         try:
             s3_client.upload_file( \

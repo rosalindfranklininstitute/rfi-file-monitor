@@ -88,8 +88,11 @@ class LocalCopierOperation(Operation):
             # remove temporary file
             os.unlink(tmpfile)
 
-    def run(self, file: File):
+    def _attach_metadata(self, file: File, destination_file: Path):
+        file.operation_metadata[self.index] = {'local copy path': destination_file}
+        logger.debug(f"{file.operation_metadata[self.index]=}")
 
+    def run(self, file: File):
         try:
             gsource_file = Gio.File.new_for_path(file.filename)
             destination_file = Path(self.params.destination_directory, *file.relative_filename.parts)
@@ -102,6 +105,8 @@ class LocalCopierOperation(Operation):
                 copy_md5 = get_md5(destination_file)
 
                 if local_md5 == copy_md5:
+                    # add destination path to metadata
+                    self._attach_metadata(file, destination_file)
                     raise SkippedOperation('File has been copied already')
 
             # make parent directories if necessary
@@ -115,8 +120,7 @@ class LocalCopierOperation(Operation):
             return str(e)
         else:
             # add destination path to metadata
-            file.operation_metadata[self.index] = {'local copy path': destination_file}
-            logger.debug(f"{file.operation_metadata[self.index]=}")
+            self._attach_metadata(file, destination_file)
         return None
 
 class LocalCopyProgressPercentage():

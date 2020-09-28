@@ -192,6 +192,12 @@ class SftpUploaderOperation(Operation):
         self._preflight_check(self.params)
 
     @classmethod
+    def _attach_metadata(cls, file: File, remote_filename_full: str, params: Munch, operation_index:int):
+        file.operation_metadata[operation_index] = {'sftp url':
+            f'sftp://{params.username}@{params.hostname}:{int(params.port)}{remote_filename_full}'}
+        logger.debug(f"{file.operation_metadata[operation_index]=}")
+
+    @classmethod
     def _run(cls, file: File, params: Munch, operation_index: int):
         try:
             with paramiko.SSHClient() as client:
@@ -222,9 +228,13 @@ class SftpUploaderOperation(Operation):
                         local_stat = Path(file.filename).stat()
                         # if local file is more recent or size differs -> upload again!
                         if local_stat.st_size == remote_stat.st_size and \
-                            local_stat.st_mtime <= remote_stat.st_mtime:
+                           local_stat.st_mtime <= remote_stat.st_mtime:
+                            # add object URL to metadata
+                            remote_filename_full = sftp_client.normalize(rel_filename)
+                            cls._attach_metadata(file, remote_filename_full, params, operation_index)
                             raise SkippedOperation('File has been uploaded already')
 
+                    # upload the file to the remote server
                     sftp_client.put(file.filename, rel_filename, callback=SftpProgressPercentage(file, operation_index))
                     remote_filename_full = sftp_client.normalize(rel_filename)
                     logger.debug(f"File {remote_filename_full} has been written")
@@ -234,10 +244,8 @@ class SftpUploaderOperation(Operation):
             logger.exception(f'SftpUploaderOperation.run exception')
             return str(e)
         else:
-            #add object URL to metadata
-            file.operation_metadata[operation_index] = {'sftp url':
-                f'sftp://{params.username}@{params.hostname}:{int(params.port)}{remote_filename_full}'}
-            logger.debug(f"{file.operation_metadata[operation_index]=}")
+            # add object URL to metadata
+            cls._attach_metadata(file, remote_filename_full, params, operation_index)
         return None
 
     def run(self, file: File):

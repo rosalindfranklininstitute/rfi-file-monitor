@@ -5,13 +5,13 @@ import paramiko
 from paramiko import AutoAddPolicy, RejectPolicy
 from munch import Munch
 
-from ..operation import Operation
+from ..operation import Operation, SkippedOperation
 from ..file import File
 
 import logging
 import os
 import tempfile
-from pathlib import PurePosixPath
+from pathlib import PurePosixPath, Path
 from stat import S_ISDIR, S_ISREG
 import posixpath
 
@@ -207,9 +207,29 @@ class SftpUploaderOperation(Operation):
                     sftp_client.chdir(params.destination)
                     rel_filename = str(PurePosixPath(*file.relative_filename.parts))
                     makedirs(sftp_client, posixpath.dirname(rel_filename))
+
+                    # check if file already exists
+                    # Note: ideally this would be done by calculating the checksum
+                    # on the server, but very few SSH server implementations support
+                    # this protocol extension, even though Paramiko does:
+                    # http://docs.paramiko.org/en/stable/api/sftp.html#paramiko.sftp_file.SFTPFile.check
+                    try:
+                        remote_stat = sftp_client.stat(rel_filename)
+                    except IOError:
+                        pass
+                    else:
+                        # file exists -> compare with local stat
+                        local_stat = Path(file.filename).stat()
+                        # if local file is more recent or size differs -> upload again!
+                        if local_stat.st_size == remote_stat.st_size and \
+                            local_stat.st_mtime <= remote_stat.st_mtime:
+                            raise SkippedOperation('File has been uploaded already')
+
                     sftp_client.put(file.filename, rel_filename, callback=SftpProgressPercentage(file, operation_index))
                     remote_filename_full = sftp_client.normalize(rel_filename)
                     logger.debug(f"File {remote_filename_full} has been written")
+        except SkippedOperation:
+            raise
         except Exception as e:
             logger.exception(f'SftpUploaderOperation.run exception')
             return str(e)

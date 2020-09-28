@@ -5,6 +5,8 @@ from gi.repository import Gio, GLib, Gtk
 from typing import Callable, Optional, Final, Any, Dict, List, Iterable
 import logging
 from pathlib import Path
+import hashlib
+import os
 
 EXPAND_AND_FILL: Final[Dict[str, Any]] = dict(hexpand=True, vexpand=True, halign=Gtk.Align.FILL, valign=Gtk.Align.FILL)
 
@@ -57,6 +59,13 @@ def get_patterns_from_string(input: str, defaults: List =None) -> List[str]:
         else:
             return defaults
 
+def get_md5(fname: os.PathLike) -> str:
+    # taken from https://stackoverflow.com/a/3431838
+    hash_md5 = hashlib.md5()
+    with open(fname, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
 
 class LongTaskWindow(Gtk.Window):
     def __init__(self, parent_window: Optional[Gtk.Window] = None, *args, **kwargs):

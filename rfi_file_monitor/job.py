@@ -3,10 +3,15 @@ from typing import Final
 import logging
 
 from .file import File, FileStatus
+from .operation import SkippedOperation
 
 logger = logging.getLogger(__name__)
 
 class Job(threading.Thread):
+
+    SKIPPED_MESSAGE = "A preceding operation has been skipped"
+    ERROR_MESSAGE = "Operation not started due to previous error"
+
     def __init__(self, appwindow, file: File):
         super().__init__()
         self._appwindow = appwindow 
@@ -32,6 +37,8 @@ class Job(threading.Thread):
             elif rv is None:
                 try:
                     rv = operation.run(self._file)
+                except SkippedOperation as e:
+                    rv = e
                 except Exception as e:
                     # exceptions caught here indicate a programming error,
                     # as exceptions should be caught during run, and if necessary,
@@ -41,11 +48,16 @@ class Job(threading.Thread):
                     logger.exception("run() exception caught!")
             else:
                 # If we get here then an error was returned in a previous operation already
-                rv = "Operation not started due to previous error"
+                rv = self.ERROR_MESSAGE
 
             if rv is None:
                 # update operation status to success
                 self._file.update_status(index, FileStatus.SUCCESS)
+            elif isinstance(rv, SkippedOperation):
+                # update operation status to skipped
+                self._file.update_status(index, FileStatus.SKIPPED, str(rv))
+                # reset rv to None to ensure the other operations are run
+                rv = None
             else:
                 # update operation status to failed
                 self._file.update_status(index, FileStatus.FAILURE, rv)

@@ -155,8 +155,6 @@ class S3UploaderOperation(Operation):
 
         return md5hash
 
-
-
     @classmethod
     def _get_dict_tagset(cls, preflight_check_metadata: Dict[int, Dict[str, Any]], tagtype: str) -> dict:
         tags = query_metadata(preflight_check_metadata, tagtype)
@@ -273,6 +271,14 @@ class S3UploaderOperation(Operation):
         self._preflight_check(self.appwindow.preflight_check_metadata, self.params)
 
     @classmethod
+    def _attach_metadata(cls, file: File, endpoint_url: str, key: str, params: Munch, operation_index:int):
+        parsed_url = urllib.parse.urlparse(endpoint_url)
+        file.operation_metadata[operation_index] = {'s3 object url':
+            f'{parsed_url.scheme}://{params.bucket_name}.{parsed_url.netloc}/{urllib.parse.quote(key)}'}
+        logger.info(f"S3 upload complete from {file.filename} to {params.bucket_name}")
+        logger.debug(f"{file.operation_metadata[operation_index]=}")
+
+    @classmethod
     def _run(cls, file: File, preflight_check_metadata: Dict[int, Dict[str, Any]], params: Munch, operation_index:int):
         thread = current_thread()
         client_options = cls._get_client_options(params)
@@ -301,6 +307,8 @@ class S3UploaderOperation(Operation):
                 remote_etag = response['ETag'][1:-1] # get rid of those extra quotes
                 local_etag = cls._calculate_etag(file)
                 if remote_etag == local_etag:
+                    # attach metadata
+                    cls._attach_metadata(file, client_options['endpoint_url'], key, params, operation_index)
                     raise SkippedOperation('File has been uploaded already')
 
         try:
@@ -330,15 +338,10 @@ class S3UploaderOperation(Operation):
             return str(e)
         else:
             #add object URL to metadata
-            parsed_url = urllib.parse.urlparse(client_options['endpoint_url'])
-            file.operation_metadata[operation_index] = {'s3 object url':
-                f'{parsed_url.scheme}://{params.bucket_name}.{parsed_url.netloc}/{urllib.parse.quote(key)}'}
-            logger.info(f"S3 upload complete from {file.filename} to {params.bucket_name}")
-            logger.debug(f"{file.operation_metadata[operation_index]=}")
+            cls._attach_metadata(file, client_options['endpoint_url'], key, params, operation_index)
             del s3_client
             del client_options
         return None
-
 
     def run(self, file: File):
         return self._run(file, self.appwindow.preflight_check_metadata, self.params, self.index)

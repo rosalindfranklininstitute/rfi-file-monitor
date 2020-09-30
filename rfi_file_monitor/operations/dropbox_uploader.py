@@ -10,7 +10,6 @@ from ..file import File
 
 import logging
 import os
-import tempfile
 import string
 import random
 from pathlib import PurePosixPath

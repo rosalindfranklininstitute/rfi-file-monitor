@@ -1,6 +1,6 @@
 import gi
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk
+from gi.repository import Gtk, GLib
 import dropbox
 import keyring
 
@@ -17,6 +17,7 @@ from pathlib import PurePosixPath
 import hashlib
 import re
 import webbrowser
+from threading import Thread
 
 logger = logging.getLogger(__name__)
 
@@ -178,6 +179,75 @@ class DropboxLinkDialog(Gtk.Dialog):
     def auth_flow(self) -> dropbox.oauth.DropboxOAuth2FlowNoRedirect:
         return self._auth_flow
 
+# taken from Maestral
+class DropboxSpaceUsage(dropbox.users.SpaceUsage):
+    @property
+    def allocation_type(self) -> str:
+        if self.allocation.is_team():
+            return "team"
+        elif self.allocation.is_individual():
+            return "individual"
+        else:
+            return ""
+
+    def __str__(self) -> str:
+
+        if self.allocation.is_individual():
+            used = self.used
+            allocated = self.allocation.get_individual().allocated
+        elif self.allocation.is_team():
+            used = self.allocation.get_team().used
+            allocated = self.allocation.get_team().allocated
+        else:
+            return self.natural_size(self.used)
+
+        percent = used / allocated
+        if percent <= 0.8:
+            color = "green"
+        elif percent <= 0.95:
+            color = "orange"
+        else:
+            color = "red"
+        return f'<span weight="bold" foreground="{color}">{percent:.1%} of {self.natural_size(allocated)}</span>'
+
+    @classmethod
+    def natural_size(cls, num: float, unit: str = "B", sep: bool = True) -> str:
+        """
+        Convert number to a human readable string with decimal prefix.
+        :param float num: Value in given unit.
+        :param unit: Unit suffix.
+        :param sep: Whether to separate unit and value with a space.
+        :returns: Human readable string with decimal prefixes.
+        """
+        sep_char = " " if sep else ""
+
+        for prefix in ("", "K", "M", "G"):
+            if abs(num) < 1000.0:
+                return f"{num:3.1f}{sep_char}{prefix}{unit}"
+            num /= 1000.0
+
+        prefix = "T"
+        return f"{num:.1f}{sep_char}{prefix}{unit}"
+
+    @classmethod
+    def from_dbx_space_usage(cls, su: dropbox.users.SpaceUsage):
+        return cls(used=su.used, allocation=su.allocation)
+
+class DropboxSpaceCheckerThread(Thread):
+    def __init__(self, operation):
+        super().__init__()
+        self._operation = operation
+    
+    def run(self):
+        if self._operation._dropbox:
+            try:
+                usage = DropboxSpaceUsage.from_dbx_space_usage(self._operation._dropbox.users_get_space_usage())
+            except Exception as e:
+                usage = f"error getting usage: {str(e)}"
+        else:
+            usage = "not available"
+        GLib.idle_add(self._operation._update_space_usage, usage, priority=GLib.PRIORITY_DEFAULT_IDLE)
+
 class DropboxUploaderOperation(Operation):
     NAME = "Dropbox Uploader"
 
@@ -188,6 +258,7 @@ class DropboxUploaderOperation(Operation):
         Operation.__init__(self, *args, **kwargs)
 
         self._dropbox = None
+        self._space_thread = None
 
         self._grid = Gtk.Grid(
             border_width=5,
@@ -230,11 +301,35 @@ class DropboxUploaderOperation(Operation):
         self._grid.attach(button, 2, 1, 1, 1)
         button.connect('clicked', self._validate_button_clicked_cb)
 
+        self._space_label = Gtk.Label(
+            label='Space Usage: not available', use_markup=True,
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=True,
+        )
+        self._grid.attach(self._space_label, 0, 2, 3, 1)
+
+        # check space usage every 60 seconds and update the corresponding label
+        GLib.timeout_add_seconds(60, self._launch_space_usage_thread, False, priority=GLib.PRIORITY_DEFAULT_IDLE)
+
+    def _launch_space_usage_thread(self, kill):
+        logger.debug('Calling _launch_space_usage_thread')
+        space_thread = DropboxSpaceCheckerThread(self)
+        space_thread.start()
+
+        if kill:
+            return GLib.SOURCE_REMOVE
+        else:
+            return GLib.SOURCE_CONTINUE
+
+    def _update_space_usage(self, usage):
+        self._space_label.props.label = f'Space Usage: {str(usage)}'
+
+        return GLib.SOURCE_REMOVE
+
     def _email_entry_changed_cb(self, entry):
         # any changes to the email address reset the Dropbox client
         self._dropbox = None
         self._email_entry.set_icon_from_icon_name(icon_pos=Gtk.EntryIconPosition.SECONDARY , icon_name='emblem-unreadable')
-
 
     def _validate_button_clicked_cb(self, button):
         # first confirm that we have a proper email address
@@ -310,6 +405,7 @@ class DropboxUploaderOperation(Operation):
                 self._dropbox = None
             else:
                 self._email_entry.set_icon_from_icon_name(icon_pos=Gtk.EntryIconPosition.SECONDARY , icon_name='emblem-default')
+                GLib.idle_add(self._launch_space_usage_thread, True, priority=GLib.PRIORITY_DEFAULT_IDLE)
             return
 
         # without refresh token -> link app
@@ -344,6 +440,7 @@ class DropboxUploaderOperation(Operation):
             oauth2_refresh_token=refresh_token, session=self.SESSION, app_key=APP_KEY
         )
         self._email_entry.set_icon_from_icon_name(icon_pos=Gtk.EntryIconPosition.SECONDARY , icon_name='emblem-default')
+        GLib.idle_add(self._launch_space_usage_thread, True, priority=GLib.PRIORITY_DEFAULT_IDLE)
         # save token in keyring
         try:
             keyring.set_password('RFI-File-Monitor-Dropbox', self.params.email.lower(), refresh_token)

@@ -2,6 +2,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 import dropbox
+import keyring
 
 from ..operation import Operation, SkippedOperation
 from ..applicationwindow import ApplicationWindow
@@ -14,9 +15,12 @@ import string
 import random
 from pathlib import PurePosixPath
 import hashlib
+import re
+import webbrowser
 
 logger = logging.getLogger(__name__)
 
+APP_KEY = 'l9wed9kx1tq965c'
 
 # taken from https://github.com/dropbox/dropbox-api-content-hasher/blob/master/python/dropbox_content_hasher.py
 class DropboxContentHasher(object):
@@ -85,15 +89,106 @@ class DropboxContentHasher(object):
     def hexdigest(self):
         return self._finish().hexdigest()
 
+class DropboxLinkDialog(Gtk.Dialog):
+    def __init__(self, appwindow):
+        Gtk.Dialog.__init__(self, title="Link Dropbox", transient_for=appwindow, modal=True, flags=0)
+        self._authorization_code = None
+        self._okbutton = self.add_button('Confirm', Gtk.ResponseType.OK)
+        self._okbutton.set_sensitive(False)
+        
+        self.set_default_size(150, 100)
+
+        box = self.get_content_area()
+        grid = Gtk.Grid(
+            row_spacing=5, column_spacing=5,
+            border_width=5,
+            hexpand=True, vexpand=True,
+            halign=Gtk.Align.FILL, valign=Gtk.Align.FILL)
+        box.add(grid)
+
+        label = Gtk.Label(label='<b>Follow these steps to link your Dropbox account with the RFI-File-Monitor</b>',
+            use_markup=True,
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False)
+        frame = Gtk.Frame(
+            height_request=50, border_width=5,
+            halign=Gtk.Align.FILL, valign=Gtk.Align.START,
+            hexpand=True, vexpand=False)
+        frame.add(label)
+        grid.attach(frame, 0, 0, 1, 1)
+
+        grid1 = Gtk.Grid(
+            row_spacing=5, column_spacing=5,
+            hexpand=True, vexpand=False,
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER)
+        label = Gtk.Label(label='1. Click the button to open Dropbox in your browser',
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False)
+        grid1.attach(label, 0, 0, 1, 1)
+        dbx_button = Gtk.Button(label='Open Dropbox',
+            halign=Gtk.Align.END, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False)
+        grid1.attach(dbx_button, 1, 0, 1, 1)
+        grid.attach(grid1, 0, 1, 1, 1)
+        dbx_button.connect('clicked', self._dropbox_button_clicked)
+
+        label = Gtk.Label(label='2. Click "Allow" (you may have to log in first).',
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False)
+        grid.attach(label, 0, 2, 1, 1)
+
+        grid3 = Gtk.Grid(
+            row_spacing=5, column_spacing=5,
+            hexpand=True, vexpand=False,
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER)
+        label = Gtk.Label(label='3. Copy the authorization token into the box',
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False)
+        grid3.attach(label, 0, 0, 1, 1)
+        self._entry = Gtk.Entry(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False)
+        self._entry.set_sensitive(False)
+        self._entry.connect('changed', self._dropbox_entry_changed)
+        grid3.attach(self._entry, 1, 0, 1, 1)
+        grid.attach(grid3, 0, 3, 1, 1)
+
+        self.show_all()
+
+    def _dropbox_entry_changed(self, entry):
+        self._okbutton.set_sensitive(True)
+        self._authorization_code = entry.get_text().strip()
+
+    def _dropbox_button_clicked(self, button):
+        self._auth_flow = dropbox.oauth.DropboxOAuth2FlowNoRedirect(
+            consumer_key=APP_KEY,
+            use_pkce=True,
+            token_access_type='offline',
+        )
+        url = self._auth_flow.start()
+        webbrowser.open_new_tab(url)
+        button.set_sensitive(False)
+        self._entry.set_sensitive(True)
+
+    @property
+    def authorization_code(self) -> str:
+        return self._authorization_code
+
+    @property
+    def auth_flow(self) -> dropbox.oauth.DropboxOAuth2FlowNoRedirect:
+        return self._auth_flow
+
 class DropboxUploaderOperation(Operation):
     NAME = "Dropbox Uploader"
 
     SESSION = dropbox.create_session(max_connections=ApplicationWindow.MAX_JOBS)
-    APP_KEY = 'l9wed9kx1tq965c'
     CHUNK_SIZE = 1024 * 1024 # 1MB
 
     def __init__(self, *args, **kwargs):
         Operation.__init__(self, *args, **kwargs)
+
+        self._dropbox = None
+
         self._grid = Gtk.Grid(
             border_width=5,
             row_spacing=5, column_spacing=5,
@@ -112,18 +207,155 @@ class DropboxUploaderOperation(Operation):
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
         ), 'destination_folder')
-        self._grid.attach(widget, 1, 0, 1, 1)
+        self._grid.attach(widget, 1, 0, 2, 1)
 
         self._grid.attach(Gtk.Label(
-            label="Access key",
+            label="Email address",
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False,
         ), 0, 1, 1, 1)
-        widget = self.register_widget(Gtk.Entry(
+        self._email_entry = self.register_widget(Gtk.Entry(
+            placeholder_text="Address used for registering with Dropbox",
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
-        ), 'access_key')
-        self._grid.attach(widget, 1, 1, 1, 1)
+        ), 'email')
+        self._grid.attach(self._email_entry, 1, 1, 1, 1)
+        self._email_entry.connect('changed', self._email_entry_changed_cb)
+
+        button = Gtk.Button(
+            label='Validate',
+            halign=Gtk.Align.END, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+        )
+        self._grid.attach(button, 2, 1, 1, 1)
+        button.connect('clicked', self._validate_button_clicked_cb)
+
+    def _email_entry_changed_cb(self, entry):
+        # any changes to the email address reset the Dropbox client
+        self._dropbox = None
+        self._email_entry.set_icon_from_icon_name(icon_pos=Gtk.EntryIconPosition.SECONDARY , icon_name='emblem-unreadable')
+
+
+    def _validate_button_clicked_cb(self, button):
+        # first confirm that we have a proper email address
+        if not re.fullmatch(r'[^@]+@[^@]+\.[^@]+', self.params.email):
+            dialog = Gtk.MessageDialog(transient_for=self.appwindow,
+                modal=True, destroy_with_parent=True,
+                message_type=Gtk.MessageType.ERROR,
+                buttons=Gtk.ButtonsType.CLOSE, text=f'{self.params.email} is not a vaild email address'
+            )
+            dialog.run()
+            dialog.destroy()
+            self._email_entry.set_icon_from_icon_name(icon_pos=Gtk.EntryIconPosition.SECONDARY , icon_name='emblem-unreadable')
+            return
+        
+        # check keyring
+        try:
+            refresh_token = keyring.get_password('RFI-File-Monitor-Dropbox', self.params.email.lower())
+        except keyring.errors.KeyringError as e:
+            dialog = Gtk.MessageDialog(transient_for=self.appwindow,
+                modal=True, destroy_with_parent=True,
+                message_type=Gtk.MessageType.ERROR,
+                buttons=Gtk.ButtonsType.CLOSE, text='Error accessing keyring',
+                secondary_text=str(e),
+            )
+            dialog.run()
+            dialog.destroy()
+            self._email_entry.set_icon_from_icon_name(icon_pos=Gtk.EntryIconPosition.SECONDARY , icon_name='emblem-unreadable')
+            return
+
+        if refresh_token:
+            logger.debug(f'{refresh_token=}')
+            # use refresh token to launch dropbox session
+            self._dropbox = dropbox.Dropbox(
+                oauth2_refresh_token=refresh_token, session=self.SESSION, app_key=APP_KEY
+            )
+            exc = None
+            try:
+                account_info = self._dropbox.users_get_current_account()
+            except dropbox.exceptions.AuthError as e:
+                if e.error.is_invalid_access_token():
+                    logger.debug('Token has been revoked!')
+                    self._dropbox = None
+                    # delete keyring password
+                    keyring.delete_password('RFI-File-Monitor-Dropbox', self.params.email.lower())
+                    self._validate_button_clicked_cb(button)
+                    return
+                exc = e
+            except Exception as e:
+                exc = e
+            if exc:
+                dialog = Gtk.MessageDialog(transient_for=self.appwindow,
+                    modal=True, destroy_with_parent=True,
+                    message_type=Gtk.MessageType.ERROR,
+                    buttons=Gtk.ButtonsType.CLOSE, text='Could not get user information',
+                    secondary_text=str(exc)
+                )
+                dialog.run()
+                dialog.destroy()
+                self._email_entry.set_icon_from_icon_name(icon_pos=Gtk.EntryIconPosition.SECONDARY , icon_name='emblem-unreadable')
+                self._dropbox = None
+                return
+
+            logger.debug(f'{account_info=}')
+            if account_info.email.lower() != self.params.email.lower(): 
+                dialog = Gtk.MessageDialog(transient_for=self.appwindow,
+                    modal=True, destroy_with_parent=True,
+                    message_type=Gtk.MessageType.ERROR,
+                    buttons=Gtk.ButtonsType.CLOSE, text='Email address does not match Dropbox user records',
+                )
+                dialog.run()
+                dialog.destroy()
+                self._email_entry.set_icon_from_icon_name(icon_pos=Gtk.EntryIconPosition.SECONDARY , icon_name='emblem-unreadable')
+                self._dropbox = None
+            else:
+                self._email_entry.set_icon_from_icon_name(icon_pos=Gtk.EntryIconPosition.SECONDARY , icon_name='emblem-default')
+            return
+
+        # without refresh token -> link app
+        dbx_dialog = DropboxLinkDialog(self.appwindow)
+        if dbx_dialog.run() != Gtk.ResponseType.OK:
+            # not OK means that the auth flow was not started or aborted
+            self._email_entry.set_icon_from_icon_name(icon_pos=Gtk.EntryIconPosition.SECONDARY , icon_name='emblem-unreadable')
+            self._dropbox = None
+            dbx_dialog.destroy()
+            return
+        
+        authorization_code = dbx_dialog.authorization_code
+        auth_flow = dbx_dialog.auth_flow
+        dbx_dialog.destroy()
+        try:
+            res = auth_flow.finish(authorization_code)
+        except Exception as e:
+            dialog = Gtk.MessageDialog(transient_for=self.appwindow,
+                modal=True, destroy_with_parent=True,
+                message_type=Gtk.MessageType.ERROR,
+                buttons=Gtk.ButtonsType.CLOSE, text='Could not link RFI-File-Monitor to Dropbox',
+                secondary_text=str(e)
+            )
+            dialog.run()
+            dialog.destroy()
+            self._email_entry.set_icon_from_icon_name(icon_pos=Gtk.EntryIconPosition.SECONDARY , icon_name='emblem-unreadable')
+            self._dropbox = None
+            return
+
+        refresh_token = res.refresh_token
+        self._dropbox = dropbox.Dropbox(
+            oauth2_refresh_token=refresh_token, session=self.SESSION, app_key=APP_KEY
+        )
+        self._email_entry.set_icon_from_icon_name(icon_pos=Gtk.EntryIconPosition.SECONDARY , icon_name='emblem-default')
+        # save token in keyring
+        try:
+            keyring.set_password('RFI-File-Monitor-Dropbox', self.params.email.lower(), refresh_token)
+        except keyring.errors.KeyringError as e:
+            dialog = Gtk.MessageDialog(transient_for=self.appwindow,
+                modal=True, destroy_with_parent=True,
+                message_type=Gtk.MessageType.ERROR,
+                buttons=Gtk.ButtonsType.CLOSE, text='Error accessing keyring. Dropbox should still work in this session though.',
+                secondary_text=str(e),
+            )
+            dialog.run()
+            dialog.destroy()
 
     @classmethod
     def _get_random_string(cls, length):
@@ -136,7 +368,9 @@ class DropboxUploaderOperation(Operation):
         if not self.params.destination_folder:
             raise Exception('Destination folder cannot be an empty string')
 
-        self._dropbox = dropbox.Dropbox(oauth2_access_token=self.params.access_key, session=self.SESSION, app_key=self.APP_KEY)
+        if not self._dropbox:
+            raise Exception('Validate the email address and link the Dropbox account')
+
         echo_user = self._dropbox.check_user('test-user')
         logger.debug(f'{echo_user=}')
         account_info = self._dropbox.users_get_current_account()

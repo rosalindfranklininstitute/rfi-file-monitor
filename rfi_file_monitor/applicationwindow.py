@@ -150,20 +150,20 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             self._controls_operations_combo,
             2, 2, 2, 1)
 
-        self._controls_operations_button = Gtk.Button(
+        self._add_operation_button = Gtk.Button(
             label="Add",
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False,
         )
-        self._controls_operations_button.connect("clicked", self.add_operations_button_cb)
+        self._add_operation_button.connect("clicked", self.add_operations_button_cb)
         controls_grid_basic.attach(
-            self._controls_operations_button,
+            self._add_operation_button,
             4, 2, 2, 1)
 
         if len(controls_operations_model) > 0:
             self._controls_operations_combo.set_active(0)
         else:
-            self._controls_operations_button.set_sensitive(False)
+            self._add_operation_button.set_sensitive(False)
             self._controls_operations_combo.set_sensitive(False)
 
         controls_grid_basic.attach(
@@ -186,13 +186,13 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self.controls_operations_live_combo.add_attribute(live_renderer, "text", 0)
         controls_grid_basic.attach(self.controls_operations_live_combo, 2,3,2,1)
 
-        self.remove_operation = Gtk.Button(label='Remove',
+        self._remove_operation_button = Gtk.Button(label='Remove',
                                            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
                                            hexpand=False, vexpand=False,
                                            )
-        controls_grid_basic.attach(self.remove_operation, 4, 3, 2, 1)
-        self.remove_operation.connect('clicked', self.remove_operations_button_cb)
-        self.remove_operation.set_sensitive(False)
+        controls_grid_basic.attach(self._remove_operation_button, 4, 3, 2, 1)
+        self._remove_operation_button.connect('clicked', self.remove_operations_button_cb)
+        self._remove_operation_button.set_sensitive(False)
 
 
         advanced_options_expander = Gtk.Expander(
@@ -499,7 +499,8 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             self._directory_chooser_button.set_sensitive(True)
             self._monitor_stop_button.set_sensitive(False)
             self._monitor_play_button.set_sensitive(True)
-            self._controls_operations_button.set_sensitive(True)
+            self._add_operation_button.set_sensitive(True)
+            self._remove_operation_button.set_sensitive(True)
             self._monitor_recursively_checkbutton.set_sensitive(True)
             self._process_existing_files_checkbutton.set_sensitive(True)
             self._allowed_patterns_entry.set_sensitive(True)
@@ -593,7 +594,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self.update_monitor_switch_sensitivity()
         iter = self.controls_operations_live.append([ new_operation.get_label(), new_operation])
         self.controls_operations_live_combo.set_active_iter(iter)
-        self.remove_operation.set_sensitive(True)
+        self._remove_operation_button.set_sensitive(True)
 
     def remove_operations_button_cb(self, button):
         iter = self.controls_operations_live_combo.get_active_iter()
@@ -657,7 +658,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
         if iter:
             self.controls_operations_live_combo.set_active_iter(iter)
-            self.remove_operation.set_sensitive(True)
+            self._remove_operation_button.set_sensitive(True)
 
         self.update_monitor_switch_sensitivity()
 
@@ -816,7 +817,8 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self._monitor_stop_button.set_sensitive(True)
         self._monitor_play_button.set_sensitive(False)
         self._directory_chooser_button.set_sensitive(False)
-        self._controls_operations_button.set_sensitive(False)
+        self._add_operation_button.set_sensitive(False)
+        self._remove_operation_button.set_sensitive(False)
         self._monitor_recursively_checkbutton.set_sensitive(False)
         self._process_existing_files_checkbutton.set_sensitive(False)
         self._allowed_patterns_entry.set_sensitive(False)

@@ -15,3 +15,5 @@ dependencies:
   - librsvg
   - paramiko
   - bugsnag
+  - dropbox
+  - keyring

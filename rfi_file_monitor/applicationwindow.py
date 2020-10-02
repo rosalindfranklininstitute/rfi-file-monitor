@@ -524,7 +524,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         file_path = user_data[0]
         with self._files_dict_lock:
             if file_path in self._files_dict:
-                logger.warning(f"{file_path} has been recreated! Ignoring...")
+                logger.debug(f"{file_path} has been recreated! Ignoring...")
             else:
                 logger.debug(f"New file {file_path} created")
                 # add new entry to model
@@ -556,7 +556,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             try:
                 file = self._files_dict[file_path]
             except KeyError:
-                logger.warning(f"{file_path} has not been created yet! Ignoring...")
+                logger.debug(f"{file_path} has not been created yet! Ignoring...")
                 return
 
             logger.debug(f"{file.status=}")
@@ -654,7 +654,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                     iter = self.controls_operations_live.append([ new_operation.get_label(), new_operation])
                     break
             else:
-                logger.warning(f"load_from_yaml_dict: no match found for operation {op['name']}")
+                logger.debug(f"load_from_yaml_dict: no match found for operation {op['name']}")
 
         if iter:
             self.controls_operations_live_combo.set_active_iter(iter)

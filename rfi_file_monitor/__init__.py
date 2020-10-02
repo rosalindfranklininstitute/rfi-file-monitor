@@ -38,7 +38,7 @@ def main():
 
     # log to bugsnag
     log_handler_bugsnag = BugsnagHandler()
-    log_handler_bugsnag.setLevel(logging.INFO)
+    log_handler_bugsnag.setLevel(logging.WARNING)
     monitor_logger.addHandler(log_handler_bugsnag)
 
     logger.info('Started')

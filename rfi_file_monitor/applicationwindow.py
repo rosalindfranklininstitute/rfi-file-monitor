@@ -19,6 +19,7 @@ import os
 import platform
 import inspect
 from dataclasses import dataclass, astuple as dc_astuple
+from fnmatch import fnmatch
 
 from rfi_file_monitor.utils import add_action_entries, LongTaskWindow, class_in_object_iterable, get_patterns_from_string
 from rfi_file_monitor.utils.widgetparams import WidgetParams
@@ -459,6 +460,19 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         state_filter_popover = Gtk.Popover.new_from_model(state_filters_button, self.props.application.filter_popover_menu)
         state_filters_button.connect('clicked', self._state_filters_button_clicked, state_filter_popover)
 
+        label = Gtk.Label(label='Name:',
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+        )
+        filters_grid.attach(label, 2, 0, 1, 1)
+        self._name_filter_entry = Gtk.Entry(
+            placeholder_text='Wildcards are allowed',
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+        )
+        filters_grid.attach(self._name_filter_entry, 3, 0, 1, 1)
+        self._name_filter_entry.connect('changed', self._name_filter_entry_changed)
+
         files_frame = Gtk.Frame(border_width=5)
         files_scrolled_window = Gtk.ScrolledWindow(**EXPAND_AND_FILL)
         files_frame.add(files_scrolled_window)
@@ -673,14 +687,25 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         action.set_state(GLib.Variant.new_boolean(not action.get_state().get_boolean()))
         self._files_tree_model_filter.refilter()
 
+    def _name_filter_entry_changed(self, entry):
+        self._files_tree_model_filter.refilter()
+
     def _files_tree_model_visible_func(self, model, iter, data):
         # Children should always be shown when the parent is visible
         if model.iter_parent(iter) is not None:
-            return True
+            status_filter = True
+        else:
+            status = FileStatus(model[iter][2])
+            status_filter = self.get_action_state(f'status-filter-{status.name.lower()}').get_boolean()
 
-        status = FileStatus(model[iter][2])
-        status_active = self.get_action_state(f'status-filter-{status.name.lower()}').get_boolean()
-        return status_active
+        pattern = self._name_filter_entry.get_text().strip()
+
+        if not pattern:
+            name_filter = True
+        else:
+            name_filter = fnmatch(model[iter][0], pattern)
+
+        return status_filter and name_filter
 
     def load_from_yaml_dict(self, yaml_dict: dict):
         # configuration first

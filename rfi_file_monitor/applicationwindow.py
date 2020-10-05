@@ -25,6 +25,7 @@ from rfi_file_monitor.utils.widgetparams import WidgetParams
 from .file import FileStatus, File
 from .job import Job
 from .operation import Operation
+from .utils import EXPAND_AND_FILL
 
 IGNORE_PATTERNS = ['*.swp', '*.swx'] 
 
@@ -426,12 +427,15 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             str, # error message
         )
 
-        files_scrolled_window = Gtk.ScrolledWindow(
-            halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
-            hexpand=True, vexpand=True)
-        output_frame.add(files_scrolled_window)
+        output_grid = Gtk.Grid(**EXPAND_AND_FILL)
 
-        files_tree_view = Gtk.TreeView(self._files_tree_model)
+        files_frame = Gtk.Frame(border_width=5)
+        files_scrolled_window = Gtk.ScrolledWindow(**EXPAND_AND_FILL)
+        files_frame.add(files_scrolled_window)
+        output_grid.attach(files_frame, 0, 0, 1, 1)
+        output_frame.add(output_grid)
+
+        files_tree_view = Gtk.TreeView(model=self._files_tree_model, border_width=5)
         files_scrolled_window.add(files_tree_view)
 
         renderer = Gtk.CellRendererText()

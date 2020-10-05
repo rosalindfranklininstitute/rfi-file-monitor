@@ -252,7 +252,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             ),
             0, 0, 1, 1,
         )
-        self._allowed_patterns_entry = self.register_widget(Gtk.Entry(
+        self._allowed_patterns_entry = self.register_widget(Gtk.Entry(placeholder_text='e.g *.txt, *.csv or *data* or *main*',
                 halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
                 hexpand=True, vexpand=False,
         ), 'allowed_patterns')
@@ -273,10 +273,11 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             label='Ignored filename patterns',
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False,
+
         ),
             0, 0, 1, 1,
         )
-        self._ignored_patterns_entry = self.register_widget(Gtk.Entry(
+        self._ignored_patterns_entry = self.register_widget(Gtk.Entry(placeholder_text='e.g *.txt, *.csv or *temp* or *log*',
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
         ), 'ignore_patterns')

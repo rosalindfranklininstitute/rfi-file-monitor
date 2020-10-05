@@ -12,6 +12,8 @@ EXPAND_AND_FILL: Final[Dict[str, Any]] = dict(hexpand=True, vexpand=True, halign
 
 PREFERENCES_CONFIG_FILE = Path(GLib.get_user_config_dir(), 'rfi-file-monitor', 'prefs.yml')
 
+PATTERN_PLACEHOLDER_TEXT = 'e.g *.txt, *.csv or *temp* or *log*'
+
 logger = logging.getLogger(__name__)
 
 def query_metadata(metadata: Dict[int, Dict[str, Any]], key: str, full_dict=False) -> Any:
@@ -35,10 +37,20 @@ def add_action_entries(
     map: Gio.ActionMap,
     action: str,
     callback: Callable[[Gio.ActionMap, Gio.SimpleAction, GLib.Variant], None],
-    param: Optional[str] = None) -> None:
+    param: Optional[str] = None,
+    state: Optional[GLib.Variant] = None,
+    callback_arg: Optional[Any] = None) -> None:
 
-    action = Gio.SimpleAction.new(action, GLib.VariantType.new(param) if param else None)
-    action.connect("activate", callback)
+    if state:
+        action = Gio.SimpleAction.new_stateful(action, GLib.VariantType.new(param) if param else None, state)
+    else:
+        action = Gio.SimpleAction.new(action, GLib.VariantType.new(param) if param else None)
+    
+    if callback_arg:
+        action.connect("activate", callback, callback_arg)
+    else:
+        action.connect("activate", callback)
+
     map.add_action(action)
 
 def class_in_object_iterable(iterable: Iterable, klass) -> bool:

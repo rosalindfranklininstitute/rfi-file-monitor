@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<interface>
+	<menu id="filter-popover-menu">
+		<section>
+			<attribute name="id">section1</attribute>
+			<item>
+				<attribute name="label">Created</attribute>
+				<attribute name="action">win.status-filter-created</attribute>
+			</item>
+			<item>
+				<attribute name="label">Saved</attribute>
+				<attribute name="action">win.status-filter-saved</attribute>
+			</item>
+			<item>
+				<attribute name="label">Queued</attribute>
+				<attribute name="action">win.status-filter-queued</attribute>
+			</item>
+			<item>
+				<attribute name="label">Running</attribute>
+				<attribute name="action">win.status-filter-running</attribute>
+			</item>
+			<item>
+				<attribute name="label">Success</attribute>
+				<attribute name="action">win.status-filter-success</attribute>
+			</item>
+			<item>
+				<attribute name="label">Failure</attribute>
+				<attribute name="action">win.status-filter-failure</attribute>
+			</item>
+		</section>
+	</menu>
+</interface>

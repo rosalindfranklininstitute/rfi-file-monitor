@@ -19,12 +19,14 @@ import os
 import platform
 import inspect
 from dataclasses import dataclass, astuple as dc_astuple
+from fnmatch import fnmatch
 
 from rfi_file_monitor.utils import add_action_entries, LongTaskWindow, class_in_object_iterable, get_patterns_from_string
 from rfi_file_monitor.utils.widgetparams import WidgetParams
 from .file import FileStatus, File
 from .job import Job
 from .operation import Operation
+from .utils import EXPAND_AND_FILL, PATTERN_PLACEHOLDER_TEXT
 
 IGNORE_PATTERNS = ['*.swp', '*.swx'] 
 
@@ -65,6 +67,12 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             ("save-as", self.on_save_as),
             ("close", self.on_close),
             ("minimize", self.on_minimize),
+            ("status-filter-created", self.on_status_filter, None, GLib.Variant.new_boolean(True), FileStatus.CREATED),
+            ("status-filter-saved", self.on_status_filter, None, GLib.Variant.new_boolean(True), FileStatus.SAVED),
+            ("status-filter-queued", self.on_status_filter, None, GLib.Variant.new_boolean(True), FileStatus.QUEUED),
+            ("status-filter-running", self.on_status_filter, None, GLib.Variant.new_boolean(True), FileStatus.RUNNING),
+            ("status-filter-success", self.on_status_filter, None, GLib.Variant.new_boolean(True), FileStatus.SUCCESS),
+            ("status-filter-failure", self.on_status_filter, None, GLib.Variant.new_boolean(True), FileStatus.FAILURE),
         )
 
         # This doesn't work, which is kind of uncool
@@ -252,7 +260,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             ),
             0, 0, 1, 1,
         )
-        self._allowed_patterns_entry = self.register_widget(Gtk.Entry(placeholder_text='e.g *.txt, *.csv or *data* or *main*',
+        self._allowed_patterns_entry = self.register_widget(Gtk.Entry(placeholder_text=PATTERN_PLACEHOLDER_TEXT,
                 halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
                 hexpand=True, vexpand=False,
         ), 'allowed_patterns')
@@ -277,7 +285,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         ),
             0, 0, 1, 1,
         )
-        self._ignored_patterns_entry = self.register_widget(Gtk.Entry(placeholder_text='e.g *.txt, *.csv or *temp* or *log*',
+        self._ignored_patterns_entry = self.register_widget(Gtk.Entry(placeholder_text=PATTERN_PLACEHOLDER_TEXT,
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
         ), 'ignore_patterns')
@@ -426,12 +434,52 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             str, # error message
         )
 
-        files_scrolled_window = Gtk.ScrolledWindow(
-            halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
-            hexpand=True, vexpand=True)
-        output_frame.add(files_scrolled_window)
+        self._files_tree_model_filter = Gtk.TreeModelFilter(child_model=self._files_tree_model)
+        self._files_tree_model_filter.set_visible_func(self._files_tree_model_visible_func)
 
-        files_tree_view = Gtk.TreeView(self._files_tree_model)
+        output_grid = Gtk.Grid(**EXPAND_AND_FILL)
+
+        filters_grid = Gtk.Grid(border_width=5,
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            column_spacing=5,
+        )
+        output_grid.attach(filters_grid, 0, 0, 1, 1)
+
+        label = Gtk.Label(label='Table Filters:',
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+        )
+        filters_grid.attach(label, 0, 0, 1, 1)
+        state_filters_button = Gtk.Button(label='Status',
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+        )
+        filters_grid.attach(state_filters_button, 1, 0, 1, 1)
+
+        state_filter_popover = Gtk.Popover.new_from_model(state_filters_button, self.props.application.filter_popover_menu)
+        state_filters_button.connect('clicked', self._state_filters_button_clicked, state_filter_popover)
+
+        label = Gtk.Label(label='Name:',
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+        )
+        filters_grid.attach(label, 2, 0, 1, 1)
+        self._name_filter_entry = Gtk.Entry(
+            placeholder_text=PATTERN_PLACEHOLDER_TEXT,
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+        )
+        filters_grid.attach(self._name_filter_entry, 3, 0, 1, 1)
+        self._name_filter_entry.connect('changed', self._name_filter_entry_changed)
+
+        files_frame = Gtk.Frame(border_width=5)
+        files_scrolled_window = Gtk.ScrolledWindow(**EXPAND_AND_FILL)
+        files_frame.add(files_scrolled_window)
+        output_grid.attach(files_frame, 0, 1, 1, 1)
+        output_frame.add(output_grid)
+
+        files_tree_view = Gtk.TreeView(model=self._files_tree_model_filter, border_width=5)
         files_scrolled_window.add(files_tree_view)
 
         renderer = Gtk.CellRendererText()
@@ -457,6 +505,10 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         files_tree_view.append_column(column)
 
         files_tree_view.set_tooltip_column(column=7)
+
+    def _state_filters_button_clicked(self, button, popover):
+        popover.show_all()
+        popover.popup()
 
     def _add_advanced_options_horizontal_separator(self):
         self.advanced_options_child.attach(Gtk.Separator(
@@ -636,6 +688,32 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
     def on_close(self, action, param):
         self.destroy()
+
+    def on_status_filter(self, action, param, arg):
+        logger.debug(f'{action.get_state()=} for {str(arg)}')
+        # invert state!
+        action.set_state(GLib.Variant.new_boolean(not action.get_state().get_boolean()))
+        self._files_tree_model_filter.refilter()
+
+    def _name_filter_entry_changed(self, entry):
+        self._files_tree_model_filter.refilter()
+
+    def _files_tree_model_visible_func(self, model, iter, data):
+        # Children should always be shown when the parent is visible
+        if model.iter_parent(iter) is not None:
+            status_filter = True
+        else:
+            status = FileStatus(model[iter][2])
+            status_filter = self.get_action_state(f'status-filter-{status.name.lower()}').get_boolean()
+
+        pattern = self._name_filter_entry.get_text().strip()
+
+        if not pattern:
+            name_filter = True
+        else:
+            name_filter = fnmatch(model[iter][0], pattern)
+
+        return status_filter and name_filter
 
     def load_from_yaml_dict(self, yaml_dict: dict):
         # configuration first

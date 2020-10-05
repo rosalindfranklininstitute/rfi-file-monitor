@@ -26,7 +26,7 @@ from rfi_file_monitor.utils.widgetparams import WidgetParams
 from .file import FileStatus, File
 from .job import Job
 from .operation import Operation
-from .utils import EXPAND_AND_FILL
+from .utils import EXPAND_AND_FILL, PATTERN_PLACEHOLDER_TEXT
 
 IGNORE_PATTERNS = ['*.swp', '*.swx'] 
 
@@ -260,7 +260,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             ),
             0, 0, 1, 1,
         )
-        self._allowed_patterns_entry = self.register_widget(Gtk.Entry(placeholder_text='e.g *.txt, *.csv or *data* or *main*',
+        self._allowed_patterns_entry = self.register_widget(Gtk.Entry(placeholder_text=PATTERN_PLACEHOLDER_TEXT,
                 halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
                 hexpand=True, vexpand=False,
         ), 'allowed_patterns')
@@ -285,7 +285,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         ),
             0, 0, 1, 1,
         )
-        self._ignored_patterns_entry = self.register_widget(Gtk.Entry(placeholder_text='e.g *.txt, *.csv or *temp* or *log*',
+        self._ignored_patterns_entry = self.register_widget(Gtk.Entry(placeholder_text=PATTERN_PLACEHOLDER_TEXT,
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
         ), 'ignore_patterns')
@@ -466,7 +466,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         )
         filters_grid.attach(label, 2, 0, 1, 1)
         self._name_filter_entry = Gtk.Entry(
-            placeholder_text='Wildcards are allowed',
+            placeholder_text=PATTERN_PLACEHOLDER_TEXT,
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False,
         )

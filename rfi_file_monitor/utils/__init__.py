@@ -12,6 +12,8 @@ EXPAND_AND_FILL: Final[Dict[str, Any]] = dict(hexpand=True, vexpand=True, halign
 
 PREFERENCES_CONFIG_FILE = Path(GLib.get_user_config_dir(), 'rfi-file-monitor', 'prefs.yml')
 
+PATTERN_PLACEHOLDER_TEXT = 'e.g *.txt, *.csv or *temp* or *log*'
+
 logger = logging.getLogger(__name__)
 
 def query_metadata(metadata: Dict[int, Dict[str, Any]], key: str, full_dict=False) -> Any:

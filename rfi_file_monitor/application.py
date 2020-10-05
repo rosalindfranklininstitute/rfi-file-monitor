@@ -41,6 +41,11 @@ class Application(Gtk.Application):
         builder = Gtk.Builder.new_from_string(commonmenus_str, -1)
         self.set_menubar(builder.get_object("menubar"))
 
+        # get file filter menu
+        popover_filter_menu_str = importlib.resources.read_text('rfi_file_monitor.data', 'filter-popover.ui')
+        builder = Gtk.Builder.new_from_string(popover_filter_menu_str, -1)
+        self.filter_popover_menu = builder.get_object("filter-popover-menu")
+
         action_entries = (
             ("about", self.on_about),
             ("quit", self.on_quit),

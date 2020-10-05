@@ -40,6 +40,7 @@ class File:
         self._operation_metadata : Final[Dict[int, Dict[str, Any]]] = dict()
         self._cancellable = Gio.Cancellable()
         self._saved : int = 0
+        self._requeue : bool = False
 
     @property
     def cancellable(self) -> Gio.Cancellable:
@@ -76,6 +77,14 @@ class File:
     @status.setter
     def status(self, value: FileStatus):
         self._status = value
+
+    @property
+    def requeue(self) -> bool:
+        return self._requeue
+
+    @requeue.setter
+    def requeue(self, value: bool):
+        self._requeue = value
 
     @property
     def row_reference(self):

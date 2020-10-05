@@ -520,11 +520,11 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             thread = PreflightCheckThread(self, task_window)
             thread.start()
 
-    def file_created_cb(self, *user_data):
-        file_path = user_data[0]
+    def file_created_cb(self, file_path):
         with self._files_dict_lock:
             if file_path in self._files_dict:
-                logger.debug(f"{file_path} has been recreated! Ignoring...")
+                logger.debug(f"{file_path} has been recreated! Reprocessing...")
+                self.file_changes_done_cb(file_path)
             else:
                 logger.debug(f"New file {file_path} created")
                 # add new entry to model
@@ -560,18 +560,26 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                 return
 
             logger.debug(f"{file.status=}")
+            file.saved = time()
 
             if file.status == FileStatus.SAVED:
                 # looks like this file has been saved again!
                 # update saved timestamp
                 logger.debug(f"File {file_path} has been saved again")
-                file.saved = time()
             elif file.status == FileStatus.CREATED:
                 logger.debug(f"File {file_path} has been saved")
                 file.status = FileStatus.SAVED
-                file.saved = time() 
                 path = file.row_reference.get_path()
                 self._files_tree_model[path][2] = int(FileStatus.SAVED) 
+            elif file.status == FileStatus.QUEUED:
+                # file hasn't been processed yet, so it's safe to demote it to SAVED
+                logger.debug(f"File {file_path} has been saved again while queued")
+                file.status = FileStatus.SAVED
+                path = file.row_reference.get_path()
+                self._files_tree_model[path][2] = int(FileStatus.SAVED) 
+            elif file.status in (FileStatus.RUNNING, FileStatus.SUCCESS, FileStatus.FAILURE):
+                # file is currently being processed or has been processed -> mark it for being requeued
+                file.requeue = True
             else:
                 logger.warning(f"File {file_path} has been saved again after it was queued for processing!!")
 
@@ -751,6 +759,28 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                         self._jobs_list.append(job)
                         job.start()
                         self._njobs_running += 1
+                elif _file.requeue and _file.status in (FileStatus.SUCCESS, FileStatus.FAILURE):
+                    # demote to saved so it gets requeued
+                    _file.requeue = False
+                    _file.status = FileStatus.SAVED
+                    _file.saved = time()
+                    path = _file.row_reference.get_path()
+                    iter = self._files_tree_model.get_iter(path)
+                    self._files_tree_model[iter][2] = int(FileStatus.SAVED)
+                    self._files_tree_model[iter][4] = 0.0
+                    self._files_tree_model[iter][5] = "0.0 %"
+                    self._files_tree_model[iter][6] = None
+                    self._files_tree_model[iter][7] = ""
+
+                    for child in self._files_tree_model[iter].iterchildren():
+                        child[2] = int(FileStatus.QUEUED)
+                        child[4] = 0.0
+                        child[5] = "0.0 %"
+                        child[6] = None
+                        child[7] = ""
+
+                    logger.debug(f"files_dict_timeout_cb: requeuing {_filename}")
+
         return GLib.SOURCE_CONTINUE
 
     def _process_existing_files_cb(self, task_window: LongTaskWindow, existing_files: List[Path]):

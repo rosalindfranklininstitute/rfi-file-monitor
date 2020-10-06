@@ -350,7 +350,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                 value=30,
                 page_size=0,
                 step_increment=1),
-            value=5,
+            value=30,
             update_policy=Gtk.SpinButtonUpdatePolicy.IF_VALID,
             numeric=True,
             climb_rate=5,

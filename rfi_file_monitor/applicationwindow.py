@@ -345,9 +345,9 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         )
         saved_status_promotion_spinbutton = self.register_widget(Gtk.SpinButton(
             adjustment=Gtk.Adjustment(
-                lower=2,
+                lower=10,
                 upper=3600,
-                value=5,
+                value=30,
                 page_size=0,
                 step_increment=1),
             value=5,

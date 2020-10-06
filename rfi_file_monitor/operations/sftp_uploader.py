@@ -5,7 +5,7 @@ import paramiko
 from paramiko import AutoAddPolicy, RejectPolicy
 from munch import Munch
 from tenacity import retry, stop_after_attempt, wait_exponential, \
-    retry_unless_exception_type, before_log, after_log, before_sleep_log, \
+    before_log, after_log, before_sleep_log, \
     retry_if_result
 
 from ..operation import Operation, SkippedOperation

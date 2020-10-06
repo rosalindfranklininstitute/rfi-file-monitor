@@ -33,6 +33,7 @@ requirements:
     - bugsnag
     - keyring
     - dropbox
+    - tenacity
 
 test:
   imports:

@@ -4,6 +4,9 @@ from gi.repository import Gtk
 import paramiko
 from paramiko import AutoAddPolicy, RejectPolicy
 from munch import Munch
+from tenacity import retry, stop_after_attempt, wait_exponential, \
+    retry_unless_exception_type, before_log, after_log, before_sleep_log, \
+    retry_if_result
 
 from ..operation import Operation, SkippedOperation
 from ..file import File
@@ -198,6 +201,13 @@ class SftpUploaderOperation(Operation):
         logger.debug(f"{file.operation_metadata[operation_index]=}")
 
     @classmethod
+    @retry(retry=retry_if_result(lambda value: value is not None),
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(),
+        before=before_log(logger, logging.DEBUG),
+        after=after_log(logger, logging.DEBUG),
+        before_sleep=before_sleep_log(logger, logging.DEBUG),
+        )
     def _run(cls, file: File, params: Munch, operation_index: int):
         try:
             with paramiko.SSHClient() as client:

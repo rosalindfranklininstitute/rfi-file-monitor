@@ -437,7 +437,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self._files_tree_model_filter = Gtk.TreeModelFilter(child_model=self._files_tree_model)
         self._files_tree_model_filter.set_visible_func(self._files_tree_model_visible_func)
 
-        output_grid = Gtk.Grid(**EXPAND_AND_FILL)
+        output_grid = Gtk.Grid(**EXPAND_AND_FILL, row_spacing=2, border_width=2)
 
         filters_grid = Gtk.Grid(border_width=5,
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
@@ -505,6 +505,17 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         files_tree_view.append_column(column)
 
         files_tree_view.set_tooltip_column(column=7)
+
+        # add status bar
+        self._status_grid = Gtk.Grid(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            column_homogeneous=True, column_spacing=5)
+        output_grid.attach(self._status_grid, 0, 2, 1, 1)
+        statuses = ('Total', 'Created', 'Saved', 'Queued', 'Running', 'Success', 'Failure')
+        for _index, _status in enumerate(statuses):
+            self._status_grid.attach(Gtk.Label(label=f'{_status}: 0'), _index, 0, 1, 1)
+            
 
     def _state_filters_button_clicked(self, button, popover):
         popover.show_all()
@@ -809,6 +820,14 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         """
         #logger.debug(f"files_dict_timeout_cb enter: {self._njobs_running=} {self.params.max_threads=}")
         with self._files_dict_lock:
+            status_counters = {
+                FileStatus.CREATED: 0,
+                FileStatus.SAVED: 0,
+                FileStatus.QUEUED: 0,
+                FileStatus.RUNNING: 0,
+                FileStatus.SUCCESS: 0,
+                FileStatus.FAILURE: 0,
+            }
             for _filename, _file in self._files_dict.items():
                 #logger.debug(f"timeout_cb: {_filename} found as {str(_file.status)}")
                 if _file.status == FileStatus.CREATED:
@@ -859,6 +878,13 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                         child[7] = ""
 
                     logger.debug(f"files_dict_timeout_cb: requeuing {_filename}")
+                
+                status_counters[_file.status] += 1
+
+            # update status bar
+            self._status_grid.get_child_at(0, 0).props.label = f'Total: {len(self._files_dict)}'
+            for _status, _counter in status_counters.items():
+                self._status_grid.get_child_at(int(_status), 0).props.label = f'{_status.name.lower().capitalize()}: {_counter}'
 
         return GLib.SOURCE_CONTINUE
 

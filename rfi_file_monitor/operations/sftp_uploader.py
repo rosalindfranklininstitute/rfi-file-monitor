@@ -5,11 +5,11 @@ import paramiko
 from paramiko import AutoAddPolicy, RejectPolicy
 from munch import Munch
 from tenacity import retry, stop_after_attempt, wait_exponential, \
-    before_log, after_log, before_sleep_log, \
-    retry_if_result
+    before_log, after_log, before_sleep_log
 
 from ..operation import Operation, SkippedOperation
 from ..file import File
+from ..utils import monitor_retry_condition
 
 import logging
 import os
@@ -201,7 +201,7 @@ class SftpUploaderOperation(Operation):
         logger.debug(f"{file.operation_metadata[operation_index]=}")
 
     @classmethod
-    @retry(retry=retry_if_result(lambda value: value is not None),
+    @retry(retry=monitor_retry_condition(),
         stop=stop_after_attempt(5),
         wait=wait_exponential(),
         before=before_log(logger, logging.DEBUG),

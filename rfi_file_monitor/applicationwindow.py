@@ -568,6 +568,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
             self._monitor_recursively_checkbutton.set_sensitive(True)
             self._process_existing_files_checkbutton.set_sensitive(True)
             self._allowed_patterns_entry.set_sensitive(True)
+            self._ignored_patterns_entry.set_sensitive(True)
             for operation in self._operations_box:
                 operation.set_sensitive(True)
 
@@ -957,6 +958,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self._monitor_recursively_checkbutton.set_sensitive(False)
         self._process_existing_files_checkbutton.set_sensitive(False)
         self._allowed_patterns_entry.set_sensitive(False)
+        self._ignored_patterns_entry.set_sensitive(False)
         for operation in self._operations_box:
             operation.set_sensitive(False)
 

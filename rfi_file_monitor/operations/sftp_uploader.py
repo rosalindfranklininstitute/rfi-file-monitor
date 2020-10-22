@@ -7,7 +7,8 @@ from munch import Munch
 from tenacity import retry, stop_after_attempt, wait_exponential, \
     before_log, after_log, before_sleep_log
 
-from ..operation import Operation, SkippedOperation
+from ..operation import Operation
+from ..utils.exceptions import SkippedOperation
 from ..file import File
 from ..utils import monitor_retry_condition
 

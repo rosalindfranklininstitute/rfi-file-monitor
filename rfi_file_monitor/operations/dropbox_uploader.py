@@ -4,8 +4,9 @@ from gi.repository import Gtk, GLib
 import dropbox
 import keyring
 
-from ..operation import Operation, SkippedOperation
-from ..applicationwindow import ApplicationWindow
+from ..operation import Operation
+from ..utils.exceptions import SkippedOperation
+from ..queue_manager import QueueManager
 from ..file import File
 
 import logging
@@ -250,7 +251,7 @@ class DropboxSpaceCheckerThread(Thread):
 class DropboxUploaderOperation(Operation):
     NAME = "Dropbox Uploader"
 
-    SESSION = dropbox.create_session(max_connections=ApplicationWindow.MAX_JOBS)
+    SESSION = dropbox.create_session(max_connections=QueueManager.MAX_JOBS)
     CHUNK_SIZE = 1024 * 1024 # 1MB
 
     def __init__(self, *args, **kwargs):

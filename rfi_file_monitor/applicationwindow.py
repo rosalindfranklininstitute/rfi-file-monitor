@@ -1,72 +1,52 @@
 import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
-from gi.repository import GLib, Gtk, Gdk
-from watchdog.events import PatternMatchingEventHandler
-from watchdog.observers import Observer
+from gi.repository import Gtk, GLib, Gdk
 import yaml
-from pathtools.patterns import match_path
 
+from typing import Final, Dict, Any, List, Optional
 import logging
-from collections import OrderedDict
-from threading import RLock, Thread
-from time import time, ctime
-from pathlib import PurePath, Path
-from typing import OrderedDict as OrderedDictType
-from typing import Final, List, Optional, Dict, Any
-import importlib.metadata
-import os
-import platform
-import inspect
-from dataclasses import dataclass, astuple as dc_astuple
 from fnmatch import fnmatch
+from time import ctime
+from threading import Thread, current_thread
+import inspect
+import collections.abc
 
-from rfi_file_monitor.utils import add_action_entries, LongTaskWindow, class_in_object_iterable, get_patterns_from_string
-from rfi_file_monitor.utils.widgetparams import WidgetParams
-from .file import FileStatus, File
-from .job import Job
+from .utils import PATTERN_PLACEHOLDER_TEXT, MONITOR_YAML_VERSION
+from .utils.paramswindow import ParamsWindow
+from .utils import add_action_entries, EXPAND_AND_FILL, LongTaskWindow, class_in_object_iterable
+from .file import FileStatus
+from .utils.decorators import engines_advanced_settings_map, engines_exported_filetype_map, filetypes_supported_operations_map
+from .engine import Engine
 from .operation import Operation
-from .utils import EXPAND_AND_FILL, PATTERN_PLACEHOLDER_TEXT
-
-IGNORE_PATTERNS = ['*.swp', '*.swx'] 
+from .queue_manager import QueueManager
 
 logger = logging.getLogger(__name__)
 
-class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
-    #pylint: disable=no-member
-    MAX_JOBS = len(os.sched_getaffinity(0)) if hasattr(os, 'sched_getaffinity') else os.cpu_count()
+class ApplicationWindow(Gtk.ApplicationWindow):
+
+    ENGINE_ADVANCED_SETTINGS_WINDOW_ATTR = 'advanced settings window'
 
     def __init__(self, *args, **kwargs):
         logger.debug('Calling ApplicationWindow __init__')
         Gtk.ApplicationWindow.__init__(self, *args, **kwargs)
-        WidgetParams.__init__(self)
 
-        self._monitor: Final[Observer] = None
-        self._files_dict_lock = RLock()
-        self._files_dict: OrderedDictType[str, File] = OrderedDict()
-        self._jobs_list: Final[List[Job]] = list()
-        self._njobs_running: Final[int] = 0
-        self._timeout_id: Final[int] = 0
         self._preflight_check_metadata : Final[Dict[int, Dict[str, Any]]] = dict() 
         self._yaml_file: Final[str] = None
 
         self.set_default_size(1000, 1000)
-
-
-        # get operations from entry points
-        self._known_operations = {
-            e.name: e.load() for e in importlib.metadata.entry_points()['rfi_file_monitor.operations']
-        }
-
-        for _name, _class in self._known_operations.items():
-            logger.debug(f"{_name}")
 
         action_entries = (
             ("save", self.on_save),
             ("save-as", self.on_save_as),
             ("close", self.on_close),
             ("minimize", self.on_minimize),
+            ("play", self.on_play),
+            ("stop", self.on_stop),
+            ("add-operation", self.on_add_operation),
+            ("remove-operation", self.on_remove_operation),
+            ("queue-manager", self.on_open_queue_manager),
             ("status-filter-created", self.on_status_filter, None, GLib.Variant.new_boolean(True), FileStatus.CREATED),
             ("status-filter-saved", self.on_status_filter, None, GLib.Variant.new_boolean(True), FileStatus.SAVED),
             ("status-filter-queued", self.on_status_filter, None, GLib.Variant.new_boolean(True), FileStatus.QUEUED),
@@ -83,8 +63,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         self.set_border_width(10)
         main_grid = Gtk.Grid(
             row_spacing=10,
-            halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
-            hexpand=True, vexpand=True)
+            **EXPAND_AND_FILL)
         self.add(main_grid)
 
         controls_frame = Gtk.Frame(label="File Monitor Controls",
@@ -94,44 +73,71 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         
         controls_grid = Gtk.Grid(
             halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
-            hexpand=True, vexpand=False,
-        )
+            hexpand=True, vexpand=False,)
 
         controls_grid_basic = Gtk.Grid(
-            halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
-            hexpand=True, vexpand=True,
+            **EXPAND_AND_FILL,
             border_width=10, column_spacing=5, row_spacing=5)
         controls_frame.add(controls_grid)
         controls_grid.attach(controls_grid_basic, 0, 0, 1, 1)
-        self._monitor_play_button = Gtk.Button(
-            sensitive=False,
+        monitor_play_button = Gtk.Button(
+            action_name='win.play',
             image=Gtk.Image(icon_name="media-playback-start", icon_size=Gtk.IconSize.DIALOG),
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False)
-        controls_grid_basic.attach(self._monitor_play_button, 0, 0, 1, 1)
-        self._monitor_play_button.connect("clicked", self.monitor_control_button_clicked_cb)
-        self._monitor_stop_button = Gtk.Button(
-            sensitive=False,
+        controls_grid_basic.attach(monitor_play_button, 0, 0, 1, 1)
+        monitor_stop_button = Gtk.Button(
+            action_name='win.stop',
             image=Gtk.Image(icon_name="media-playback-stop", icon_size=Gtk.IconSize.DIALOG),
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False)
-        controls_grid_basic.attach(self._monitor_stop_button, 1, 0, 1, 1)
-        self._monitor_stop_button.connect("clicked", self.monitor_control_button_clicked_cb)
-        self._directory_chooser_button = self.register_widget(Gtk.FileChooserButton(
-            title="Select a directory for monitoring",
-            action=Gtk.FileChooserAction.SELECT_FOLDER,
-            create_folders=True,
-            halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
-            hexpand=True, vexpand=False), 'monitored_directory')
-        controls_grid_basic.attach(self._directory_chooser_button, 2, 0, 5, 1)
-        self._directory_chooser_button.connect("selection-changed", self.directory_chooser_button_cb)
+        controls_grid_basic.attach(monitor_stop_button, 0, 1, 1, 1)
 
+        # turn the buttons off for now
+        # play will become active when operations have been added
+        self.lookup_action('play').set_enabled(False)
+        self.lookup_action('stop').set_enabled(False)
+
+        # add the notebook with the engines
+        self._engines_notebook = Gtk.Notebook(
+            **EXPAND_AND_FILL,)
+        controls_grid_basic.attach(self._engines_notebook, 1, 0, 6, 2)
+
+        self._engines : List[Engine] = list()
+
+        for engine_cls in self.get_property('application').known_engines.values():
+            engine = engine_cls(appwindow=self)
+            engine_grid = Gtk.Grid(**EXPAND_AND_FILL, row_spacing=5, border_width=5)
+            engine_grid.attach(engine, 0, 0, 1, 1)
+            # add button and dialog for advanced settings if necessary
+            if engine_cls in engines_advanced_settings_map:
+                engine_advanced_settings = engines_advanced_settings_map[type(engine)](engine)
+                title = f'{engine.NAME} Advanced Settings'
+                dialog = ParamsWindow(engine_advanced_settings, self, title)
+                setattr(engine, self.ENGINE_ADVANCED_SETTINGS_WINDOW_ATTR, dialog)
+
+                advanced_settings_button = Gtk.Button(
+                    label='Advanced Settings',
+                    halign=Gtk.Align.CENTER, valign=Gtk.Align.END,
+                    hexpand=False, vexpand=False)
+                engine_grid.attach(advanced_settings_button, 0, 1, 1, 1)
+                advanced_settings_button.connect('clicked', self._engine_advanced_settings_button_clicked_cb, engine)
+            self._engines_notebook.append_page(engine_grid, Gtk.Label(label=engine_cls.NAME))
+            self._engines.append(engine)
+
+        # ensure first engine is active
+        self._active_engine : Engine = self._engines[0]
+        self._active_engine_valid_handler_id = self._active_engine.connect('notify::valid', self._engine_valid_changed_cb)
+        self._engines_notebook.props.page = 0
+        self._engines_notebook.connect('switch-page', self._switch_page_cb)
+
+        # Add support for adding and removing operations
         controls_grid_basic.attach(
             Gtk.Separator(
                 orientation=Gtk.Orientation.HORIZONTAL,
                 halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
                 hexpand=False, vexpand=True),
-            0, 1, 7, 1)
+            0, 2, 7, 1)
 
         controls_grid_basic.attach(
             Gtk.Label(
@@ -139,39 +145,37 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                 use_markup=True,
                 halign=Gtk.Align.END, valign=Gtk.Align.CENTER,
                 hexpand=False, vexpand=False),
-            0, 2, 2, 1)
+            0, 3, 2, 1)
         
-        controls_operations_model = Gtk.ListStore(str, object)
-        for _class in self._known_operations.values():
-            controls_operations_model.append([_class.NAME, _class])
+        self._controls_operations_model = Gtk.ListStore(str, object)
         self._controls_operations_combo = Gtk.ComboBox(
-            model=controls_operations_model,
+            model=self._controls_operations_model,
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False,
             )
-        
 
         renderer= Gtk.CellRendererText()
         self._controls_operations_combo.pack_start(renderer, True)
         self._controls_operations_combo.add_attribute(renderer, "text", 0)
         controls_grid_basic.attach(
             self._controls_operations_combo,
-            2, 2, 2, 1)
+            2, 3, 2, 1)
 
-        self._add_operation_button = Gtk.Button(
-            label="Add",
+        add_operation_button = Gtk.Button(
+            label="Add", action_name='win.add-operation',
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False,
         )
-        self._add_operation_button.connect("clicked", self.add_operations_button_cb)
         controls_grid_basic.attach(
-            self._add_operation_button,
-            4, 2, 2, 1)
+            add_operation_button,
+            4, 3, 2, 1)
 
-        if len(controls_operations_model) > 0:
+        self._repopulate_available_operations()
+
+        if len(self._controls_operations_model) > 0:
             self._controls_operations_combo.set_active(0)
         else:
-            self._add_operation_button.set_sensitive(False)
+            self.lookup_action('add-operation').set_enabled(False)
             self._controls_operations_combo.set_sensitive(False)
 
         controls_grid_basic.attach(
@@ -180,217 +184,27 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                 use_markup=True,
                 halign=Gtk.Align.END, valign=Gtk.Align.CENTER,
                 hexpand=False, vexpand=False),
-            0, 3, 2, 1)
+            0, 4, 2, 1)
 
-        self.controls_operations_live = Gtk.ListStore(str, object)
+        self._controls_operations_live = Gtk.ListStore(str, object)
 
-        self.controls_operations_live_combo = Gtk.ComboBox(
-            model=self.controls_operations_live,
+        self._controls_operations_live_combo = Gtk.ComboBox(
+            model=self._controls_operations_live,
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False,
         )
         live_renderer = Gtk.CellRendererText()
-        self.controls_operations_live_combo.pack_start(live_renderer, True)
-        self.controls_operations_live_combo.add_attribute(live_renderer, "text", 0)
-        controls_grid_basic.attach(self.controls_operations_live_combo, 2,3,2,1)
+        self._controls_operations_live_combo.pack_start(live_renderer, True)
+        self._controls_operations_live_combo.add_attribute(live_renderer, "text", 0)
+        controls_grid_basic.attach(self._controls_operations_live_combo, 2, 4, 2, 1)
 
-        self._remove_operation_button = Gtk.Button(label='Remove',
-                                           halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
-                                           hexpand=False, vexpand=False,
-                                           )
-        controls_grid_basic.attach(self._remove_operation_button, 4, 3, 2, 1)
-        self._remove_operation_button.connect('clicked', self.remove_operations_button_cb)
-        self._remove_operation_button.set_sensitive(False)
-
-
-        advanced_options_expander = Gtk.Expander(
-            label='Advanced options',
-            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
-            hexpand=True, vexpand=False)
-        controls_grid.attach(
-            advanced_options_expander,
-            0, 4, 1, 1
-        )
-
-
-        self.advanced_options_child = Gtk.Grid(
-            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
-            hexpand=True, vexpand=False,
-            border_width=10, column_spacing=5, row_spacing=5
-        )
-        advanced_options_expander.add(self.advanced_options_child)
-
-        self.advanced_options_child_row_counter = 0
-
-        # Monitor recursively
-        self._monitor_recursively_checkbutton = self.register_widget(Gtk.CheckButton(
-            label='Monitor target directory recursively',
-            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
-            hexpand=True, vexpand=False,
-            active=True), 'monitor_recursively')
-        self.advanced_options_child.attach(self._monitor_recursively_checkbutton, 0, self.advanced_options_child_row_counter, 1, 1)
-        self.advanced_options_child_row_counter += 1
-
-        self._add_advanced_options_horizontal_separator()
-
-        # Process existing files in monitored directory
-        self._process_existing_files_checkbutton = self.register_widget(Gtk.CheckButton(
-            label='Process existing files in target directory',
-            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
-            hexpand=True, vexpand=False,
-            active=False), 'process_existing_files')
-        self.advanced_options_child.attach(self._process_existing_files_checkbutton, 0, self.advanced_options_child_row_counter, 1, 1)
-        self.advanced_options_child_row_counter += 1
-
-        self._add_advanced_options_horizontal_separator()
-
-        # Specify allowed file patterns
-        allowed_patterns_grid = Gtk.Grid(
-            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
-            hexpand=True, vexpand=False,
-            column_spacing=5
-        )
-
-        self.advanced_options_child.attach(allowed_patterns_grid, 0, self.advanced_options_child_row_counter, 1, 1)
-        self.advanced_options_child_row_counter += 1
-        allowed_patterns_grid.attach(Gtk.Label(
-                label='Allowed filename patterns',
-                halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
-                hexpand=False, vexpand=False,
-            ),
-            0, 0, 1, 1,
-        )
-        self._allowed_patterns_entry = self.register_widget(Gtk.Entry(placeholder_text=PATTERN_PLACEHOLDER_TEXT,
-                halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
-                hexpand=True, vexpand=False,
-        ), 'allowed_patterns')
-        allowed_patterns_grid.attach(self._allowed_patterns_entry, 1, 0, 1, 1)
-
-        self._add_advanced_options_horizontal_separator()
-
-        # Specify allowed file patterns
-        ignore_patterns_grid = Gtk.Grid(
-            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
-            hexpand=True, vexpand=False,
-            column_spacing=5
-        )
-
-        self.advanced_options_child.attach(ignore_patterns_grid, 0, self.advanced_options_child_row_counter, 1, 2)
-        self.advanced_options_child_row_counter += 1
-        ignore_patterns_grid.attach(Gtk.Label(
-            label='Ignored filename patterns',
+        remove_operation_button = Gtk.Button(
+            label='Remove', action_name='win.remove-operation',
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False,
-
-        ),
-            0, 0, 1, 1,
         )
-        self._ignored_patterns_entry = self.register_widget(Gtk.Entry(placeholder_text=PATTERN_PLACEHOLDER_TEXT,
-            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
-            hexpand=True, vexpand=False,
-        ), 'ignore_patterns')
-        ignore_patterns_grid.attach(self._ignored_patterns_entry, 1, 0, 1, 1)
-
-        self._add_advanced_options_horizontal_separator()
-
-        # Promote created files to saved after # seconds
-        created_status_promotion_grid = Gtk.Grid(
-            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
-            hexpand=True, vexpand=False,
-            column_spacing=5
-        )
-
-        self.advanced_options_child.attach(created_status_promotion_grid, 0, self.advanced_options_child_row_counter, 1, 1)
-        self.advanced_options_child_row_counter += 1
-        created_status_promotion_checkbutton = self.register_widget(Gtk.CheckButton(label='Promote files from \'Created\' to \'Saved\' after',
-                halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
-                hexpand=False, vexpand=False), 'created_status_promotion_active')
-        created_status_promotion_grid.attach(
-            created_status_promotion_checkbutton,
-            0, 0, 1, 1
-        )
-        created_status_promotion_spinbutton = self.register_widget(Gtk.SpinButton(
-            adjustment=Gtk.Adjustment(
-                lower=1,
-                upper=3600,
-                value=5,
-                page_size=0,
-                step_increment=1),
-            value=5,
-            update_policy=Gtk.SpinButtonUpdatePolicy.IF_VALID,
-            numeric=True,
-            climb_rate=5,
-            halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
-            hexpand=False, vexpand=False), 'created_status_promotion_delay')
-        created_status_promotion_grid.attach(created_status_promotion_spinbutton, 1, 0, 1, 1)
-        created_status_promotion_grid.attach(Gtk.Label(label='seconds'), 2, 0, 1, 1)
-
-        self._add_advanced_options_horizontal_separator()
-
-        # Delay promoting saved files to queued for # seconds
-        saved_status_promotion_grid = Gtk.Grid(
-            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
-            hexpand=True, vexpand=False,
-            column_spacing=5
-        )
-
-        self.advanced_options_child.attach(saved_status_promotion_grid, 0, self.advanced_options_child_row_counter, 1, 1)
-        self.advanced_options_child_row_counter += 1
-        label = Gtk.Label(label='Delay promoting files from \'Saved\' to \'Queued\' for',
-                halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
-                hexpand=False, vexpand=False)
-        saved_status_promotion_grid.attach(
-            label,
-            0, 0, 1, 1
-        )
-        saved_status_promotion_spinbutton = self.register_widget(Gtk.SpinButton(
-            adjustment=Gtk.Adjustment(
-                lower=10,
-                upper=3600,
-                value=30,
-                page_size=0,
-                step_increment=1),
-            value=30,
-            update_policy=Gtk.SpinButtonUpdatePolicy.IF_VALID,
-            numeric=True,
-            climb_rate=5,
-            halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
-            hexpand=False, vexpand=False), 'saved_status_promotion_delay')
-        saved_status_promotion_grid.attach(saved_status_promotion_spinbutton, 1, 0, 1, 1)
-        saved_status_promotion_grid.attach(Gtk.Label(label='seconds'), 2, 0, 1, 1)
-
-        self._add_advanced_options_horizontal_separator()
-        
-        # Set the max number of threads to be used for processing
-        max_threads_grid = Gtk.Grid(
-            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
-            hexpand=True, vexpand=False,
-            column_spacing=5
-        )
-        self.advanced_options_child.attach(max_threads_grid, 0, self.advanced_options_child_row_counter, 1, 1)
-        self.advanced_options_child_row_counter += 1
-        max_threads_grid.attach(Gtk.Label(
-                label='Maximum number of threads to use',
-                halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
-                hexpand=False, vexpand=False,
-            ),
-            0, 0, 1, 1,
-        )
-
-        max_threads_spinbutton = self.register_widget(Gtk.SpinButton(
-            adjustment=Gtk.Adjustment(
-                lower=1,
-                upper=self.MAX_JOBS,
-                value=max(self.MAX_JOBS//2, 1),
-                page_size=0,
-                step_increment=1),
-            value=max(self.MAX_JOBS//2, 1),
-            update_policy=Gtk.SpinButtonUpdatePolicy.IF_VALID,
-            numeric=True,
-            climb_rate=1,
-            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
-            hexpand=False, vexpand=False), 'max_threads')
-        max_threads_grid.attach(max_threads_spinbutton, 1, 0, 1, 1)
+        controls_grid_basic.attach(remove_operation_button, 4, 4, 2, 1)
+        self.lookup_action('remove-operation').set_enabled(False)
 
         paned = Gtk.Paned(wide_handle=True,
             orientation=Gtk.Orientation.VERTICAL,
@@ -418,7 +232,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         operations_scrolled_window.add(self._operations_box)
 
         output_frame = Gtk.Frame(
-            label='Output',
+            label='Processing Queue',
             halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
             hexpand=True, vexpand=True)
         paned.pack2(output_frame, resize=True, shrink=False)
@@ -446,7 +260,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         )
         output_grid.attach(filters_grid, 0, 0, 1, 1)
 
-        label = Gtk.Label(label='Table Filters:',
+        label = Gtk.Label(label='Queue Filters:',
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False,
         )
@@ -457,7 +271,7 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         )
         filters_grid.attach(state_filters_button, 1, 0, 1, 1)
 
-        state_filter_popover = Gtk.Popover.new_from_model(state_filters_button, self.props.application.filter_popover_menu)
+        state_filter_popover = Gtk.Popover.new_from_model(state_filters_button, self.get_property('application').filter_popover_menu)
         state_filters_button.connect('clicked', self._state_filters_button_clicked, state_filter_popover)
 
         label = Gtk.Label(label='Name:',
@@ -472,6 +286,17 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         )
         filters_grid.attach(self._name_filter_entry, 3, 0, 1, 1)
         self._name_filter_entry.connect('changed', self._name_filter_entry_changed)
+
+        queue_manager_button = Gtk.Button(
+            label='Queue Manager', action_name='win.queue-manager',
+            halign=Gtk.Align.END, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+        )
+        filters_grid.attach(queue_manager_button, 4, 0, 1, 1)
+        self._queue_manager = QueueManager(self)
+        self._queue_manager_window = ParamsWindow(
+            self._queue_manager, self, 'Queue Manager'
+        )
 
         files_frame = Gtk.Frame(border_width=5)
         files_scrolled_window = Gtk.ScrolledWindow(**EXPAND_AND_FILL)
@@ -488,12 +313,12 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
         renderer = Gtk.CellRendererText()
         column = Gtk.TreeViewColumn("Created", renderer, cell_background=6)
-        column.set_cell_data_func(renderer, self.time_cell_data_func, func_data=dict(column=1))
+        column.set_cell_data_func(renderer, self._time_cell_data_func, func_data=dict(column=1))
         files_tree_view.append_column(column)
 
         renderer = Gtk.CellRendererText()
         column = Gtk.TreeViewColumn("Status", renderer, cell_background=6)
-        column.set_cell_data_func(renderer, self.status_cell_data_func, func_data=dict(column=2))
+        column.set_cell_data_func(renderer, self._status_cell_data_func, func_data=dict(column=2))
         files_tree_view.append_column(column)
 
         renderer = Gtk.CellRendererText()
@@ -515,200 +340,39 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
         statuses = ('Total', 'Created', 'Saved', 'Queued', 'Running', 'Success', 'Failure')
         for _index, _status in enumerate(statuses):
             self._status_grid.attach(Gtk.Label(label=f'{_status}: 0'), _index, 0, 1, 1)
-            
 
-    def _state_filters_button_clicked(self, button, popover):
-        popover.show_all()
-        popover.popup()
+    def _switch_page_cb(self, notebook, page, page_num):
+        logger.debug(f'_switch_page_cb: {page_num=}')
+        self._active_engine.disconnect(self._active_engine_valid_handler_id)
+        self._active_engine = self._engines[page_num]
+        self._repopulate_available_operations()
+        self._update_monitor_switch_sensitivity()
+        self._active_engine_valid_handler_id = self._active_engine.connect('notify::valid', self._engine_valid_changed_cb)
 
-    def _add_advanced_options_horizontal_separator(self):
-        self.advanced_options_child.attach(Gtk.Separator(
-                orientation=Gtk.Orientation.HORIZONTAL,
-                halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
-                hexpand=True, vexpand=True,
-            ),
-            0, self.advanced_options_child_row_counter, 1, 1
-        )
-        self.advanced_options_child_row_counter += 1
+    def _repopulate_available_operations(self):
+        # get active engine
+        filetype_cls = engines_exported_filetype_map[type(self._active_engine)]
+        operation_cls_list = filetypes_supported_operations_map[filetype_cls]
 
-    def time_cell_data_func(self, tree_column, cell, tree_model: Gtk.TreeStore, iter, func_data):
-        # we currently dont write a timestamp for the individual operations
-        if tree_model.iter_parent(iter) is not None:
-            cell.set_property('text', "")
-            return
-        epoch = tree_model.get_value(iter, func_data['column'])
-        date_string = ctime(epoch)
-        cell.set_property('text', date_string)
+        self._controls_operations_model.clear()
+        for _class in operation_cls_list:
+            self._controls_operations_model.append([_class.NAME, _class])
+        
+        if len(self._controls_operations_model):
+            self._controls_operations_combo.props.active = 0
 
-    def status_cell_data_func(self, tree_column, cell, tree_model, iter, func_data):
-        status = tree_model.get_value(iter, func_data['column'])
-        status_string = str(FileStatus(status))
-        cell.set_property('text', status_string)
-
-    def monitor_control_button_clicked_cb(self, button):
-        # stop clicked
-        if button == self._monitor_stop_button:
-
-            # disable the monitor
-            self._monitor.stop()
-            self._monitor = None
-            GLib.source_remove(self._timeout_id)
-            with self._files_dict_lock:
-                self._files_dict.clear()
-                self._njobs_running = 0
-            for job in self._jobs_list:
-                job.should_exit = True
-            self._jobs_list.clear()
-
-            self._directory_chooser_button.set_sensitive(True)
-            self._monitor_stop_button.set_sensitive(False)
-            self._monitor_play_button.set_sensitive(True)
-            self._add_operation_button.set_sensitive(True)
-            self._remove_operation_button.set_sensitive(True)
-            self._monitor_recursively_checkbutton.set_sensitive(True)
-            self._process_existing_files_checkbutton.set_sensitive(True)
-            self._allowed_patterns_entry.set_sensitive(True)
-            self._ignored_patterns_entry.set_sensitive(True)
-            for operation in self._operations_box:
-                operation.set_sensitive(True)
-
-        # play clicked
-        elif button == self._monitor_play_button:
-            task_window = LongTaskWindow(self)
-            task_window.set_text("<b>Running preflight check</b>")
-            task_window.show()
-            watch_cursor = Gdk.Cursor.new_for_display(Gdk.Display.get_default(), Gdk.CursorType.WATCH)
-            task_window.get_window().set_cursor(watch_cursor)
-
-            # Cleanup tree model
-            self._files_tree_model.clear()
-            thread = PreflightCheckThread(self, task_window)
-            thread.start()
-
-    def file_created_cb(self, file_path):
-        with self._files_dict_lock:
-            if file_path in self._files_dict:
-                logger.debug(f"{file_path} has been recreated! Reprocessing...")
-                self.file_changes_done_cb(file_path)
-            else:
-                logger.debug(f"New file {file_path} created")
-                # add new entry to model
-                _creation_timestamp = time()
-                _relative_file_path = PurePath(file_path).relative_to(self.params.monitored_directory)
-                outputrow = OutputRow(
-                    relative_filename=str(_relative_file_path),
-                    creation_timestamp=_creation_timestamp,
-                    status=int(FileStatus.CREATED),
-                    operation_name="All",
-                )
-                iter = self._files_tree_model.append(parent=None, row=dc_astuple(outputrow))
-                _row_reference = Gtk.TreeRowReference.new(self._files_tree_model, self._files_tree_model.get_path(iter))
-                # create its children, one for each operation
-                for _operation in self._operations_box:
-                    outputrow = OutputRow(
-                        relative_filename="",
-                        creation_timestamp=0,
-                        status=int(FileStatus.QUEUED),
-                        operation_name=_operation.NAME,
-                    )
-                    self._files_tree_model.append(parent=iter, row=dc_astuple(outputrow))
-                _file = File(filename=file_path, relative_filename=_relative_file_path, created=_creation_timestamp, status=FileStatus.CREATED, row_reference=_row_reference)
-                self._files_dict[file_path] = _file
-        return GLib.SOURCE_REMOVE
-
-    def file_changes_done_cb(self, file_path):
-        with self._files_dict_lock:
-            try:
-                file = self._files_dict[file_path]
-            except KeyError:
-                logger.debug(f"{file_path} has not been created yet! Ignoring...")
-                return
-
-            logger.debug(f"{file.status=}")
-            file.saved = time()
-
-            if file.status == FileStatus.SAVED:
-                # looks like this file has been saved again!
-                # update saved timestamp
-                logger.debug(f"File {file_path} has been saved again")
-            elif file.status == FileStatus.CREATED:
-                logger.debug(f"File {file_path} has been saved")
-                file.status = FileStatus.SAVED
-                path = file.row_reference.get_path()
-                self._files_tree_model[path][2] = int(FileStatus.SAVED) 
-            elif file.status == FileStatus.QUEUED:
-                # file hasn't been processed yet, so it's safe to demote it to SAVED
-                logger.debug(f"File {file_path} has been saved again while queued")
-                file.status = FileStatus.SAVED
-                path = file.row_reference.get_path()
-                self._files_tree_model[path][2] = int(FileStatus.SAVED) 
-            elif file.status in (FileStatus.RUNNING, FileStatus.SUCCESS, FileStatus.FAILURE):
-                # file is currently being processed or has been processed -> mark it for being requeued
-                file.requeue = True
-            else:
-                logger.warning(f"File {file_path} has been saved again after it was queued for processing!!")
-
-    def update_monitor_switch_sensitivity(self):
-        if self.params.monitored_directory and \
-            self._monitor is None and \
-            len(self._operations_box) > 0:
-            self._monitor_play_button.set_sensitive(True)
-        else:
-            self._monitor_play_button.set_sensitive(False)
-
-    def add_operations_button_cb(self, button):
-        logger.debug("Clicked add_operations_button_cb")
-        _class = self._controls_operations_combo.get_model()[self._controls_operations_combo.get_active_iter()][1]
-        new_operation = _class(appwindow=self)
-        logger.debug(f"{type(new_operation)=}")
-        new_operation.index = len(self._operations_box)
-        self._operations_box.pack_start(new_operation, False, False, 0)
-        new_operation.show_all()
-        self.update_monitor_switch_sensitivity()
-        iter = self.controls_operations_live.append([ new_operation.get_label(), new_operation])
-        self.controls_operations_live_combo.set_active_iter(iter)
-        self._remove_operation_button.set_sensitive(True)
-
-    def remove_operations_button_cb(self, button):
-        iter = self.controls_operations_live_combo.get_active_iter()
-        op_to_remove = self.controls_operations_live[iter][1]
-        self.controls_operations_live.remove(iter)
-
-        self._operations_box.remove(op_to_remove)
-        self._operations_box.resize_children()
-
-        self.update_monitor_switch_sensitivity()
-
+    def _update_monitor_switch_sensitivity(self):
+        logger.debug('_update_monitor_switch_sensitivity')
         if len(self._operations_box) == 0:
-            button.set_sensitive(False)
-            return
+            self.lookup_action('remove-operation').set_enabled(False)
+            self.lookup_action('play').set_enabled(False)
+            self._engines_notebook.props.show_tabs = True
+        else:
+            self.lookup_action('remove-operation').set_enabled(True)
+            self._engines_notebook.props.show_tabs = False
+            if self._active_engine.props.valid:
+                self.lookup_action('play').set_enabled(True)
 
-        self.controls_operations_live.clear()
-        for op in self._operations_box:
-            if op.index > op_to_remove.index:
-                op.index = op.index -1 # reordering all the indices of the ops.
-            iter = self.controls_operations_live.append([op.get_label(), op])
-        self.controls_operations_live_combo.set_active_iter(iter)
-
-    def directory_chooser_button_cb(self, button):
-        if self.params.monitored_directory:
-            self.update_monitor_switch_sensitivity()
-            self.set_title(f"Monitoring: {self.params.monitored_directory}")
-
-    def on_minimize(self, action, param):
-        self.iconify()
-
-    def on_close(self, action, param):
-        self.destroy()
-
-    def on_status_filter(self, action, param, arg):
-        logger.debug(f'{action.get_state()=} for {str(arg)}')
-        # invert state!
-        action.set_state(GLib.Variant.new_boolean(not action.get_state().get_boolean()))
-        self._files_tree_model_filter.refilter()
-
-    def _name_filter_entry_changed(self, entry):
-        self._files_tree_model_filter.refilter()
 
     def _files_tree_model_visible_func(self, model, iter, data):
         # Children should always be shown when the parent is visible
@@ -727,42 +391,161 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
 
         return status_filter and name_filter
 
-    def load_from_yaml_dict(self, yaml_dict: dict):
-        # configuration first
-        conf = yaml_dict['configuration']
-        self.update_from_dict(conf)
+    def _engine_advanced_settings_button_clicked_cb(self, button, engine):
+        # To avoid problems with the params, we have to reuse the window
+        # So when it is closed, it is hidden instead of destroyed.
+        dialog = getattr(engine, self.ENGINE_ADVANCED_SETTINGS_WINDOW_ATTR)
+        dialog.present()
 
-        # next operations
-        ops = yaml_dict['operations']
+    def on_open_queue_manager(self, action, param):
+        self._queue_manager_window.present()
 
-        # remove any existing operations in there currently
+    def on_add_operation(self, action, param):
+        logger.debug("Clicked on_add_operation")
+        
+        _class = self._controls_operations_combo.get_model()[self._controls_operations_combo.get_active_iter()][1]
+        new_operation = _class(appwindow=self)
+        new_operation.index = len(self._operations_box)
+        self._operations_box.pack_start(new_operation, False, False, 0)
+        new_operation.show_all()
+        iter = self._controls_operations_live.append([new_operation.get_label(), new_operation])
+        self._controls_operations_live_combo.set_active_iter(iter)
+        self._update_monitor_switch_sensitivity()
+
+    def on_remove_operation(self, action, param):
+        logger.debug("Clicked on_remove_operation")
+
+        iter = self._controls_operations_live_combo.get_active_iter()
+        op_to_remove = self._controls_operations_live[iter][1]
+        self._controls_operations_live.remove(iter)
+
+        self._operations_box.remove(op_to_remove)
+        self._operations_box.resize_children()
+
+        self._update_monitor_switch_sensitivity()
+
+        if len(self._operations_box) == 0:
+            return
+
+        self._controls_operations_live.clear()
         for op in self._operations_box:
-            self._operations_box.remove(op)
-        self.controls_operations_live.clear()
+            if op.index > op_to_remove.index:
+                op.index = op.index -1 # reordering all the indices of the ops.
+            iter = self._controls_operations_live.append([op.get_label(), op])
+        self._controls_operations_live_combo.set_active_iter(iter)
 
-        # add the operations
-        iter = None
-        for op in ops:
-            for _class in self._known_operations.values():
-                if op['name'] == _class.NAME:
-                    new_operation = _class(appwindow=self)
-                    new_operation.index = len(self._operations_box)
-                    self._operations_box.pack_start(new_operation, False, False, 0)
-                    new_operation.update_from_dict(op['params'])
-                    new_operation.show_all()
-                    iter = self.controls_operations_live.append([ new_operation.get_label(), new_operation])
-                    break
-            else:
-                logger.debug(f"load_from_yaml_dict: no match found for operation {op['name']}")
+    def _state_filters_button_clicked(self, button, popover):
+        popover.show_all()
+        popover.popup()
 
-        if iter:
-            self.controls_operations_live_combo.set_active_iter(iter)
-            self._remove_operation_button.set_sensitive(True)
+    def _name_filter_entry_changed(self, entry):
+        self._files_tree_model_filter.refilter()
 
-        self.update_monitor_switch_sensitivity()
+    def _time_cell_data_func(self, tree_column, cell, tree_model: Gtk.TreeStore, iter, func_data):
+        # we currently dont write a timestamp for the individual operations
+        if tree_model.iter_parent(iter) is not None:
+            cell.set_property('text', "")
+            return
+        epoch = tree_model.get_value(iter, func_data['column'])
+        date_string = ctime(epoch)
+        cell.set_property('text', date_string)
+
+    def _status_cell_data_func(self, tree_column, cell, tree_model, iter, func_data):
+        status = tree_model.get_value(iter, func_data['column'])
+        status_string = str(FileStatus(status))
+        cell.set_property('text', status_string)
+
+    def on_minimize(self, action, param):
+        self.iconify()
+
+    def on_close(self, action, param):
+        self.destroy()
+
+    def on_status_filter(self, action, param, arg):
+        logger.debug(f'{action.get_state()=} for {str(arg)}')
+        # invert state!
+        action.set_state(GLib.Variant.new_boolean(not action.get_state().get_boolean()))
+        self._files_tree_model_filter.refilter()
+
+    def on_play(self, action, param):
+        self.lookup_action('play').set_enabled(False)
+        task_window = LongTaskWindow(self)
+        task_window.set_text("<b>Running preflight check</b>")
+        task_window.show()
+        watch_cursor = Gdk.Cursor.new_for_display(Gdk.Display.get_default(), Gdk.CursorType.WATCH)
+        task_window.get_window().set_cursor(watch_cursor)
+
+        # Cleanup tree model
+        self._files_tree_model.clear()
+        PreflightCheckThread(self, task_window).start()
+
+    def on_stop(self, action, param):
+        self.lookup_action('stop').set_enabled(False)
+
+        self._active_engine_running_changed_handler_id = self._active_engine.connect('notify::running', self._active_engine_running_changed)
+        self._active_engine.stop()
+
+    def _preflight_check_cb(self, task_window: LongTaskWindow, exception_msgs: Optional[List[str]]):
+        task_window.get_window().set_cursor(None)
+        task_window.destroy()
+
+        if exception_msgs:
+            dialog = Gtk.MessageDialog(transient_for=self.get_toplevel(),
+                    modal=True, destroy_with_parent=True,
+                    message_type=Gtk.MessageType.ERROR,
+                    buttons=Gtk.ButtonsType.CLOSE, text="Operation configuration error(s) found",
+                    secondary_text='\n'.join(exception_msgs))
+            dialog.run()
+            dialog.destroy()
+            return
+
+        # Launch the queue manager and the engine
+        self._active_engine.set_sensitive(False)
+        self._queue_manager.set_sensitive(False)
+
+        for operation in self._operations_box:
+            operation.set_sensitive(False)
+
+        self._queue_manager_running_changed_handler_id = self._queue_manager.connect('notify::running', self._queue_manager_running_changed)
+        self._queue_manager.start()
+
+    def _queue_manager_running_changed(self, queue_manager, param):
+        logger.debug(f'Calling _queue_manager_running_changed from {current_thread()} with value {queue_manager.props.running}')
+        queue_manager.disconnect(self._queue_manager_running_changed_handler_id)
+        if queue_manager.props.running:
+            self._active_engine_running_changed_handler_id = self._active_engine.connect('notify::running', self._active_engine_running_changed)
+            self._active_engine.start()
+        else:
+            # at this point everything should have stopped, except for Jobs that still need to finish and cannot be killed
+            self._active_engine.set_sensitive(True)
+            self._queue_manager.set_sensitive(True)
+
+            for operation in self._operations_box:
+                operation.set_sensitive(True)
+
+            self.lookup_action('play').set_enabled(True)
+
+    def _active_engine_running_changed(self, active_engine, param):
+        logger.debug(f'Calling _active_engine_running_changed from {current_thread()} with value {active_engine.props.running}')
+        active_engine.disconnect(self._active_engine_running_changed_handler_id)
+        if active_engine.props.running:
+            # at this point things should really be running.
+            self.lookup_action('stop').set_enabled(True)
+        else:
+            self._queue_manager_running_changed_handler_id = self._queue_manager.connect('notify::running', self._queue_manager_running_changed)
+            self._queue_manager.stop()
+
+    def _engine_valid_changed_cb(self, engine, param):
+        self._update_monitor_switch_sensitivity()
 
     def _write_to_yaml(self):
-        yaml_dict = dict(configuration=self.exportable_params, operations=[dict(name=op.NAME, params=op.exportable_params) for op in self._operations_box])
+        yaml_dict = dict(
+            version=MONITOR_YAML_VERSION,
+            active_engine=self._active_engine.NAME,
+            queue_manager=self._queue_manager.exportable_params,
+            operations=[dict(name=op.NAME, params=op.exportable_params) for op in self._operations_box],
+            engines=[dict(name=engine.NAME, params=engine.exportable_params) for engine in self._engines],
+            )
         logger.debug(f'{yaml.safe_dump(yaml_dict)=}')
         with open(self._yaml_file, 'w') as f:
             yaml.safe_dump(yaml_dict, f)
@@ -812,182 +595,65 @@ class ApplicationWindow(Gtk.ApplicationWindow, WidgetParams):
                 dialog.destroy()
         else:
             dialog.destroy()
+
+    def load_from_yaml_dict(self, yaml_dict: dict):
+
+        # active_engine
+        active_engine = yaml_dict['active_engine']
+        queue_manager = yaml_dict['queue_manager']
+        operations = yaml_dict['operations']
+        engines = yaml_dict['engines']
+
+        self._queue_manager.update_from_dict(queue_manager)
+
+        for engine in engines:
+            # find corresponding engine in appwindow
+            engine_match = next(e for e in self._engines if e.NAME == engine['name'])
+            engine_match.update_from_dict(engine['params'])
+            if active_engine == engine_match.NAME:
+                active_engine_index = self._engines.index(engine_match)
         
+        logger.debug(f'{active_engine_index=}')
+        
+        # add the operations
+        if isinstance(operations, collections.abc.Sequence):
+            iter = None
+            for op in operations:
+                for _class in self.get_property('application').known_operations.values():
+                    if op['name'] == _class.NAME:
+                        new_operation = _class(appwindow=self)
+                        new_operation.index = len(self._operations_box)
+                        self._operations_box.pack_start(new_operation, False, False, 0)
+                        new_operation.update_from_dict(op['params'])
+                        new_operation.show_all()
+                        iter = self._controls_operations_live.append([ new_operation.get_label(), new_operation])
+                        break
+                else:
+                    logger.debug(f"load_from_yaml_dict: no match found for operation {op['name']}")
 
-    def files_dict_timeout_cb(self, *user_data):
-        """
-        This function runs every second, and will take action based on the status of all files in the dict
-        It runs in the GUI thread, so GUI updates are allowed here.
-        """
-        #logger.debug(f"files_dict_timeout_cb enter: {self._njobs_running=} {self.params.max_threads=}")
-        with self._files_dict_lock:
-            status_counters = {
-                FileStatus.CREATED: 0,
-                FileStatus.SAVED: 0,
-                FileStatus.QUEUED: 0,
-                FileStatus.RUNNING: 0,
-                FileStatus.SUCCESS: 0,
-                FileStatus.FAILURE: 0,
-            }
-            for _filename, _file in self._files_dict.items():
-                #logger.debug(f"timeout_cb: {_filename} found as {str(_file.status)}")
-                if _file.status == FileStatus.CREATED:
-                    logger.debug(f"files_dict_timeout_cb: {_filename} was CREATED")
-                    if self.params.created_status_promotion_active and \
-                        (time() - _file.created) >  self.params.created_status_promotion_delay:
-                        # promote to SAVED!
-                        _file.status = FileStatus.SAVED
-                        _file.saved = time()
-                        path = _file.row_reference.get_path()
-                        self._files_tree_model[path][2] = int(FileStatus.SAVED) 
-                        logger.debug(f"files_dict_timeout_cb: promoting {_filename} to SAVED")
-                        
-                elif _file.status == FileStatus.SAVED:
-                    if (time() - _file.saved) > self.params.saved_status_promotion_delay:
-                        # queue the job
-                        logger.debug(f"files_dict_timeout_cb: adding {_filename} to queue for future processing")
-                        _file.status = FileStatus.QUEUED
-                        path = _file.row_reference.get_path()
-                        self._files_tree_model[path][2] = int(_file.status)
-                elif _file.status == FileStatus.QUEUED:
-                    #logger.debug(f"files_dict_timeout_cb QUEUED: {self._njobs_running=} {self.params.max_threads=}")
-                    if self._njobs_running < self.params.max_threads:
-                        # try and launch a new job
-                        logger.debug(f"files_dict_timeout_cb: launching queued job for {_filename}")
-                        job = Job(self, _file)
-                        self._jobs_list.append(job)
-                        job.start()
-                        self._njobs_running += 1
-                elif _file.requeue and _file.status in (FileStatus.SUCCESS, FileStatus.FAILURE):
-                    # demote to saved so it gets requeued
-                    _file.requeue = False
-                    _file.status = FileStatus.SAVED
-                    _file.saved = time()
-                    path = _file.row_reference.get_path()
-                    iter = self._files_tree_model.get_iter(path)
-                    self._files_tree_model[iter][2] = int(FileStatus.SAVED)
-                    self._files_tree_model[iter][4] = 0.0
-                    self._files_tree_model[iter][5] = "0.0 %"
-                    self._files_tree_model[iter][6] = None
-                    self._files_tree_model[iter][7] = ""
+            if iter:
+                self._controls_operations_live_combo.set_active_iter(iter)
 
-                    for child in self._files_tree_model[iter].iterchildren():
-                        child[2] = int(FileStatus.QUEUED)
-                        child[4] = 0.0
-                        child[5] = "0.0 %"
-                        child[6] = None
-                        child[7] = ""
-
-                    logger.debug(f"files_dict_timeout_cb: requeuing {_filename}")
-                
-                status_counters[_file.status] += 1
-
-            # update status bar
-            self._status_grid.get_child_at(0, 0).props.label = f'Total: {len(self._files_dict)}'
-            for _status, _counter in status_counters.items():
-                self._status_grid.get_child_at(int(_status), 0).props.label = f'{_status.name.lower().capitalize()}: {_counter}'
-
-        return GLib.SOURCE_CONTINUE
-
-    def _process_existing_files_cb(self, task_window: LongTaskWindow, existing_files: List[Path]):
-        task_window.set_text('Adding existing files')
-
-        for existing_file in existing_files:
-            file_path = str(existing_file)
-            logger.debug(f'Adding existing file {file_path}')
-
-            # get creation time, or something similar...
-            # https://stackoverflow.com/a/39501288
-            if platform.system() == 'Windows':
-                _creation_timestamp = existing_file.stat().st_ctime
-            else:
-                try:
-                    # this should work on macOS
-                    _creation_timestamp = existing_file.stat().st_birthtime
-                except AttributeError:
-                    _creation_timestamp = existing_file.stat().st_mtime
-            _relative_file_path = existing_file.relative_to(self.params.monitored_directory)
-            outputrow = OutputRow(
-                relative_filename=str(_relative_file_path),
-                creation_timestamp=_creation_timestamp,
-                status=int(FileStatus.SAVED),
-                operation_name="All",
-            )
-            iter = self._files_tree_model.append(parent=None, row=dc_astuple(outputrow))
-            _row_reference = Gtk.TreeRowReference.new(self._files_tree_model, self._files_tree_model.get_path(iter))
-            # create its children, one for each operation
-            for _operation in self._operations_box:
-                outputrow = OutputRow(
-                    relative_filename="",
-                    creation_timestamp=0,
-                    status=int(FileStatus.QUEUED),
-                    operation_name=_operation.NAME,
-                )
-                self._files_tree_model.append(parent=iter, row=dc_astuple(outputrow))
-            _file = File(filename=file_path, relative_filename=_relative_file_path, created=_creation_timestamp, status=FileStatus.SAVED, row_reference=_row_reference)
-            _file.saved = time()
-            self._files_dict[file_path] = _file
-
-        return GLib.SOURCE_REMOVE
-
-    def _preflight_check_cb(self, task_window: LongTaskWindow, exception_msgs: Optional[List[str]]):
-        task_window.get_window().set_cursor(None)
-        task_window.destroy()
-
-        if exception_msgs:
-            dialog = Gtk.MessageDialog(transient_for=self.get_toplevel(),
-                    modal=True, destroy_with_parent=True,
-                    message_type=Gtk.MessageType.ERROR,
-                    buttons=Gtk.ButtonsType.CLOSE, text="Operation configuration error(s) found",
-                    secondary_text='\n'.join(exception_msgs))
-            dialog.run()
-            dialog.destroy()
-            return
-
-        # Launch the monitor, and set the callback that will be invoked every second
-        self._timeout_id = GLib.timeout_add_seconds(1, self.files_dict_timeout_cb, priority=GLib.PRIORITY_DEFAULT)
-
-        self._monitor = Observer()
-        self._monitor.schedule(EventHandler(self), self.params.monitored_directory, recursive=self.params.monitor_recursively)
-        self._monitor.start()
-        self._monitor_stop_button.set_sensitive(True)
-        self._monitor_play_button.set_sensitive(False)
-        self._directory_chooser_button.set_sensitive(False)
-        self._add_operation_button.set_sensitive(False)
-        self._remove_operation_button.set_sensitive(False)
-        self._monitor_recursively_checkbutton.set_sensitive(False)
-        self._process_existing_files_checkbutton.set_sensitive(False)
-        self._allowed_patterns_entry.set_sensitive(False)
-        self._ignored_patterns_entry.set_sensitive(False)
-        for operation in self._operations_box:
-            operation.set_sensitive(False)
+        self._engines_notebook.set_current_page(active_engine_index)
 
     @property
     def preflight_check_metadata(self) -> dict:
         return self._preflight_check_metadata
+
+    @property
+    def queue_manager(self) -> QueueManager:
+        return self._queue_manager
+
+    @property
+    def active_engine(self) -> Engine:
+        return self._active_engine
+
 
 class PreflightCheckThread(Thread):
     def __init__(self, appwindow: ApplicationWindow, task_window: LongTaskWindow):
         super().__init__()
         self._appwindow = appwindow 
         self._task_window = task_window
-
-
-    def _search_for_existing_files(self, directory: Path) -> List[Path]:
-        rv: List[Path] = list()
-        included_patterns = get_patterns_from_string(self._appwindow.params.allowed_patterns)
-        ignore_pattern_strings = get_patterns_from_string(self._appwindow.params.ignore_patterns, defaults=IGNORE_PATTERNS)
-        for child in directory.iterdir():
-            if child.is_file() \
-                and not child.is_symlink() \
-                and match_path(str(child), included_patterns=included_patterns, excluded_patterns=ignore_pattern_strings,
-                               case_sensitive=False):
-                
-                rv.append(directory.joinpath(child))
-            elif self._appwindow.params.monitor_recursively and child.is_dir() and not child.is_symlink():
-                rv.extend(self._search_for_existing_files(directory.joinpath(child)))
-            
-        return rv
 
     def run(self):
         exception_msgs = []
@@ -1025,39 +691,5 @@ class PreflightCheckThread(Thread):
         
             GLib.idle_add(self._appwindow._preflight_check_cb, self._task_window, exception_msgs, priority=GLib.PRIORITY_DEFAULT_IDLE)
             return
-        
-        if self._appwindow.params.process_existing_files:
-            existing_files = self._search_for_existing_files(Path(self._appwindow.params.monitored_directory))
-            if existing_files:
-                GLib.idle_add(self._appwindow._process_existing_files_cb, self._task_window, existing_files, priority=GLib.PRIORITY_DEFAULT_IDLE)
 
         GLib.idle_add(self._appwindow._preflight_check_cb, self._task_window, None, priority=GLib.PRIORITY_DEFAULT_IDLE)
-
-
-class EventHandler(PatternMatchingEventHandler):
-    def __init__(self, appwindow: ApplicationWindow):
-        self._appwindow = appwindow
-        included_patterns = get_patterns_from_string(self._appwindow.params.allowed_patterns)
-        ignore_patterns =  get_patterns_from_string(self._appwindow.params.ignore_patterns,defaults =IGNORE_PATTERNS)
-        super(EventHandler, self).__init__(patterns=included_patterns, ignore_patterns=ignore_patterns, ignore_directories=True)
-        
-    def on_created(self, event):
-        file_path = event.src_path
-        logger.debug(f"Monitor found {file_path} for event type CREATED")
-        GLib.idle_add(self._appwindow.file_created_cb, file_path, priority=GLib.PRIORITY_HIGH)
-
-    def on_modified(self, event):
-        file_path = event.src_path
-        logger.debug(f"Monitor found {file_path} for event type MODIFIED")
-        GLib.idle_add(self._appwindow.file_changes_done_cb, file_path, priority=GLib.PRIORITY_DEFAULT_IDLE)
-        
-@dataclass
-class OutputRow:
-    relative_filename: str
-    creation_timestamp: int
-    status: int
-    operation_name: str
-    operation_progress: float = 0.0
-    operation_progress_str: str = "0.0 %"
-    background_color: str = None
-    error_message: str = ""

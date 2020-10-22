@@ -2,7 +2,8 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gio, GLib
 
-from ..operation import Operation, SkippedOperation
+from ..operation import Operation
+from ..utils.exceptions import SkippedOperation
 from ..file import File
 from ..utils import get_md5
 

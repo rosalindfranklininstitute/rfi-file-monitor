@@ -11,9 +11,11 @@ from typing import Any, Final, Dict
 import importlib.metadata
 
 from .applicationwindow import ApplicationWindow
-from rfi_file_monitor.utils import add_action_entries, PREFERENCES_CONFIG_FILE
+from .utils import add_action_entries, PREFERENCES_CONFIG_FILE, MONITOR_YAML_VERSION
 from .preferences import Preference
 from .preferenceswindow import PreferencesWindow
+from .utils.decorators import filetypes_supported_operations_map
+from .file import RegularFile
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +29,14 @@ class Application(Gtk.Application):
             **kwargs
         )
         GLib.set_application_name("RFI File Monitor")
+
+    @property
+    def known_operations(self):
+        return self._known_operations
+
+    @property
+    def known_engines(self):
+        return self._known_engines
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
@@ -98,6 +108,42 @@ class Application(Gtk.Application):
 
         logger.debug(f'{self._prefs=}')
 
+        # get info from entry points
+        self._known_operations = {
+            e.name: e.load() for e in importlib.metadata.entry_points()['rfi_file_monitor.operations']
+        }
+        self.update_supported_filetypes()
+
+        for _name in self._known_operations:
+            logger.debug(f"Operation found: {_name}")
+        
+        self._known_engines = {
+            e.name: e.load() for e in importlib.metadata.entry_points()['rfi_file_monitor.engines']
+        }
+        
+        for _name in self._known_engines:
+            logger.debug(f"Engine found: {_name}")
+
+    def update_supported_filetypes(self):
+        # this will update filetypes_supported_operations_map 
+        # with operations that were not decorated.
+        # We will assume they support RegularFile only
+        decorated_operations = list()
+        for operations in filetypes_supported_operations_map.values():
+            decorated_operations.extend(operations)
+        decorated_operations = set(decorated_operations)
+        
+        undecorated_operations = set(self._known_operations.values()).difference(decorated_operations)
+
+        if RegularFile in filetypes_supported_operations_map:
+            filetypes_supported_operations_map[RegularFile].extend(undecorated_operations)
+        else:
+            filetypes_supported_operations_map[RegularFile] = list(undecorated_operations)
+
+        for operations in filetypes_supported_operations_map.values():
+            operations.sort(key=lambda operation: operation.NAME)
+
+
     def get_preferences(self) -> Dict[Preference, Any]:
         return self._prefs
 
@@ -120,10 +166,12 @@ class Application(Gtk.Application):
                 with open(yaml_file, 'r') as f:
                     yaml_dict = yaml.safe_load(f)
                 logger.debug(f"Open: {yaml_dict=}")
-                if 'configuration' not in yaml_dict or 'operations' not in yaml_dict:
-                    raise Exception("Valid YAML files must contain a dict with keys configuration and operations")
+                if 'version' not in yaml_dict or yaml_dict['version'] != MONITOR_YAML_VERSION:
+                    raise Exception(f"The YAML file {yaml_file} is not compatible with this version of the RFI-File-Monitor")
+                if 'active_engine' not in yaml_dict or 'queue_manager' not in yaml_dict or 'operations' not in yaml_dict or 'engines' not in yaml_dict:
+                    raise Exception(f'The YAML file {yaml_file} is incomplete and cannot be loaded')
             except Exception as e:
-                dialog = Gtk.MessageDialog(transient_for=self,
+                dialog = Gtk.MessageDialog(transient_for=active_window,
                     modal=True, destroy_with_parent=True,
                     message_type=Gtk.MessageType.ERROR,
                     buttons=Gtk.ButtonsType.CLOSE, text=f"Could not load {yaml_file}",
@@ -132,13 +180,13 @@ class Application(Gtk.Application):
                 dialog.destroy()
             else:
                 window = ApplicationWindow(application=self, type=Gtk.WindowType.TOPLEVEL)
-                window.load_from_yaml_dict(yaml_dict)
                 window.show_all()
+                window.load_from_yaml_dict(yaml_dict)
         else:
             dialog.destroy()
 
     def do_activate(self):
-        window = ApplicationWindow(application=self, title="Unknown Folder", type=Gtk.WindowType.TOPLEVEL)
+        window = ApplicationWindow(application=self, title="RFI-File-Monitor", type=Gtk.WindowType.TOPLEVEL)
         window.show_all()
 
     def on_about(self, action, param):

@@ -1,22 +1,21 @@
-import threading
 from typing import Final
 import logging
 
 from .file import File, FileStatus
-from .operation import SkippedOperation
+from .utils.exceptions import SkippedOperation
+from .utils import ExitableThread
 
 logger = logging.getLogger(__name__)
 
-class Job(threading.Thread):
+class Job(ExitableThread):
 
     SKIPPED_MESSAGE = "A preceding operation has been skipped"
     ERROR_MESSAGE = "Operation not started due to previous error"
 
-    def __init__(self, appwindow, file: File):
+    def __init__(self, queue_manager, file: File):
         super().__init__()
-        self._appwindow = appwindow 
+        self._queue_manager = queue_manager 
         self._file = file
-        self._should_exit: Final[bool] = False
 
     def run(self):
         # update status to running
@@ -29,7 +28,7 @@ class Job(threading.Thread):
         # and will be used as tooltip for the parent row
         global_rv = None
 
-        for index, operation in enumerate(self._appwindow._operations_box):
+        for index, operation in enumerate(self._queue_manager._appwindow._operations_box):
             self._file.update_status(index, FileStatus.RUNNING)
 
             if self._should_exit:
@@ -76,15 +75,7 @@ class Job(threading.Thread):
         # as it will should be set to 0 regardless, and you may end up with negative
         # njobs_running otherwise...
         if not self._should_exit:
-            self._appwindow._njobs_running -= 1
+            self._queue_manager._njobs_running -= 1
 
         return
-
-    @property
-    def should_exit(self):
-        return self._should_exit
-    
-    @should_exit.setter
-    def should_exit(self, value: bool):
-        self._should_exit = value
 

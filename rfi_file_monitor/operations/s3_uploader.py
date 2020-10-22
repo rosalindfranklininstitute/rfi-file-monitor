@@ -6,7 +6,8 @@ import boto3.s3.transfer
 import botocore
 from munch import Munch
 
-from ..operation import Operation, SkippedOperation
+from ..operation import Operation
+from ..utils.exceptions import SkippedOperation
 from ..file import File
 from ..job import Job
 from ..utils import query_metadata

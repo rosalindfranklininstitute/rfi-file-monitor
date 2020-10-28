@@ -4,7 +4,7 @@ from gi.repository import Gtk, GLib, GObject
 
 from pathlib import PurePath
 from typing import OrderedDict as OrderedDictType
-from typing import Final, List, Union, Sequence
+from typing import Final, List, Union, Sequence, Tuple
 from collections import OrderedDict
 from threading import RLock
 import logging
@@ -21,12 +21,13 @@ from .utils.decorators import engines_exported_filetype_map
 
 logger = logging.getLogger(__name__)
 
+NewFile = Tuple[str, str]
+
 class QueueManager(WidgetParams, Gtk.Grid):
     MAX_JOBS = len(getattr(os, 'sched_getaffinity')(0)) if hasattr(os, 'sched_getaffinity') else os.cpu_count()
 
     def __init__(self, appwindow):
         self._appwindow = appwindow
-        self._monitored_directory = None
         self._running = False
         self._files_dict_lock = RLock()
         self._files_dict: OrderedDictType[str, File] = OrderedDict()
@@ -152,34 +153,33 @@ class QueueManager(WidgetParams, Gtk.Grid):
         )
         self.options_child_row_counter+= 1
 
-    @property
-    def monitored_directory(self):
-        return self._monitored_directory
-
-    @monitored_directory.setter
-    def monitored_directory(self, value: str):
-        self._monitored_directory = value
-
     @GObject.Property(type=bool, default=False)
     def running(self):
         return self._running
 
-    def add(self, file_path: Union[str, Sequence[str]], status: FileStatus):
+    def add(self, file_path: Union[NewFile, Sequence[NewFile]], status: FileStatus):
         """Add one or more new files to the queue. Call from the GUI thread!"""
 
         if not self._running:
             raise NotYetRunning('The queue manager needs to be started before it can be stopped.')
 
-        if isinstance(file_path, str):
+        if isinstance(file_path, tuple) and \
+            len(file_path) == 2 and \
+            isinstance(file_path[0], str) and \
+            isinstance(file_path[1], str):
+
             file_paths = [file_path]
         else:
             file_paths = file_path
         
         with self._files_dict_lock:
-            for file_path in file_paths:
+            for file_path, relative_file_path in file_paths:
+                if not isinstance(file_path, str) or not isinstance(relative_file_path, str):
+                    raise TypeError()
                 if file_path in self._files_dict:
                     logger.warning(f"{file_path} has been recreated! Ignoring...")
                     continue
+
                 if status == FileStatus.CREATED:
                     logger.debug(f"New file {file_path} created")
                     _creation_timestamp = time()
@@ -201,14 +201,10 @@ class QueueManager(WidgetParams, Gtk.Grid):
                     raise NotImplementedError('Newly created files must have CREATED or SAVED as status!')
 
                 # add new entry to model
-                # TODO: this will need to be changed to support external files like S3 objects
-                if self._monitored_directory:
-                    _relative_file_path = PurePath(file_path).relative_to(self._monitored_directory)
-                else:
-                    _relative_file_path = PurePath(os.path.basename(file_path))
+                _relative_file_path = PurePath(relative_file_path)
 
                 outputrow = OutputRow(
-                    relative_filename=str(_relative_file_path),
+                    relative_filename=relative_file_path,
                     creation_timestamp=_creation_timestamp,
                     status=int(status),
                     operation_name="All",
@@ -272,9 +268,9 @@ class QueueManager(WidgetParams, Gtk.Grid):
                     self._appwindow._files_tree_model[path][2] = int(FileStatus.SAVED) 
                 elif file.status in (FileStatus.RUNNING, FileStatus.SUCCESS, FileStatus.FAILURE):
                     # file is currently being processed or has been processed -> mark it for being requeued
+                    logger.debug(f"File {file_path} has been saved again while {str(file.status)}")
                     file.requeue = True
                 else:
-
                     logger.warning(f"File {file_path} has been saved again after it was queued for processing!!")
 
 

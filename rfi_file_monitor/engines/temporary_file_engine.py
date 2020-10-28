@@ -16,8 +16,6 @@ from time import sleep
 
 logger = logging.getLogger(__name__)
 
-tempdir = TemporaryDirectory()
-
 SIZE_UNITS = {
     'B': 1,
     'KB': 1000,
@@ -102,9 +100,7 @@ class TemporaryFileEngine(Engine):
         if self._running:
             raise AlreadyRunning('The engine is already running. It needs to be stopped before it may be restarted')
 
-        # update queue manager with monitored directory
-        self._appwindow.queue_manager.monitored_directory = tempdir.name
-
+        self._tempdir = TemporaryDirectory()
         self._thread = FileGeneratorThread(self)
         self._thread.start()
         self._running = True
@@ -117,12 +113,14 @@ class TemporaryFileEngine(Engine):
         # if the thread is sleeping, it will be killed at the next iteration
         self._thread.should_exit = True
 
+        self._tempdir.cleanup()
+
         self._running = False
         self.notify('running')
 
 
 class FileGeneratorThread(ExitableThread):
-
+    # these can be turned into engine params if necessary
     PREFIX = 'test_'
     SUFFIX = '.dat'
 
@@ -136,11 +134,14 @@ class FileGeneratorThread(ExitableThread):
             if self.should_exit:
                 logger.info('Killing FileGeneratorThread')
                 return
-            path = Path(tempdir.name, f"{self.PREFIX}{index}{self.SUFFIX}")
+            basename = f"{self.PREFIX}{index}{self.SUFFIX}"
+            path = Path(self._engine._tempdir.name, basename)
             path.write_bytes(os.urandom(int(self._engine.params.filesize_number * SIZE_UNITS[self._engine.params.filesize_unit])))
             logger.debug(f'Writing {str(path)}')
             index = index + 1
-            GLib.idle_add(self._engine._appwindow._queue_manager.add, str(path), FileStatus.CREATED, priority=GLib.PRIORITY_HIGH)
+            if self._engine.props.running and \
+                self._engine._appwindow._queue_manager.props.running:
+                GLib.idle_add(self._engine._appwindow._queue_manager.add, (str(path), basename), FileStatus.CREATED, priority=GLib.PRIORITY_HIGH)
             sleep(self._engine.params.creation_delay)
             
             

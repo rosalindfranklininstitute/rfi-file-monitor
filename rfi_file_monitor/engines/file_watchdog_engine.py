@@ -14,7 +14,7 @@ from ..utils.decorators import exported_filetype, with_advanced_settings
 from .file_watchdog_engine_advanced_settings import FileWatchdogEngineAdvancedSettings
 
 from threading import Thread
-from typing import List, Final
+from typing import List, Final, Tuple
 from pathlib import Path
 import logging
 import os
@@ -122,8 +122,8 @@ class ProcessExistingFilesThread(Thread):
         self._engine = engine
         self._task_window = task_window
 
-    def _search_for_existing_files(self, directory: Path) -> List[Path]:
-        rv: List[Path] = list()
+    def _search_for_existing_files(self, directory: Path) -> List[Tuple[str, str]]:
+        rv: List[Tuple[str, str]] = list()
         included_patterns = get_patterns_from_string(self._engine.params.allowed_patterns)
         ignore_pattern_strings = get_patterns_from_string(self._engine.params.ignore_patterns, defaults=IGNORE_PATTERNS)
         for child in directory.iterdir():
@@ -132,7 +132,9 @@ class ProcessExistingFilesThread(Thread):
                 and match_path(str(child), included_patterns=included_patterns, excluded_patterns=ignore_pattern_strings,
                                case_sensitive=False):
                 
-                rv.append(directory.joinpath(child))
+                file_path = str(directory.joinpath(child))
+                relative_file_path = os.path.relpath(file_path, self._engine.params.monitored_directory)
+                rv.append((file_path, relative_file_path))
             elif self._engine.params.monitor_recursively and child.is_dir() and not child.is_symlink():
                 rv.extend(self._search_for_existing_files(directory.joinpath(child)))
         return rv
@@ -151,10 +153,15 @@ class EventHandler(PatternMatchingEventHandler):
     def on_created(self, event):
         file_path = event.src_path
         logger.debug(f"Monitor found {file_path} for event type CREATED")
-        GLib.idle_add(self._engine._appwindow._queue_manager.add, file_path, FileStatus.CREATED, priority=GLib.PRIORITY_HIGH)
+        relative_file_path = os.path.relpath(file_path, self._engine.params.monitored_directory)
+        if self._engine.props.running and \
+            self._engine._appwindow._queue_manager.props.running:
+            GLib.idle_add(self._engine._appwindow._queue_manager.add, (file_path, relative_file_path), FileStatus.CREATED, priority=GLib.PRIORITY_HIGH)
 
     def on_modified(self, event):
         file_path = event.src_path
         logger.debug(f"Monitor found {file_path} for event type MODIFIED")
-        GLib.idle_add(self._engine._appwindow._queue_manager.saved, file_path, priority=GLib.PRIORITY_HIGH)
+        if self._engine.props.running and \
+            self._engine._appwindow._queue_manager.props.running:
+            GLib.idle_add(self._engine._appwindow._queue_manager.saved, file_path, priority=GLib.PRIORITY_HIGH)
 

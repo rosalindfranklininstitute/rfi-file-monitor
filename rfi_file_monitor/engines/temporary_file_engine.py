@@ -5,7 +5,7 @@ from gi.repository import Gtk, GLib
 from ..engine import Engine
 from ..file import RegularFile, FileStatus
 from ..utils.exceptions import AlreadyRunning, NotYetRunning
-from ..utils.decorators import exported_filetype
+from ..utils.decorators import exported_filetype, with_pango_docs
 from ..utils import ExitableThread
 
 import logging
@@ -23,6 +23,7 @@ SIZE_UNITS = {
     'GB': 1000000000,
 }
 
+@with_pango_docs(filename='temporary_file_engine.pango')
 @exported_filetype(filetype=RegularFile)
 class TemporaryFileEngine(Engine):
 

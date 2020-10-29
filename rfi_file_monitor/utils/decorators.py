@@ -5,6 +5,8 @@ from ..operation import Operation
 
 from typing import Final, Dict, Type, Union, Sequence, List
 import logging
+import inspect
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +15,27 @@ engines_advanced_settings_map : Final[Dict[Type[Engine], Type[EngineAdvancedSett
 engines_exported_filetype_map : Final[Dict[Type[Engine], Type[File]]] = dict()
 
 filetypes_supported_operations_map : Final[Dict[Type[File], List[Type[Operation]]]] = dict()
+
+pango_docs_map : Final[Dict[Type[Union[Operation, Engine]], str]] = dict()
+
+def with_pango_docs(filename: str):
+    '''Decorator for engines and operations, used to set the name of the file
+    whose contents should be used to populate the associated Help dialog. 
+    Provide the basename of the file only, and make sure it is placed in a folder
+    called `docs`, which must be a subfolder within the folder containing the engine or operation'''
+    def _with_pango_docs(cls: Type[Union[Engine, Operation]]):
+        logger.debug(f'with_pango_docs: {filename} -> {cls.__name__}')
+        if not issubclass(cls, Engine) and not issubclass(cls, Operation):
+            logger.error(f'with_advanced_settings can only be used to decorate classes that extend Engine or Operation')
+            return cls
+        try:
+            contents = Path(inspect.getmodule(cls).__file__).parent.joinpath('docs', filename).read_text()
+        except Exception:
+            logger.exception(f'with_pango_docs: could not open {filename} for reading')
+        else:
+            pango_docs_map[cls] = contents
+        return cls
+    return _with_pango_docs
 
 
 def with_advanced_settings(engine_advanced_settings: Type[EngineAdvancedSettings]):

@@ -10,7 +10,7 @@ from ..engine import Engine
 from ..utils import LongTaskWindow, get_patterns_from_string
 from ..file import FileStatus, RegularFile
 from ..utils.exceptions import AlreadyRunning, NotYetRunning
-from ..utils.decorators import exported_filetype, with_advanced_settings
+from ..utils.decorators import exported_filetype, with_advanced_settings, with_pango_docs
 from .file_watchdog_engine_advanced_settings import FileWatchdogEngineAdvancedSettings
 
 from threading import Thread
@@ -23,6 +23,7 @@ IGNORE_PATTERNS = ['*.swp', '*.swx']
 
 logger = logging.getLogger(__name__)
 
+@with_pango_docs(filename='template.pango')
 @with_advanced_settings(engine_advanced_settings=FileWatchdogEngineAdvancedSettings)
 @exported_filetype(filetype=RegularFile)
 class FileWatchdogEngine(Engine):

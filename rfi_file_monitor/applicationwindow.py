@@ -16,7 +16,7 @@ from .utils import PATTERN_PLACEHOLDER_TEXT, MONITOR_YAML_VERSION
 from .utils.paramswindow import ParamsWindow
 from .utils import add_action_entries, EXPAND_AND_FILL, LongTaskWindow, class_in_object_iterable
 from .file import FileStatus
-from .utils.decorators import engines_advanced_settings_map, engines_exported_filetype_map, filetypes_supported_operations_map
+from .utils.decorators import engines_advanced_settings_map, engines_exported_filetype_map, filetypes_supported_operations_map, pango_docs_map
 from .engine import Engine
 from .operation import Operation
 from .queue_manager import QueueManager
@@ -83,13 +83,13 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         monitor_play_button = Gtk.Button(
             action_name='win.play',
             image=Gtk.Image(icon_name="media-playback-start", icon_size=Gtk.IconSize.DIALOG),
-            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            halign=Gtk.Align.CENTER, valign=Gtk.Align.END,
             hexpand=False, vexpand=False)
         controls_grid_basic.attach(monitor_play_button, 0, 0, 1, 1)
         monitor_stop_button = Gtk.Button(
             action_name='win.stop',
             image=Gtk.Image(icon_name="media-playback-stop", icon_size=Gtk.IconSize.DIALOG),
-            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            halign=Gtk.Align.CENTER, valign=Gtk.Align.START,
             hexpand=False, vexpand=False)
         controls_grid_basic.attach(monitor_stop_button, 0, 1, 1, 1)
 
@@ -109,6 +109,11 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             engine = engine_cls(appwindow=self)
             engine_grid = Gtk.Grid(**EXPAND_AND_FILL, row_spacing=5, border_width=5)
             engine_grid.attach(engine, 0, 0, 1, 1)
+            buttons_grid = Gtk.Grid(
+                halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+                hexpand=True, vexpand=False,
+                column_spacing=5
+            )
             # add button and dialog for advanced settings if necessary
             if engine_cls in engines_advanced_settings_map:
                 engine_advanced_settings = engines_advanced_settings_map[type(engine)](engine)
@@ -118,10 +123,30 @@ class ApplicationWindow(Gtk.ApplicationWindow):
 
                 advanced_settings_button = Gtk.Button(
                     label='Advanced Settings',
-                    halign=Gtk.Align.CENTER, valign=Gtk.Align.END,
-                    hexpand=False, vexpand=False)
-                engine_grid.attach(advanced_settings_button, 0, 1, 1, 1)
+                    halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
+                    hexpand=True, vexpand=False)
+                buttons_grid.attach(advanced_settings_button, len(buttons_grid), 0, 1, 1)
                 advanced_settings_button.connect('clicked', self._engine_advanced_settings_button_clicked_cb, engine)
+            if engine_cls in pango_docs_map:
+                help_button = Gtk.Button(
+                    label='Help',
+                    halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
+                    hexpand=True, vexpand=False)
+                buttons_grid.attach(help_button, len(buttons_grid), 0, 1, 1)
+                help_button.connect('clicked', self._engine_help_button_clicked_cb, engine)
+
+            # fix layout a bit. Buttons should be grouped and centered
+            if (buttons_grid_len := len(buttons_grid)):
+                engine_grid.attach(buttons_grid, 0, 1, 1, 1)
+                if buttons_grid_len >= 2:
+                    # apparently the children of the grid are listed in LIFO order
+                    list(buttons_grid)[0].props.halign = Gtk.Align.START
+                    list(buttons_grid)[-1].props.halign = Gtk.Align.END
+                if buttons_grid_len >= 3:
+                    for widget in list(buttons_grid)[1:-1]:
+                        widget.props.hexpand = False
+            else:
+                del buttons_grid
             self._engines_notebook.append_page(engine_grid, Gtk.Label(label=engine_cls.NAME))
             self._engines.append(engine)
 
@@ -395,6 +420,14 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         # To avoid problems with the params, we have to reuse the window
         # So when it is closed, it is hidden instead of destroyed.
         dialog = getattr(engine, self.ENGINE_ADVANCED_SETTINGS_WINDOW_ATTR)
+        dialog.present()
+
+    def _engine_help_button_clicked_cb(self, button, engine):
+        # Reuse window for all engines
+        dialog = self.get_property('application').help_window
+        dialog.props.transient_for = self
+        dialog.props.title = f'{engine.NAME} Help'
+        dialog.label.props.label = pango_docs_map[type(engine)]
         dialog.present()
 
     def on_open_queue_manager(self, action, param):

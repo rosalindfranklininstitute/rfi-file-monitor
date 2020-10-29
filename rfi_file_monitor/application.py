@@ -1,6 +1,6 @@
 import gi
 gi.require_version("Gtk", "3.0")
-from gi.repository import GLib, Gio, Gtk, GdkPixbuf
+from gi.repository import GLib, Gio, Gtk, GdkPixbuf, Pango
 import yaml
 
 import importlib.resources
@@ -11,11 +11,12 @@ from typing import Any, Final, Dict
 import importlib.metadata
 
 from .applicationwindow import ApplicationWindow
-from .utils import add_action_entries, PREFERENCES_CONFIG_FILE, MONITOR_YAML_VERSION
+from .utils import add_action_entries, PREFERENCES_CONFIG_FILE, MONITOR_YAML_VERSION, EXPAND_AND_FILL
 from .preferences import Preference
 from .preferenceswindow import PreferencesWindow
 from .utils.decorators import filetypes_supported_operations_map
 from .file import RegularFile
+from .utils.paramswindow import ParamsWindow
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,10 @@ class Application(Gtk.Application):
     @property
     def known_engines(self):
         return self._known_engines
+
+    @property
+    def help_window(self):
+        return self._help_window
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
@@ -123,6 +128,22 @@ class Application(Gtk.Application):
         
         for _name in self._known_engines:
             logger.debug(f"Engine found: {_name}")
+
+        # add our help window, which will be shared by all appwindows
+        help_window_label = Gtk.Label(
+           **EXPAND_AND_FILL,
+           wrap=True, use_markup=True, selectable=False,
+           wrap_mode=Pango.WrapMode.WORD_CHAR,
+           xalign=0, yalign=0,
+        )
+        sw = Gtk.ScrolledWindow(
+            **EXPAND_AND_FILL,
+           hscrollbar_policy=Gtk.PolicyType.NEVER,
+        )
+        sw.add(help_window_label)
+        self._help_window = ParamsWindow(sw, None, 'Help')
+        self._help_window.set_default_size(400, 600)
+        self._help_window.label = help_window_label
 
     def update_supported_filetypes(self):
         # this will update filetypes_supported_operations_map 

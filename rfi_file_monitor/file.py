@@ -162,3 +162,5 @@ class File:
         """
         GLib.idle_add(self._update_progressbar_worker_cb, index, value)
 
+class RegularFile(File):
+    pass

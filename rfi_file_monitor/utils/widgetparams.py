@@ -2,7 +2,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 from pathlib import Path
-from typing import Final, Any, List, final
+from typing import Final, Any, List, final, Optional
 
 from munch import Munch, munchify
 import logging
@@ -14,13 +14,23 @@ class WidgetParams:
     Inheriting from this class
     """
     #pylint: disable=unsubscriptable-object
-    def __init__(self, *args, **kwargs):
+    def __init__(self, params: Optional[Munch] = None):
         logger.debug('Calling WidgetParams __init__')
-        super().__init__()
-        self._params: Final[Munch[str, Any]] = Munch()
+        if params:
+            self._params = params
+        else:
+            self._params: Final[Munch[str, Any]] = Munch()
+        
         self._signal_ids: Final[Munch[str, int]] = Munch()
         self._widgets: Final[Munch[str, Gtk.Widget]] = Munch()
         self._exportable_params: Final[List[str]] = list()
+        self._desensitized_widgets: Final[List[Gtk.Widget]] = list()
+
+    @final
+    def set_sensitive(self, sensitive: bool):
+        for widget in self.widgets.values():
+            if widget not in self._desensitized_widgets:
+                widget.set_sensitive(sensitive)
 
     @final
     def _entry_changed_cb(self, entry: Gtk.Entry, param_name: str):
@@ -44,7 +54,11 @@ class WidgetParams:
 
 
     @final
-    def register_widget(self, widget: Gtk.Widget, param_name: str, exportable: bool = True):
+    def register_widget(self,
+        widget: Gtk.Widget,
+        param_name: str,
+        exportable: bool = True,
+        desensitized: bool = False):
 
         if param_name in self._params:
             raise ValueError("register_widget cannot overwrite existing parameters!")
@@ -68,8 +82,12 @@ class WidgetParams:
             raise NotImplementedError(f"register_widget: no support for {type(widget).__name__}")
 
         self._widgets[param_name] = widget
+
         if exportable:
             self._exportable_params.append(param_name)
+
+        if desensitized:
+            self._desensitized_widgets.append(widget)
 
         logger.debug(f'Registered {param_name} with value {self._params[param_name]} of type {type(self._params[param_name])}')
 

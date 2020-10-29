@@ -1,15 +1,19 @@
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gio, GLib, Gtk
+from tenacity.retry import retry_base
 
 from typing import Callable, Optional, Final, Any, Dict, List, Iterable
 import logging
 from pathlib import Path
 import hashlib
 import os
-from tenacity.retry import retry_base
+from threading import Thread
 
-from ..operation import SkippedOperation
+from .exceptions import SkippedOperation
+
+# bump this number when the yaml layout changes!
+MONITOR_YAML_VERSION = 2
 
 EXPAND_AND_FILL: Final[Dict[str, Any]] = dict(hexpand=True, vexpand=True, halign=Gtk.Align.FILL, valign=Gtk.Align.FILL)
 
@@ -122,3 +126,17 @@ class LongTaskWindow(Gtk.Window):
 
     def set_text(self, text: str):
         self._label.set_markup(text)
+
+class ExitableThread(Thread):
+    
+    def __init__(self):
+        super().__init__()
+        self._should_exit: Final[bool] = False
+
+    @property
+    def should_exit(self):
+        return self._should_exit
+    
+    @should_exit.setter
+    def should_exit(self, value: bool):
+        self._should_exit = value

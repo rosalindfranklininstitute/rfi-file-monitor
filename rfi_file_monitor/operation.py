@@ -21,9 +21,6 @@ from rfi_file_monitor.utils.widgetparams import WidgetParams
 class OperationMeta(ABCMeta, type(Gtk.Frame)):
     pass
 
-class SkippedOperation(Exception):
-    pass
-
 class Operation(ABC, Gtk.Frame, WidgetParams, metaclass=OperationMeta):
 
     @abstractmethod
@@ -38,10 +35,6 @@ class Operation(ABC, Gtk.Frame, WidgetParams, metaclass=OperationMeta):
         Gtk.Frame.__init__(self, *args, **kwargs)
         WidgetParams.__init__(self)
         self._index: Final[int] = 0
-
-    def set_sensitive(self, sensitive: bool):
-        for widget in self.widgets.values():
-            widget.set_sensitive(sensitive)
 
     @property
     def appwindow(self):

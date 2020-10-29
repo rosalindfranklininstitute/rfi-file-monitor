@@ -173,6 +173,7 @@ class PreferenceValueCellRenderer(Gtk.CellRenderer):
 
 class PreferencesWindow(Gtk.Window):
     def __init__(self, prefs: Dict[Preference, Any], *args, **kwargs):
+        logger.debug('Creating new PreferencesWindow')
         super().__init__(*args, **kwargs)
 
         self.set_default_size(500, 500)

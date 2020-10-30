@@ -6,8 +6,8 @@ The Temporary File Generator produces files with random binary contents in a tem
 
 <span size="x-large">Options</span>
 
-* Filesize: select the size of the generated files using a number between 1 and 1024 and a unit (Bytes, KiloBytes, MegaBytes, GigaBytes)
-* Time between file creation events: the time, expressed in seconds, that the generator will wait between creating two files.
+* <b>Filesize</b>: select the size of the generated files using a number between 1 and 1024 and a unit (Bytes, KiloBytes, MegaBytes, GigaBytes)
+* <b>Time between file creation events</b>: the time, expressed in seconds, that the generator will wait between creating two files.
 
 <span size="x-large">Exported File Format</span>
 

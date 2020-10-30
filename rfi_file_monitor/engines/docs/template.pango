@@ -6,8 +6,8 @@ Write here some text that explains when and why this engine should be used.
 
 <span size="x-large">Options</span>
 
-* Option1: use this to achieve goal 1
-* Option2: use this to achieve goal 2
+* <b>Option1</b>: use this to achieve goal 1
+* <b>Option2</b>: use this to achieve goal 2
 
 <span size="x-large">Exported File Format</span>
 

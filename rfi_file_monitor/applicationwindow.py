@@ -16,10 +16,10 @@ from .utils import PATTERN_PLACEHOLDER_TEXT, MONITOR_YAML_VERSION
 from .utils.paramswindow import ParamsWindow
 from .utils import add_action_entries, EXPAND_AND_FILL, LongTaskWindow, class_in_object_iterable
 from .file import FileStatus
+from .queue_manager import QueueManager
 from .utils.decorators import engines_advanced_settings_map, engines_exported_filetype_map, filetypes_supported_operations_map, pango_docs_map
 from .engine import Engine
 from .operation import Operation
-from .queue_manager import QueueManager
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             ("add-operation", self.on_add_operation),
             ("remove-operation", self.on_remove_operation),
             ("queue-manager", self.on_open_queue_manager),
+            ("help-queue-manager", self.on_open_queue_manager_help),
             ("status-filter-created", self.on_status_filter, None, GLib.Variant.new_boolean(True), FileStatus.CREATED),
             ("status-filter-saved", self.on_status_filter, None, GLib.Variant.new_boolean(True), FileStatus.SAVED),
             ("status-filter-queued", self.on_status_filter, None, GLib.Variant.new_boolean(True), FileStatus.QUEUED),
@@ -323,6 +324,13 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             self._queue_manager, self, 'Queue Manager'
         )
 
+        help_queue_manager_button = Gtk.Button(
+            label='Help', action_name='win.help-queue-manager',
+            halign=Gtk.Align.END, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+        )
+        filters_grid.attach(help_queue_manager_button, 5, 0, 1, 1)
+
         files_frame = Gtk.Frame(border_width=5)
         files_scrolled_window = Gtk.ScrolledWindow(**EXPAND_AND_FILL)
         files_frame.add(files_scrolled_window)
@@ -432,6 +440,13 @@ class ApplicationWindow(Gtk.ApplicationWindow):
 
     def on_open_queue_manager(self, action, param):
         self._queue_manager_window.present()
+
+    def on_open_queue_manager_help(self, action, param):
+        dialog = self.get_property('application').help_window
+        dialog.props.transient_for = self
+        dialog.props.title = f'Queue Manager Help'
+        dialog.label.props.label = pango_docs_map[QueueManager]
+        dialog.present()
 
     def on_add_operation(self, action, param):
         logger.debug("Clicked on_add_operation")

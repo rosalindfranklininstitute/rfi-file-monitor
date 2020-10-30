@@ -17,12 +17,13 @@ from .file import FileStatus, File
 from .job import Job
 from .utils.exceptions import AlreadyRunning, NotYetRunning
 from .utils.widgetparams import WidgetParams
-from .utils.decorators import engines_exported_filetype_map
+from .utils.decorators import engines_exported_filetype_map, with_pango_docs
 
 logger = logging.getLogger(__name__)
 
 NewFile = Tuple[str, str]
 
+@with_pango_docs(filename='queue_manager.pango')
 class QueueManager(WidgetParams, Gtk.Grid):
     MAX_JOBS = len(getattr(os, 'sched_getaffinity')(0)) if hasattr(os, 'sched_getaffinity') else os.cpu_count()
 

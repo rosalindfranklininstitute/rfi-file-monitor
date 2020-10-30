@@ -7,6 +7,7 @@ from typing import Final
 
 from .file import File
 from .utils.widgetparams import WidgetParams
+from .utils import decorators
 
 
 
@@ -51,6 +52,15 @@ class Operation(ABC, Gtk.Frame, WidgetParams, metaclass=OperationMeta):
 
         delete_button.connect('clicked', self._delete_clicked_cb)
 
+        if type(self) in decorators.pango_docs_map:
+            help_button = Gtk.Button(
+                image=Gtk.Image(icon_name="dialog-question-symbolic", icon_size=Gtk.IconSize.SMALL_TOOLBAR),
+                halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+                hexpand=False, vexpand=False)
+            label_grid.attach(help_button, 2, 0, 1, 1)
+
+            help_button.connect('clicked', self._help_clicked_cb)
+
         kwargs.update(dict(
             label_widget=label_grid,
             halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
@@ -63,6 +73,13 @@ class Operation(ABC, Gtk.Frame, WidgetParams, metaclass=OperationMeta):
 
     def _delete_clicked_cb(self, button):
         self._appwindow._remove_operation(self)
+
+    def _help_clicked_cb(self, button):
+        dialog = self._appwindow.get_property('application').help_window
+        dialog.props.transient_for = self._appwindow
+        dialog.props.title = f'{self.NAME} Help'
+        dialog.label.props.label = decorators.pango_docs_map[type(self)]
+        dialog.present()
 
     @property
     def appwindow(self):

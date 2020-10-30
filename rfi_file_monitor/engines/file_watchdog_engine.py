@@ -23,7 +23,7 @@ IGNORE_PATTERNS = ['*.swp', '*.swx']
 
 logger = logging.getLogger(__name__)
 
-@with_pango_docs(filename='template.pango')
+@with_pango_docs(filename='file_watchdog_engine.pango')
 @with_advanced_settings(engine_advanced_settings=FileWatchdogEngineAdvancedSettings)
 @exported_filetype(filetype=RegularFile)
 class FileWatchdogEngine(Engine):

@@ -6,7 +6,8 @@ from gi.repository import Gtk
 from typing import Final
 
 from .file import File
-from rfi_file_monitor.utils.widgetparams import WidgetParams
+from .utils.widgetparams import WidgetParams
+
 
 
 #
@@ -26,15 +27,42 @@ class Operation(ABC, Gtk.Frame, WidgetParams, metaclass=OperationMeta):
     @abstractmethod
     def __init__(self, *args, **kwargs):
         self._appwindow = kwargs.pop('appwindow')
+        self._index: Final[int] = 0
+
+        self._label = Gtk.Label(
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+            label=f"Operation without index: {self.NAME}"
+        )
+
+        label_grid = Gtk.Grid(
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+            column_spacing=5, border_width=5,
+        )
+        label_grid.attach(self._label, 0, 0, 1, 1)
+
+        # add delete button
+        delete_button = Gtk.Button(
+            image=Gtk.Image(icon_name="edit-delete-symbolic", icon_size=Gtk.IconSize.SMALL_TOOLBAR),
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False)
+        label_grid.attach(delete_button, 1, 0, 1, 1)
+
+        delete_button.connect('clicked', self._delete_clicked_cb)
+
         kwargs.update(dict(
-            #label=f"Operation {index}: {self.NAME}",
+            label_widget=label_grid,
             halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
             hexpand=True, vexpand=True,
             border_width=5,
+            label_xalign=0.5
         ))
         Gtk.Frame.__init__(self, *args, **kwargs)
         WidgetParams.__init__(self)
-        self._index: Final[int] = 0
+
+    def _delete_clicked_cb(self, button):
+        self._appwindow._remove_operation(self)
 
     @property
     def appwindow(self):
@@ -53,7 +81,7 @@ class Operation(ABC, Gtk.Frame, WidgetParams, metaclass=OperationMeta):
     @index.setter
     def index(self, value: int):
         self._index = value
-        self.props.label = f"Operation {self._index + 1}: {self.NAME}"
+        self._label.props.label = f"Operation {self._index + 1}: {self.NAME}"
 
     @property
     @classmethod

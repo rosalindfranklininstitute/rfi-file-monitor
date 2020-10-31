@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
@@ -17,7 +19,6 @@ from .utils.paramswindow import ParamsWindow
 from .utils import add_action_entries, EXPAND_AND_FILL, LongTaskWindow, class_in_object_iterable
 from .file import FileStatus
 from .queue_manager import QueueManager
-from .utils.decorators import engines_advanced_settings_map, engines_exported_filetype_map, filetypes_supported_operations_map, pango_docs_map
 from .engine import Engine
 from .operation import Operation
 
@@ -115,8 +116,8 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                 column_spacing=5
             )
             # add button and dialog for advanced settings if necessary
-            if engine_cls in engines_advanced_settings_map:
-                engine_advanced_settings = engines_advanced_settings_map[type(engine)](engine)
+            if engine_cls in self.get_property('application').engines_advanced_settings_map:
+                engine_advanced_settings = self.get_property('application').engines_advanced_settings_map[type(engine)](engine)
                 title = f'{engine.NAME} Advanced Settings'
                 dialog = ParamsWindow(engine_advanced_settings, self, title)
                 setattr(engine, self.ENGINE_ADVANCED_SETTINGS_WINDOW_ATTR, dialog)
@@ -127,7 +128,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                     hexpand=True, vexpand=False)
                 buttons_grid.attach(advanced_settings_button, len(buttons_grid), 0, 1, 1)
                 advanced_settings_button.connect('clicked', self._engine_advanced_settings_button_clicked_cb, engine)
-            if engine_cls in pango_docs_map:
+            if engine_cls in self.get_property('application').pango_docs_map:
                 help_button = Gtk.Button(
                     label='Help',
                     halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
@@ -355,8 +356,8 @@ class ApplicationWindow(Gtk.ApplicationWindow):
 
     def _repopulate_available_operations(self):
         # get active engine
-        filetype_cls = engines_exported_filetype_map[type(self._active_engine)]
-        operation_cls_list = filetypes_supported_operations_map[filetype_cls]
+        filetype_cls = self.get_property('application').engines_exported_filetype_map[type(self._active_engine)]
+        operation_cls_list = self.get_property('application').filetypes_supported_operations_map[filetype_cls]
 
         self._controls_operations_model.clear()
         for _class in operation_cls_list:
@@ -404,7 +405,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         dialog = self.get_property('application').help_window
         dialog.props.transient_for = self
         dialog.props.title = f'{engine.NAME} Help'
-        dialog.label.props.label = pango_docs_map[type(engine)]
+        dialog.label.props.label = self.get_property('application').pango_docs_map[type(engine)]
         dialog.present()
 
     def on_open_queue_manager(self, action, param):
@@ -414,7 +415,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         dialog = self.get_property('application').help_window
         dialog.props.transient_for = self
         dialog.props.title = f'Queue Manager Help'
-        dialog.label.props.label = pango_docs_map[QueueManager]
+        dialog.label.props.label = self.get_property('application').pango_docs_map[QueueManager]
         dialog.present()
 
     def on_add_operation(self, action, param):

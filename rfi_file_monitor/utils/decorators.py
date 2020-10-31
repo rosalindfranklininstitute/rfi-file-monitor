@@ -1,40 +1,39 @@
+from __future__ import annotations
+
+from gi.repository import Gio
+
 from ..engine_advanced_settings import EngineAdvancedSettings
 from ..engine import Engine
 from ..file import File
 from ..operation import Operation
-from .widgetparams import WidgetParams
 
-from typing import Final, Dict, Type, Union, Sequence, List
+from typing import Type, Union, Sequence
 import logging
 import inspect
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-engines_advanced_settings_map : Final[Dict[Type[Engine], Type[EngineAdvancedSettings]]] = dict()
-
-engines_exported_filetype_map : Final[Dict[Type[Engine], Type[File]]] = dict()
-
-filetypes_supported_operations_map : Final[Dict[Type[File], List[Type[Operation]]]] = dict()
-
-pango_docs_map : Final[Dict[Type[WidgetParams], str]] = dict()
+_app = Gio.Application.get_default()
 
 def with_pango_docs(filename: str):
     '''Decorator for engines and operations, used to set the name of the file
     whose contents should be used to populate the associated Help dialog. 
     Provide the basename of the file only, and make sure it is placed in a folder
     called `docs`, which must be a subfolder within the folder containing the engine or operation'''
-    def _with_pango_docs(cls: Type[WidgetParams]):
+    def _with_pango_docs(cls: Type[Union[Operation, Engine]]):
         logger.debug(f'with_pango_docs: {filename} -> {cls.__name__}')
-        if not issubclass(cls, WidgetParams):
-            logger.error(f'with_advanced_settings can only be used to decorate classes that extend Engine, Operation or QueueManager')
+        if _app is None:
+            return cls
+        if not issubclass(cls, Operation) and not issubclass(cls, Engine):
+            logger.error(f'with_pango_cos can only be used to decorate classes that extend Engine, Operation or QueueManager')
             return cls
         try:
             contents = Path(inspect.getmodule(cls).__file__).parent.joinpath('docs', filename).read_text()
         except Exception:
             logger.exception(f'with_pango_docs: could not open {filename} for reading')
         else:
-            pango_docs_map[cls] = contents
+            _app.pango_docs_map[cls] = contents
         return cls
     return _with_pango_docs
 
@@ -45,10 +44,12 @@ def with_advanced_settings(engine_advanced_settings: Type[EngineAdvancedSettings
         OPTIONAL.'''
     def _with_advanced_settings(cls: Type[Engine]):
         logger.debug(f'with_advanced_settings: {engine_advanced_settings.__name__} -> {cls.__name__}')
+        if _app is None:
+            return cls
         if not issubclass(cls, Engine):
             logger.error(f'with_advanced_settings can only be used to decorate classes that extend Engine')
             return cls
-        engines_advanced_settings_map[cls] = engine_advanced_settings
+        _app.engines_advanced_settings_map[cls] = engine_advanced_settings
         return cls
     return _with_advanced_settings
 
@@ -59,10 +60,12 @@ def exported_filetype(filetype: Type[File]):
        the engine cannot be tied to operations.'''
     def _exported_filetype(cls: Type[Engine]):
         logger.debug(f'exported_filetype: {filetype.__name__} -> {cls.__name__}')
+        if _app is None:
+            return cls
         if not issubclass(cls, Engine):
             logger.error(f'exported_filetype can only be used to decorate classes that extend Engine')
             return cls
-        engines_exported_filetype_map[cls] = filetype
+        _app.engines_exported_filetype_map[cls] = filetype
         return cls
     return _exported_filetype
 
@@ -72,16 +75,18 @@ def supported_filetypes(filetypes: Union[Type[File], Sequence[Type[File]]]):
        will be assumed to support regular files only!'''
     def _supported_filetypes(cls: Type[Operation]):
         logger.debug(f'exported_filetype: {filetypes.__name__} -> {cls.__name__}')
+        if _app is None:
+            return cls
         if not issubclass(cls, Operation):
             logger.error(f'supported_filetypes can only be used to decorate classes that extend Operation')
             return cls
         if issubclass(filetypes, File):
             filetypes = [filetypes]
         for filetype in filetypes:
-            if filetype in filetypes_supported_operations_map:
-                filetypes_supported_operations_map[filetype].append(cls)
+            if filetype in _app.filetypes_supported_operations_map:
+                _app.filetypes_supported_operations_map[filetype].append(cls)
             else:
-                filetypes_supported_operations_map[filetype] = list(cls)
+                _app.filetypes_supported_operations_map[filetype] = list(cls)
         return cls
     return _supported_filetypes
     

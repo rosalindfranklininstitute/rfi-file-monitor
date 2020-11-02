@@ -60,6 +60,7 @@ test:
     - rfi_file_monitor.utils
     - rfi_file_monitor.utils.decorators
     - rfi_file_monitor.utils.exceptions
+    - rfi_file_monitor.utils.helpwindow
     - rfi_file_monitor.utils.paramswindow
     - rfi_file_monitor.utils.widgetparams
   commands:

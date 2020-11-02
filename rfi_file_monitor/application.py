@@ -17,7 +17,7 @@ from .utils import add_action_entries, PREFERENCES_CONFIG_FILE, MONITOR_YAML_VER
 from .preferences import Preference
 from .preferenceswindow import PreferencesWindow
 from .file import RegularFile, File
-from .utils.paramswindow import ParamsWindow
+from .utils.helpwindow import HelpWindow
 from .applicationwindow import ApplicationWindow
 from .engine import Engine
 from .engine_advanced_settings import EngineAdvancedSettings
@@ -171,20 +171,7 @@ class Application(Gtk.Application):
             logger.debug(f"Engine found: {_name}")
 
         # add our help window, which will be shared by all appwindows
-        help_window_label = Gtk.Label(
-           **EXPAND_AND_FILL,
-           wrap=True, use_markup=True, selectable=False,
-           wrap_mode=Pango.WrapMode.WORD_CHAR,
-           xalign=0, yalign=0,
-        )
-        sw = Gtk.ScrolledWindow(
-            **EXPAND_AND_FILL,
-           hscrollbar_policy=Gtk.PolicyType.NEVER,
-        )
-        sw.add(help_window_label)
-        self._help_window = ParamsWindow(sw, None, 'Help')
-        self._help_window.set_default_size(400, 600)
-        self._help_window.label = help_window_label
+        self._help_window = HelpWindow(self._pango_docs_map)
 
     def _update_supported_filetypes(self):
         # this will update filetypes_supported_operations_map 

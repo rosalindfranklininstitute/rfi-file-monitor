@@ -75,8 +75,7 @@ class Operation(ABC, Gtk.Frame, WidgetParams, metaclass=OperationMeta):
     def _help_clicked_cb(self, button):
         dialog = self._appwindow.get_property('application').help_window
         dialog.props.transient_for = self._appwindow
-        dialog.props.title = f'{self.NAME} Help'
-        dialog.label.props.label = self._appwindow.get_property('application').pango_docs_map[type(self)]
+        dialog.select_item(type(self))
         dialog.present()
 
     @property

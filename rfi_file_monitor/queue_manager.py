@@ -27,6 +27,8 @@ NewFile = Tuple[str, str]
 class QueueManager(WidgetParams, Gtk.Grid):
     MAX_JOBS = len(getattr(os, 'sched_getaffinity')(0)) if hasattr(os, 'sched_getaffinity') else os.cpu_count()
 
+    NAME = 'Queue Manager'
+
     def __init__(self, appwindow):
         self._appwindow = appwindow
         self._running = False

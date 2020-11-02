@@ -404,8 +404,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         # Reuse window for all engines
         dialog = self.get_property('application').help_window
         dialog.props.transient_for = self
-        dialog.props.title = f'{engine.NAME} Help'
-        dialog.label.props.label = self.get_property('application').pango_docs_map[type(engine)]
+        dialog.select_item(type(engine))
         dialog.present()
 
     def on_open_queue_manager(self, action, param):
@@ -414,8 +413,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     def on_open_queue_manager_help(self, action, param):
         dialog = self.get_property('application').help_window
         dialog.props.transient_for = self
-        dialog.props.title = f'Queue Manager Help'
-        dialog.label.props.label = self.get_property('application').pango_docs_map[QueueManager]
+        dialog.select_item(QueueManager)
         dialog.present()
 
     def on_add_operation(self, action, param):

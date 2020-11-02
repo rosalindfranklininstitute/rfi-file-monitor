@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import gi
 gi.require_version("Gtk", "3.0")
-from gi.repository import GLib, Gio, Gtk, GdkPixbuf, Pango
+from gi.repository import GLib, Gio, Gtk, GdkPixbuf
 import yaml
 
 import importlib.resources
@@ -13,7 +13,7 @@ from typing import Any, Final, Dict, Type, Union, List
 import importlib.metadata
 from pathlib import Path
 
-from .utils import add_action_entries, PREFERENCES_CONFIG_FILE, MONITOR_YAML_VERSION, EXPAND_AND_FILL
+from .utils import add_action_entries, PREFERENCES_CONFIG_FILE, MONITOR_YAML_VERSION 
 from .preferences import Preference
 from .preferenceswindow import PreferencesWindow
 from .file import RegularFile, File

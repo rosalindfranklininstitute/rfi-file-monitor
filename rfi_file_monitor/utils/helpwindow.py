@@ -56,17 +56,20 @@ class HelpWindow(Gtk.Window):
 
         # engines
         engines = list(sorted(filter(lambda widgetclass: issubclass(widgetclass, Engine), contents_raw), key=lambda engine: engine.NAME))
-        engines[0].section = 'Engines'
+        for engine in engines:
+            engine.section = 'Engines'
         contents.extend(engines)
 
         # operations
         operations = list(sorted(filter(lambda widgetclass: issubclass(widgetclass, Operation), contents_raw), key=lambda operation: operation.NAME))
-        operations[0].section = 'Operations'
+        for operation in operations:
+            operation.section = 'Operations'
         contents.extend(operations)
 
         # others
         others = list(sorted(filter(lambda widgetclass: not issubclass(widgetclass, Engine) and not issubclass(widgetclass, Operation), contents_raw), key=lambda other: other.NAME))
-        others[0].section = 'Miscellaneous'
+        for other in others:
+            other.section = 'Miscellaneous'
         contents.extend(others)
         
         self._rows = dict()
@@ -88,10 +91,8 @@ class HelpWindow(Gtk.Window):
 
             self._rows[widgetclass] = row
 
-            if hasattr(widgetclass, 'section'):
-                setattr(row, 'section', getattr(widgetclass, 'section'))
-
-            setattr(row, 'label', contents_raw[widgetclass])
+            row.section = widgetclass.section
+            row.label = contents_raw[widgetclass]
 
         self._list_box.connect('row-selected', self._row_selected_cb)
 
@@ -129,10 +130,9 @@ class HelpWindow(Gtk.Window):
 
     def _list_box_header_func(self, row, before):
         header = row.get_header()
-        section = getattr(row, 'section', None)
 
-        if not header and section:
-            title = f"<b>{section}</b>"
+        if not header and (before is None or before.section != row.section):
+            title = f"<b>{row.section}</b>"
 
             header = Gtk.Label(
                 label=title, use_markup=True,
@@ -145,7 +145,7 @@ class HelpWindow(Gtk.Window):
             row.set_header(header)
 
     def _row_selected_cb(self, list_box, row):
-        self._contents_label.props.label = getattr(row, 'label')
+        self._contents_label.props.label = row.label
 
     def select_item(self, klass: Type[Union[Engine, QueueManager, Operation]]):
         self._list_box.select_row(self._rows[klass])

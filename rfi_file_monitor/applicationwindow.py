@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
@@ -16,10 +18,9 @@ from .utils import PATTERN_PLACEHOLDER_TEXT, MONITOR_YAML_VERSION
 from .utils.paramswindow import ParamsWindow
 from .utils import add_action_entries, EXPAND_AND_FILL, LongTaskWindow, class_in_object_iterable
 from .file import FileStatus
-from .utils.decorators import engines_advanced_settings_map, engines_exported_filetype_map, filetypes_supported_operations_map
+from .queue_manager import QueueManager
 from .engine import Engine
 from .operation import Operation
-from .queue_manager import QueueManager
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +46,8 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             ("play", self.on_play),
             ("stop", self.on_stop),
             ("add-operation", self.on_add_operation),
-            ("remove-operation", self.on_remove_operation),
             ("queue-manager", self.on_open_queue_manager),
+            ("help-queue-manager", self.on_open_queue_manager_help),
             ("status-filter-created", self.on_status_filter, None, GLib.Variant.new_boolean(True), FileStatus.CREATED),
             ("status-filter-saved", self.on_status_filter, None, GLib.Variant.new_boolean(True), FileStatus.SAVED),
             ("status-filter-queued", self.on_status_filter, None, GLib.Variant.new_boolean(True), FileStatus.QUEUED),
@@ -83,13 +84,13 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         monitor_play_button = Gtk.Button(
             action_name='win.play',
             image=Gtk.Image(icon_name="media-playback-start", icon_size=Gtk.IconSize.DIALOG),
-            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            halign=Gtk.Align.CENTER, valign=Gtk.Align.END,
             hexpand=False, vexpand=False)
         controls_grid_basic.attach(monitor_play_button, 0, 0, 1, 1)
         monitor_stop_button = Gtk.Button(
             action_name='win.stop',
             image=Gtk.Image(icon_name="media-playback-stop", icon_size=Gtk.IconSize.DIALOG),
-            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            halign=Gtk.Align.CENTER, valign=Gtk.Align.START,
             hexpand=False, vexpand=False)
         controls_grid_basic.attach(monitor_stop_button, 0, 1, 1, 1)
 
@@ -109,19 +110,44 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             engine = engine_cls(appwindow=self)
             engine_grid = Gtk.Grid(**EXPAND_AND_FILL, row_spacing=5, border_width=5)
             engine_grid.attach(engine, 0, 0, 1, 1)
+            buttons_grid = Gtk.Grid(
+                halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+                hexpand=True, vexpand=False,
+                column_spacing=5
+            )
             # add button and dialog for advanced settings if necessary
-            if engine_cls in engines_advanced_settings_map:
-                engine_advanced_settings = engines_advanced_settings_map[type(engine)](engine)
+            if engine_cls in self.get_property('application').engines_advanced_settings_map:
+                engine_advanced_settings = self.get_property('application').engines_advanced_settings_map[type(engine)](engine)
                 title = f'{engine.NAME} Advanced Settings'
                 dialog = ParamsWindow(engine_advanced_settings, self, title)
                 setattr(engine, self.ENGINE_ADVANCED_SETTINGS_WINDOW_ATTR, dialog)
 
                 advanced_settings_button = Gtk.Button(
                     label='Advanced Settings',
-                    halign=Gtk.Align.CENTER, valign=Gtk.Align.END,
-                    hexpand=False, vexpand=False)
-                engine_grid.attach(advanced_settings_button, 0, 1, 1, 1)
+                    halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
+                    hexpand=True, vexpand=False)
+                buttons_grid.attach(advanced_settings_button, len(buttons_grid), 0, 1, 1)
                 advanced_settings_button.connect('clicked', self._engine_advanced_settings_button_clicked_cb, engine)
+            if engine_cls in self.get_property('application').pango_docs_map:
+                help_button = Gtk.Button(
+                    label='Help',
+                    halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
+                    hexpand=True, vexpand=False)
+                buttons_grid.attach(help_button, len(buttons_grid), 0, 1, 1)
+                help_button.connect('clicked', self._engine_help_button_clicked_cb, engine)
+
+            # fix layout a bit. Buttons should be grouped and centered
+            if (buttons_grid_len := len(buttons_grid)):
+                engine_grid.attach(buttons_grid, 0, 1, 1, 1)
+                if buttons_grid_len >= 2:
+                    # apparently the children of the grid are listed in LIFO order
+                    list(buttons_grid)[0].props.halign = Gtk.Align.START
+                    list(buttons_grid)[-1].props.halign = Gtk.Align.END
+                if buttons_grid_len >= 3:
+                    for widget in list(buttons_grid)[1:-1]:
+                        widget.props.hexpand = False
+            else:
+                del buttons_grid
             self._engines_notebook.append_page(engine_grid, Gtk.Label(label=engine_cls.NAME))
             self._engines.append(engine)
 
@@ -177,34 +203,6 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         else:
             self.lookup_action('add-operation').set_enabled(False)
             self._controls_operations_combo.set_sensitive(False)
-
-        controls_grid_basic.attach(
-            Gtk.Label(
-                label="<b>Remove operation: </b>",
-                use_markup=True,
-                halign=Gtk.Align.END, valign=Gtk.Align.CENTER,
-                hexpand=False, vexpand=False),
-            0, 4, 2, 1)
-
-        self._controls_operations_live = Gtk.ListStore(str, object)
-
-        self._controls_operations_live_combo = Gtk.ComboBox(
-            model=self._controls_operations_live,
-            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
-            hexpand=False, vexpand=False,
-        )
-        live_renderer = Gtk.CellRendererText()
-        self._controls_operations_live_combo.pack_start(live_renderer, True)
-        self._controls_operations_live_combo.add_attribute(live_renderer, "text", 0)
-        controls_grid_basic.attach(self._controls_operations_live_combo, 2, 4, 2, 1)
-
-        remove_operation_button = Gtk.Button(
-            label='Remove', action_name='win.remove-operation',
-            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
-            hexpand=False, vexpand=False,
-        )
-        controls_grid_basic.attach(remove_operation_button, 4, 4, 2, 1)
-        self.lookup_action('remove-operation').set_enabled(False)
 
         paned = Gtk.Paned(wide_handle=True,
             orientation=Gtk.Orientation.VERTICAL,
@@ -298,6 +296,13 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             self._queue_manager, self, 'Queue Manager'
         )
 
+        help_queue_manager_button = Gtk.Button(
+            label='Help', action_name='win.help-queue-manager',
+            halign=Gtk.Align.END, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+        )
+        filters_grid.attach(help_queue_manager_button, 5, 0, 1, 1)
+
         files_frame = Gtk.Frame(border_width=5)
         files_scrolled_window = Gtk.ScrolledWindow(**EXPAND_AND_FILL)
         files_frame.add(files_scrolled_window)
@@ -351,8 +356,8 @@ class ApplicationWindow(Gtk.ApplicationWindow):
 
     def _repopulate_available_operations(self):
         # get active engine
-        filetype_cls = engines_exported_filetype_map[type(self._active_engine)]
-        operation_cls_list = filetypes_supported_operations_map[filetype_cls]
+        filetype_cls = self.get_property('application').engines_exported_filetype_map[type(self._active_engine)]
+        operation_cls_list = self.get_property('application').filetypes_supported_operations_map[filetype_cls]
 
         self._controls_operations_model.clear()
         for _class in operation_cls_list:
@@ -364,11 +369,9 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     def _update_monitor_switch_sensitivity(self):
         logger.debug('_update_monitor_switch_sensitivity')
         if len(self._operations_box) == 0:
-            self.lookup_action('remove-operation').set_enabled(False)
             self.lookup_action('play').set_enabled(False)
             self._engines_notebook.props.show_tabs = True
         else:
-            self.lookup_action('remove-operation').set_enabled(True)
             self._engines_notebook.props.show_tabs = False
             if self._active_engine.props.valid:
                 self.lookup_action('play').set_enabled(True)
@@ -397,8 +400,21 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         dialog = getattr(engine, self.ENGINE_ADVANCED_SETTINGS_WINDOW_ATTR)
         dialog.present()
 
+    def _engine_help_button_clicked_cb(self, button, engine):
+        # Reuse window for all engines
+        dialog = self.get_property('application').help_window
+        dialog.props.transient_for = self
+        dialog.select_item(type(engine))
+        dialog.present()
+
     def on_open_queue_manager(self, action, param):
         self._queue_manager_window.present()
+
+    def on_open_queue_manager_help(self, action, param):
+        dialog = self.get_property('application').help_window
+        dialog.props.transient_for = self
+        dialog.select_item(QueueManager)
+        dialog.present()
 
     def on_add_operation(self, action, param):
         logger.debug("Clicked on_add_operation")
@@ -408,17 +424,9 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         new_operation.index = len(self._operations_box)
         self._operations_box.pack_start(new_operation, False, False, 0)
         new_operation.show_all()
-        iter = self._controls_operations_live.append([new_operation.get_label(), new_operation])
-        self._controls_operations_live_combo.set_active_iter(iter)
         self._update_monitor_switch_sensitivity()
 
-    def on_remove_operation(self, action, param):
-        logger.debug("Clicked on_remove_operation")
-
-        iter = self._controls_operations_live_combo.get_active_iter()
-        op_to_remove = self._controls_operations_live[iter][1]
-        self._controls_operations_live.remove(iter)
-
+    def _remove_operation(self, op_to_remove: Operation):
         self._operations_box.remove(op_to_remove)
         self._operations_box.resize_children()
 
@@ -427,12 +435,9 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         if len(self._operations_box) == 0:
             return
 
-        self._controls_operations_live.clear()
         for op in self._operations_box:
             if op.index > op_to_remove.index:
                 op.index = op.index -1 # reordering all the indices of the ops.
-            iter = self._controls_operations_live.append([op.get_label(), op])
-        self._controls_operations_live_combo.set_active_iter(iter)
 
     def _state_filters_button_clicked(self, button, popover):
         popover.show_all()
@@ -617,7 +622,6 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         
         # add the operations
         if isinstance(operations, collections.abc.Sequence):
-            iter = None
             for op in operations:
                 for _class in self.get_property('application').known_operations.values():
                     if op['name'] == _class.NAME:
@@ -626,13 +630,9 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                         self._operations_box.pack_start(new_operation, False, False, 0)
                         new_operation.update_from_dict(op['params'])
                         new_operation.show_all()
-                        iter = self._controls_operations_live.append([ new_operation.get_label(), new_operation])
                         break
                 else:
                     logger.debug(f"load_from_yaml_dict: no match found for operation {op['name']}")
-
-            if iter:
-                self._controls_operations_live_combo.set_active_iter(iter)
 
         self._engines_notebook.set_current_page(active_engine_index)
 

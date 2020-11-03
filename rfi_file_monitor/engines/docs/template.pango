@@ -1,0 +1,18 @@
+<span size="xx-large">Engine name</span>
+
+<span size="x-large">Purpose</span>
+
+Write here some text that explains when and why this engine should be used.
+
+<span size="x-large">Options</span>
+
+* <b>Option1</b>: use this to achieve goal 1
+* <b>Option2</b>: use this to achieve goal 2
+
+<span size="x-large">Exported File Format</span>
+
+RegularFile or Directory or S3Object
+
+<span size="x-large">Author</span>
+
+John Doe

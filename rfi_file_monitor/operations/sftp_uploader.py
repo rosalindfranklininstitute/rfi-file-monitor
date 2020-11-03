@@ -11,6 +11,7 @@ from ..operation import Operation
 from ..utils.exceptions import SkippedOperation
 from ..file import File
 from ..utils import monitor_retry_condition
+from ..utils.decorators import with_pango_docs
 
 import logging
 import os
@@ -21,7 +22,9 @@ import posixpath
 
 logger = logging.getLogger(__name__)
 
+@with_pango_docs(filename='sftp_uploader.pango')
 class SftpUploaderOperation(Operation):
+
     NAME = "SFTP Uploader"
 
     def __init__(self, *args, **kwargs):

@@ -11,6 +11,7 @@ from ..utils.exceptions import SkippedOperation
 from ..file import File
 from ..job import Job
 from ..utils import query_metadata
+from ..utils.decorators import with_pango_docs
 
 import os
 import logging
@@ -51,6 +52,7 @@ KB = 1024
 MB = KB * KB
 TransferConfig = boto3.s3.transfer.TransferConfig(max_concurrency=1, multipart_chunksize=8*MB, multipart_threshold=8*MB)
 
+@with_pango_docs(filename='s3_uploader.pango')
 class S3UploaderOperation(Operation):
     NAME = "S3 Uploader"
 

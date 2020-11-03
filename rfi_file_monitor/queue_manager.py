@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib, GObject
@@ -17,7 +19,6 @@ from .file import FileStatus, File
 from .job import Job
 from .utils.exceptions import AlreadyRunning, NotYetRunning
 from .utils.widgetparams import WidgetParams
-from .utils.decorators import engines_exported_filetype_map
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,8 @@ NewFile = Tuple[str, str]
 
 class QueueManager(WidgetParams, Gtk.Grid):
     MAX_JOBS = len(getattr(os, 'sched_getaffinity')(0)) if hasattr(os, 'sched_getaffinity') else os.cpu_count()
+
+    NAME = 'Queue Manager'
 
     def __init__(self, appwindow):
         self._appwindow = appwindow
@@ -222,7 +225,7 @@ class QueueManager(WidgetParams, Gtk.Grid):
                     self._appwindow._files_tree_model.append(parent=iter, row=dc_astuple(outputrow))
                 
                 # TODO: this will need to be rewritten if we decide to add support for multiple exported filetypes
-                _file = engines_exported_filetype_map[type(self._appwindow.active_engine)](
+                _file = self._appwindow.get_property('application').engines_exported_filetype_map[type(self._appwindow.active_engine)](
                     filename=file_path,
                     relative_filename=_relative_file_path,
                     created=_creation_timestamp,

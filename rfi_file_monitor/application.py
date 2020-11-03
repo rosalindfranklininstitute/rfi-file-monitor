@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gio, Gtk, GdkPixbuf
@@ -7,15 +9,21 @@ import importlib.resources
 import platform
 import webbrowser
 import logging
-from typing import Any, Final, Dict
+from typing import Any, Final, Dict, Type, Union, List
 import importlib.metadata
+from pathlib import Path
 
-from .applicationwindow import ApplicationWindow
-from .utils import add_action_entries, PREFERENCES_CONFIG_FILE, MONITOR_YAML_VERSION
+from .utils import add_action_entries, PREFERENCES_CONFIG_FILE, MONITOR_YAML_VERSION 
 from .preferences import Preference
 from .preferenceswindow import PreferencesWindow
-from .utils.decorators import filetypes_supported_operations_map
-from .file import RegularFile
+from .file import RegularFile, File
+from .utils.helpwindow import HelpWindow
+from .applicationwindow import ApplicationWindow
+from .engine import Engine
+from .engine_advanced_settings import EngineAdvancedSettings
+from .operation import Operation
+from .queue_manager import QueueManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +45,26 @@ class Application(Gtk.Application):
     @property
     def known_engines(self):
         return self._known_engines
+
+    @property
+    def help_window(self):
+        return self._help_window
+
+    @property
+    def engines_advanced_settings_map(self):
+        return self._engines_advanced_settings_map
+
+    @property
+    def engines_exported_filetype_map(self):
+        return self._engines_exported_filetype_map
+
+    @property
+    def filetypes_supported_operations_map(self):
+        return self._filetypes_supported_operations_map
+
+    @property
+    def pango_docs_map(self):
+        return self._pango_docs_map
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
@@ -108,11 +136,29 @@ class Application(Gtk.Application):
 
         logger.debug(f'{self._prefs=}')
 
+
+        self._engines_advanced_settings_map : Final[Dict[Type[Engine], Type[EngineAdvancedSettings]]] = dict()
+
+        self._engines_exported_filetype_map : Final[Dict[Type[Engine], Type[File]]] = dict()
+
+        self._filetypes_supported_operations_map : Final[Dict[Type[File], List[Type[Operation]]]] = dict()
+
+        self._pango_docs_map : Final[Dict[Type[Union[Engine, QueueManager, Operation]], str]] = dict()
+
+        # add queue manager docs manually
+        try:
+            contents = Path(__file__).parent.joinpath('docs', 'queue_manager.pango').read_text()
+        except Exception:
+            logger.exception(f'with_pango_docs: could not open queue_manager.pango for reading')
+        else:
+            self._pango_docs_map[QueueManager] = contents
+
         # get info from entry points
         self._known_operations = {
             e.name: e.load() for e in importlib.metadata.entry_points()['rfi_file_monitor.operations']
         }
-        self.update_supported_filetypes()
+
+        self._update_supported_filetypes()
 
         for _name in self._known_operations:
             logger.debug(f"Operation found: {_name}")
@@ -124,23 +170,26 @@ class Application(Gtk.Application):
         for _name in self._known_engines:
             logger.debug(f"Engine found: {_name}")
 
-    def update_supported_filetypes(self):
+        # add our help window, which will be shared by all appwindows
+        self._help_window = HelpWindow(self._pango_docs_map)
+
+    def _update_supported_filetypes(self):
         # this will update filetypes_supported_operations_map 
         # with operations that were not decorated.
         # We will assume they support RegularFile only
         decorated_operations = list()
-        for operations in filetypes_supported_operations_map.values():
+        for operations in self._filetypes_supported_operations_map.values():
             decorated_operations.extend(operations)
         decorated_operations = set(decorated_operations)
         
         undecorated_operations = set(self._known_operations.values()).difference(decorated_operations)
 
-        if RegularFile in filetypes_supported_operations_map:
-            filetypes_supported_operations_map[RegularFile].extend(undecorated_operations)
+        if RegularFile in self._filetypes_supported_operations_map:
+            self._filetypes_supported_operations_map[RegularFile].extend(undecorated_operations)
         else:
-            filetypes_supported_operations_map[RegularFile] = list(undecorated_operations)
+            self._filetypes_supported_operations_map[RegularFile] = list(undecorated_operations)
 
-        for operations in filetypes_supported_operations_map.values():
+        for operations in self._filetypes_supported_operations_map.values():
             operations.sort(key=lambda operation: operation.NAME)
 
 

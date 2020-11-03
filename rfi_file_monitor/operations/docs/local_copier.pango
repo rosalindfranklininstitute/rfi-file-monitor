@@ -1,0 +1,18 @@
+<span size="xx-large">Local copier</span>
+
+<span size="x-large">Purpose</span>
+
+This operation will copy the monitored files to a location on the local filesystem. This does not necessarily mean a local disk, as any mounted fileshares or drives should be supported.
+
+<span size="x-large">Options</span>
+
+* <b>Destination</b>: the directory to copy files to.
+* <b>Overwrite existing files</b>: turn this option off to error out when about to overwrite an existing file.
+
+<span size="x-large">Supported File Formats</span>
+
+<b>RegularFile</b>
+
+<span size="x-large">Author</span>
+
+Tom Schoonjans

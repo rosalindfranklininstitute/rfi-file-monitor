@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 class ParamsWindow(Gtk.Window):
 
-    def __init__(self, contents: Gtk.Grid, parent: Gtk.ApplicationWindow, title: str):
+    def __init__(self, contents: Gtk.Widget, parent: Gtk.ApplicationWindow, title: str):
         super().__init__(
             destroy_with_parent=True,
             transient_for=parent,

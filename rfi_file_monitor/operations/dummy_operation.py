@@ -9,10 +9,12 @@ from random import random
 
 from ..operation import Operation
 from ..utils.exceptions import SkippedOperation
+from ..utils.decorators import with_pango_docs
 from ..file import File
 
 logger = logging.getLogger(__name__)
 
+@with_pango_docs(filename='dummy_operation.pango')
 class DummyOperation(Operation):
     NAME = "Dummy Operation"
 

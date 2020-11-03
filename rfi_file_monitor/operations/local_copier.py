@@ -6,6 +6,7 @@ from ..operation import Operation
 from ..utils.exceptions import SkippedOperation
 from ..file import File
 from ..utils import get_md5
+from ..utils.decorators import with_pango_docs
 
 import logging
 import tempfile
@@ -15,9 +16,10 @@ from threading import current_thread
 
 logger = logging.getLogger(__name__)
 
+@with_pango_docs(filename='local_copier.pango')
 class LocalCopierOperation(Operation):
+    
     NAME = 'Local Copier'
-
 
     def __init__(self, *args, **kwargs):
         Operation.__init__(self, *args, **kwargs)

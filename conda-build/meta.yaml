@@ -65,6 +65,12 @@ test:
     - rfi_file_monitor.utils.widgetparams
   commands:
     - pip check
+    - test -f $SP_DIR/rfi_file_monitor/docs/queue_manager.pango  # [unix]
+    - test -f $SP_DIR/rfi_file_monitor/operations/docs/template.pango  # [unix]
+    - test -f $SP_DIR/rfi_file_monitor/engines/docs/template.pango  # [unix]
+    - if not exist %SP_DIR%\\rfi_file_monitor\\docs\\queue_manager.pango exit 1  # [win]
+    - if not exist %SP_DIR%\\rfi_file_monitor\\operations\\docs\\\template.pango exit 1  # [win]
+    - if not exist %SP_DIR%\\rfi_file_monitor\\engines\\docs\\\template.pango exit 1  # [win]
   requires:
     - pip
 

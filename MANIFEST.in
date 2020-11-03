@@ -3,4 +3,6 @@ recursive-exclude * *.py[co]
 exclude rfi_file_monitor.egg-info
 recursive-include rfi_file_monitor/data *
 recursive-include rfi_file_monitor/engines/docs *
+recursive-include rfi_file_monitor/operations/docs *
+recursive-include rfi_file_monitor/docs *
 include LICENSE

@@ -14,7 +14,7 @@ from ..file import File
 
 logger = logging.getLogger(__name__)
 
-@with_pango_docs(filename='template.pango')
+@with_pango_docs(filename='dummy_operation.pango')
 class DummyOperation(Operation):
     NAME = "Dummy Operation"
 

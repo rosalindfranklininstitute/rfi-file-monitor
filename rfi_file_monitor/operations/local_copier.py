@@ -18,12 +18,11 @@ logger = logging.getLogger(__name__)
 
 @with_pango_docs(filename='local_copier.pango')
 class LocalCopierOperation(Operation):
-    
+
     NAME = 'Local Copier'
 
     def __init__(self, *args, **kwargs):
         Operation.__init__(self, *args, **kwargs)
-        self._cancellable = Gio.Cancellable()
         grid = Gtk.Grid(
             border_width=5,
             row_spacing=5, column_spacing=5,
@@ -49,9 +48,21 @@ class LocalCopierOperation(Operation):
             title="Select a directory to copy monitored files to",
             action=Gtk.FileChooserAction.SELECT_FOLDER,
             create_folders=True,
-            halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False), 'destination_directory')
         grid.attach(directory_chooser_button, 1, 0, 1, 1)
+
+        grid.attach(Gtk.Separator(
+            orientation=Gtk.Orientation.HORIZONTAL, 
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            ), 0, 1, 2, 1)
+
+        overwrite_checkbutton = self.register_widget(Gtk.CheckButton(
+            label='Overwrite existing files', active=True,
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False), 'overwrite')
+        grid.attach(overwrite_checkbutton, 0, 2, 2, 1)
 
     def preflight_check(self):
         logger.debug(f'Try copying a test file to the destination folder {self.params.destination_directory}')
@@ -61,17 +72,22 @@ class LocalCopierOperation(Operation):
             raise ValueError('Destination folder cannot be empty')
 
         # destination directory cannot be monitored directory!!
-        if Path(self.params.destination_directory).samefile(self.appwindow.params.monitored_directory):
-            raise ValueError('Destination folder cannot be the same as the monitored directory')
 
-        # when using recursive monitoring, the destination directory cannot be a subdirectory of the monitored directory
-        if self.appwindow.params.monitor_recursively:
-            try:
-                Path(self.params.destination_directory).resolve().relative_to(Path(self.appwindow.params.monitored_directory))
-            except ValueError:
-                pass
-            else:
-                raise ValueError('The destination directory cannot be a subdirectory of the monitored directory when monitoring recursively.')
+        from ..engines.file_watchdog_engine import FileWatchdogEngine
+
+        if isinstance(self.appwindow.active_engine, FileWatchdogEngine):
+
+            if Path(self.params.destination_directory).samefile(self.appwindow.active_engine.params.monitored_directory):
+                raise ValueError('Destination folder cannot be the same as the monitored directory')
+
+            # when using recursive monitoring, the destination directory cannot be a subdirectory of the monitored directory
+            if self.appwindow.active_engine.params.monitor_recursively:
+                try:
+                    Path(self.params.destination_directory).resolve().relative_to(Path(self.appwindow.active_engine.params.monitored_directory))
+                except ValueError:
+                    pass
+                else:
+                    raise ValueError('The destination directory cannot be a subdirectory of the monitored directory when monitoring recursively.')
 
         with tempfile.NamedTemporaryFile(delete=False) as f:
             f.write(os.urandom(1024))
@@ -80,7 +96,11 @@ class LocalCopierOperation(Operation):
             gtmpfile = Gio.File.new_for_path(tmpfile)
             destination_file = str(Path(self.params.destination_directory, Path(tmpfile).name))
             gdestination_file = Gio.File.new_for_path(destination_file)
-            gtmpfile.copy(gdestination_file, Gio.FileCopyFlags.NONE)
+            if self.params.overwrite:
+                self._flags = Gio.FileCopyFlags.OVERWRITE
+            else:
+                self._flags = Gio.FileCopyFlags.NONE
+            gtmpfile.copy(gdestination_file, self._flags)
         except GLib.Error:
             logger.exception(f'Error copying {tmpfile} to {self.params.destination_directory}')
             raise
@@ -115,7 +135,7 @@ class LocalCopierOperation(Operation):
             # make parent directories if necessary
             destination_file.parent.mkdir(parents=True, exist_ok=True)
             gdestination_file = Gio.File.new_for_path(str(destination_file))
-            gsource_file.copy(gdestination_file, Gio.FileCopyFlags.NONE, file.cancellable, LocalCopyProgressPercentage(file, self))
+            gsource_file.copy(gdestination_file, self._flags, file.cancellable, LocalCopyProgressPercentage(file, self))
         except SkippedOperation:
             raise
         except Exception as e:

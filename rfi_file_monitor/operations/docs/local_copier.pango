@@ -7,6 +7,7 @@ This operation will copy the monitored files to a location on the local filesyst
 <span size="x-large">Options</span>
 
 * <b>Destination</b>: the directory to copy files to.
+* <b>Overwrite existing files</b>: turn this option off to error out when about to overwrite an existing file.
 
 <span size="x-large">Supported File Formats</span>
 

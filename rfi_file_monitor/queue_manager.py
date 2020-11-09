@@ -4,16 +4,14 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib, GObject
 
-from pathlib import PurePath
 from typing import OrderedDict as OrderedDictType
-from typing import Final, List, Union, Sequence, Tuple
+from typing import Final, List, Union, Sequence
 from collections import OrderedDict
 from threading import RLock
 import logging
 import os
 from time import time
 from dataclasses import dataclass, astuple as dc_astuple
-import platform
 
 from .file import FileStatus, File
 from .job import Job
@@ -197,7 +195,7 @@ class QueueManager(WidgetParams, Gtk.Grid):
                 )
                 iter = self._appwindow._files_tree_model.append(parent=None, row=dc_astuple(outputrow))
                 _row_reference = Gtk.TreeRowReference.new(self._appwindow._files_tree_model, self._appwindow._files_tree_model.get_path(iter))
-                
+
                 # create its children, one for each operation
                 for _operation in self._appwindow._operations_box:
                     outputrow = OutputRow(

@@ -11,6 +11,7 @@ from typing import Type, Union, Sequence
 import logging
 import inspect
 from pathlib import Path
+import collections.abc
 
 logger = logging.getLogger(__name__)
 
@@ -74,19 +75,21 @@ def supported_filetypes(filetypes: Union[Type[File], Sequence[Type[File]]]):
        which filetype(s) it supports. OPTIONAL. If unused, then the operation
        will be assumed to support regular files only!'''
     def _supported_filetypes(cls: Type[Operation]):
-        logger.debug(f'exported_filetype: {filetypes.__name__} -> {cls.__name__}')
+        logger.debug(f'exported_filetype: {filetypes} -> {cls.__name__}')
         if _app is None:
             return cls
         if not issubclass(cls, Operation):
             logger.error(f'supported_filetypes can only be used to decorate classes that extend Operation')
             return cls
-        if issubclass(filetypes, File):
-            filetypes = [filetypes]
-        for filetype in filetypes:
+        if isinstance(filetypes, collections.abc.Sequence):
+            _filetypes = filetypes
+        else:
+            _filetypes = [filetypes]
+        for filetype in _filetypes:
             if filetype in _app.filetypes_supported_operations_map:
                 _app.filetypes_supported_operations_map[filetype].append(cls)
             else:
-                _app.filetypes_supported_operations_map[filetype] = list(cls)
+                _app.filetypes_supported_operations_map[filetype] = [cls]
         return cls
     return _supported_filetypes
     

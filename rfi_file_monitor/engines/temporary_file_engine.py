@@ -10,9 +10,9 @@ from ..utils import ExitableThread
 
 import logging
 from tempfile import TemporaryDirectory
-from pathlib import Path
+from pathlib import Path, PurePath
 import os
-from time import sleep
+from time import sleep, time
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +34,8 @@ class TemporaryFileEngine(Engine):
 
         # always true
         self._valid = True
+
+        self.props.column_homogeneous = True
 
         # Set filesize
         filesize_grid = Gtk.Grid(
@@ -97,6 +99,34 @@ class TemporaryFileEngine(Engine):
             hexpand=False, vexpand=False), 'creation_delay', desensitized=True)
         time_grid.attach(time_number_spinbutton, 2, 0, 1, 1)
 
+        # start index
+        start_index_grid = Gtk.Grid(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            column_spacing=5
+        )
+        self.attach(start_index_grid, 1, 0, 1, 1)
+        label = Gtk.Label(
+            label='Start index: ',
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+        )
+        start_index_grid.attach(label, 1, 0, 1, 1)
+        start_index_spinbutton = self.register_widget(Gtk.SpinButton(
+            adjustment=Gtk.Adjustment(
+                lower=0,
+                upper=10000,
+                value=0,
+                page_size=0,
+                step_increment=1),
+            value=0,
+            update_policy=Gtk.SpinButtonUpdatePolicy.IF_VALID,
+            numeric=True,
+            climb_rate=5,
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False), 'start_index', desensitized=False)
+        start_index_grid.attach(start_index_spinbutton, 2, 0, 1, 1)
+
     def start(self):
         if self._running:
             raise AlreadyRunning('The engine is already running. It needs to be stopped before it may be restarted')
@@ -130,7 +160,7 @@ class FileGeneratorThread(ExitableThread):
         self._engine = engine
 
     def run(self):
-        index = 0
+        index = self._engine.params.start_index
         while 1:
             if self.should_exit:
                 logger.info('Killing FileGeneratorThread')
@@ -142,7 +172,8 @@ class FileGeneratorThread(ExitableThread):
             index = index + 1
             if self._engine.props.running and \
                 self._engine._appwindow._queue_manager.props.running:
-                GLib.idle_add(self._engine._appwindow._queue_manager.add, (str(path), basename), FileStatus.CREATED, priority=GLib.PRIORITY_HIGH)
+                _file = RegularFile(str(path), PurePath(basename), time(), FileStatus.CREATED)
+                GLib.idle_add(self._engine._appwindow._queue_manager.add, _file, priority=GLib.PRIORITY_HIGH)
             sleep(self._engine.params.creation_delay)
             
             

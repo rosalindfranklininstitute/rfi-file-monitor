@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 import hashlib
 import os
+import platform
 from threading import Thread
 
 from .exceptions import SkippedOperation
@@ -102,6 +103,20 @@ def get_md5(fname: os.PathLike) -> str:
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
+
+def get_file_creation_timestamp(file_path: os.PathLike):
+    # get creation time, or something similar...
+    # https://stackoverflow.com/a/39501288
+    if platform.system() == 'Windows':
+        creation_timestamp = os.stat(file_path).st_ctime
+    else:
+        try:
+            # this should work on macOS
+            creation_timestamp = os.stat(file_path).st_birthtime
+        except AttributeError:
+            creation_timestamp = os.stat(file_path).st_mtime
+    return creation_timestamp
+
 
 class LongTaskWindow(Gtk.Window):
     def __init__(self, parent_window: Optional[Gtk.Window] = None, *args, **kwargs):

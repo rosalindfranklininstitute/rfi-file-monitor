@@ -6,7 +6,7 @@ from gi.repository import Gtk, GLib, Gio
 import logging
 from pathlib import PurePath
 from typing import Final, Dict, Any, Optional
-from abc import ABC
+from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
 
@@ -172,3 +172,52 @@ class File(ABC):
 
 class RegularFile(File):
     pass
+
+class AbstractS3Object(File):
+
+    @abstractmethod
+    def __init__(self, \
+        filename: str, \
+        relative_filename: PurePath, \
+        created: int, \
+        status: FileStatus, \
+        bucket_name: str,
+        ):
+
+        super().__init__(
+            filename, relative_filename,
+            created, status,
+        )
+        self._bucket_name = bucket_name
+
+    @property
+    def bucket_name(self):
+        return self._bucket_name
+
+    @bucket_name.setter
+    def bucket_name(self, value):
+        self._bucket_name = value
+
+class AWSS3Object(AbstractS3Object):
+    def __init__(self, \
+        filename: str, \
+        relative_filename: PurePath, \
+        created: int, \
+        status: FileStatus, \
+        bucket_name: str, \
+        region_name: str, \
+        ):
+
+        super().__init__(
+            filename, relative_filename, created,
+            status, bucket_name
+        )
+        self._region_name = region_name
+
+    @property
+    def region_name(self):
+        return self._region_name
+
+    @region_name.setter
+    def region_name(self, value):
+        self._region_name = value

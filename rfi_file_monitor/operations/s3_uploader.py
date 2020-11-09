@@ -48,6 +48,8 @@ ALLOWED_OBJECT_ACL_OPTIONS = (
     'VersionID',
 )
 
+AWS_S3_ENGINE_IGNORE_ME = 'rfi-file-monitor-ignore-me'
+
 KB = 1024
 MB = KB * KB
 TransferConfig = boto3.s3.transfer.TransferConfig(max_concurrency=1, multipart_chunksize=8*MB, multipart_threshold=8*MB)
@@ -78,12 +80,12 @@ class S3UploaderOperation(Operation):
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False,
         ), 0, 0, 1, 1)
-        widget = self.register_widget(Gtk.Entry(
+        self._endpoint_entry = self.register_widget(Gtk.Entry(
             text="https://s3.amazonaws.com",
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
         ), 'hostname')
-        self._grid.attach(widget, 1, 0, 1, 1)
+        self._grid.attach(self._endpoint_entry, 1, 0, 1, 1)
         widget = self.register_widget(Gtk.CheckButton(
             active=True, label="Verify SSL Certificates",
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
@@ -97,11 +99,11 @@ class S3UploaderOperation(Operation):
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False,
         ), 0, 1, 1, 1)
-        widget = self.register_widget(Gtk.Entry(
+        self._access_key_entry = self.register_widget(Gtk.Entry(
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
         ), 'access_key')
-        self._grid.attach(widget, 1, 1, 2, 1)
+        self._grid.attach(self._access_key_entry, 1, 1, 2, 1)
 
         # Secret key
         self._grid.attach(Gtk.Label(
@@ -109,12 +111,12 @@ class S3UploaderOperation(Operation):
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False,
         ), 0, 2, 1, 1)
-        widget = self.register_widget(Gtk.Entry(
+        self._secret_key_entry = self.register_widget(Gtk.Entry(
             visibility=False,
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
         ), 'secret_key', exportable=False)
-        self._grid.attach(widget, 1, 2, 2, 1)
+        self._grid.attach(self._secret_key_entry, 1, 2, 2, 1)
 
         # Bucket name
         self._grid.attach(Gtk.Label(
@@ -239,7 +241,12 @@ class S3UploaderOperation(Operation):
                 Bucket=params.bucket_name,
                 Key=os.path.basename(tmpfile),
                 Config=TransferConfig,
-                )
+                ExtraArgs={
+                    'Metadata': {
+                        AWS_S3_ENGINE_IGNORE_ME: '1',
+                    }
+                }
+            )
             if object_tags:
                 s3_client.put_object_tagging(
                     Bucket=params.bucket_name,

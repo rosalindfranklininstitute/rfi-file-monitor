@@ -8,9 +8,10 @@ from pathlib import Path
 from ..utils.decorators import exported_filetype
 import os
 from ..utils.exceptions import AlreadyRunning, NotYetRunning
-from ..file import RegularFile
+from ..file import SubFolder
 
-@exported_filetype(filetype=RegularFile)
+
+@exported_filetype(filetype=SubFolder)
 class DirectoryMonitorEngine(Engine):
 
     NAME = 'Directory Monitor Engine'

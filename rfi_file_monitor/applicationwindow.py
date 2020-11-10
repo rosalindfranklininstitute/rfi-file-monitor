@@ -358,7 +358,6 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         # get active engine
 
         filetype_cls = self.get_property('application').engines_exported_filetype_map[type(self._active_engine)]
-        print(filetype_cls)
         operation_cls_list = self.get_property('application').filetypes_supported_operations_map[filetype_cls]
 
         self._controls_operations_model.clear()

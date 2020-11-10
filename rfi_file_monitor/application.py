@@ -158,6 +158,7 @@ class Application(Gtk.Application):
             e.name: e.load() for e in importlib.metadata.entry_points()['rfi_file_monitor.operations']
         }
 
+
         self._update_supported_filetypes()
 
         for _name in self._known_operations:

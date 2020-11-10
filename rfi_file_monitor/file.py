@@ -164,3 +164,6 @@ class File:
 
 class RegularFile(File):
     pass
+
+class SubFolder(File):
+    pass

@@ -1,4 +1,4 @@
 {
-    "python.pythonPath": "/usr/local/Caskroom/miniconda/base/envs/rfi-file-monitor/bin/python",
+    "python.pythonPath": "C:\\Users\\vpf26432\\Anaconda3\\envs\\rfi-file-monitor\\python.exe",
     "python.linting.enabled": true
 }

@@ -10,7 +10,7 @@ from random import random
 from ..operation import Operation
 from ..utils.exceptions import SkippedOperation
 from ..utils.decorators import with_pango_docs
-from ..file import File
+from ..file import File, SubFolder
 
 logger = logging.getLogger(__name__)
 

@@ -112,9 +112,12 @@ class AWSS3BucketEngine(Engine):
 
     def _s3_entry_changed_cb(self, entry):
         # todo: implement better bucket name validation
-        self._valid = self.params.bucket_name and \
+        if self.params.bucket_name and \
             self.params.access_key and \
-            self.params.secret_key
+            self.params.secret_key:
+            self._valid = True
+        else:
+            self._valid = False
 
         logger.debug(f'_s3_entry_changed_cb: {self._valid}')
 

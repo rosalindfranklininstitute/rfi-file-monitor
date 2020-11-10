@@ -62,6 +62,7 @@ class FileWatchdogEngine(Engine):
                 self._valid = True
             except PermissionError:
                 self._valid = False
+        logger.debug(f'_directory_chooser_button_cb: {self._valid}')
         self.notify('valid')
 
     def _start_watchdog(self):

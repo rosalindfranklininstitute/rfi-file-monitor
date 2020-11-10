@@ -635,6 +635,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                     logger.debug(f"load_from_yaml_dict: no match found for operation {op['name']}")
 
         self._engines_notebook.set_current_page(active_engine_index)
+        self._update_monitor_switch_sensitivity()
 
     @property
     def preflight_check_metadata(self) -> dict:

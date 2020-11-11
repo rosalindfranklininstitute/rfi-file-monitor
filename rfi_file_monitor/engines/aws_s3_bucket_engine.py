@@ -1,7 +1,7 @@
 import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
-from gi.repository import Gtk, GLib
+from gi.repository import Gtk, GLib, Gdk
 import boto3
 import botocore
 
@@ -17,7 +17,7 @@ from ..engine import Engine
 from ..file import AWSS3Object, FileStatus
 from ..utils.decorators import exported_filetype
 from ..utils.exceptions import AlreadyRunning, NotYetRunning
-from ..utils import ExitableThread
+from ..utils import ExitableThread, LongTaskWindow
 from ..operations.s3_uploader import AWS_S3_ENGINE_IGNORE_ME
 
 import logging
@@ -127,18 +127,38 @@ class AWSS3BucketEngine(Engine):
         if self._running:
             raise AlreadyRunning('The engine is already running. It needs to be stopped before it may be restarted')
 
-        self._thread = AWSS3BucketEngineThread(self)
+        # pop up a long task window
+        # spawn a thread for this to avoid GUI freezes
+        task_window = LongTaskWindow(self._appwindow)
+        task_window.set_text(f"<b>Launching {self.NAME}</b>")
+        task_window.show()
+        watch_cursor = Gdk.Cursor.new_for_display(Gdk.Display.get_default(), Gdk.CursorType.WATCH)
+        task_window.get_window().set_cursor(watch_cursor)
+
+        self._thread = AWSS3BucketEngineThread(self, task_window)
         self._thread.start()
 
     def stop(self):
         if not self._running:
             raise NotYetRunning('The engine needs to be started before it can be stopped.')
 
+        task_window = LongTaskWindow(self._appwindow)
+        task_window.set_text(f"<b>Stopping {self.NAME}</b>")
+        task_window.show()
+        watch_cursor = Gdk.Cursor.new_for_display(Gdk.Display.get_default(), Gdk.CursorType.WATCH)
+        task_window.get_window().set_cursor(watch_cursor)
+
+        self._running_changed_handler_id = self.connect('notify::running', self._running_changed_cb, task_window)                
+
         # if the thread is sleeping, it will be killed at the next iteration
         self._thread.should_exit = True
 
-        self._running = False
-        self.notify('running')
+    def _running_changed_cb(self, _self, param, task_window):
+        self.disconnect(self._running_changed_handler_id)
+        if not self._running:
+            task_window.get_window().set_cursor(None)
+            task_window.destroy()
+
 
     def _get_client_options(self) -> dict:
         client_options = dict()
@@ -167,13 +187,23 @@ class AWSS3BucketEngine(Engine):
                 return False
         return True
     
+    def _kill_task_window(self, task_window: LongTaskWindow):
+        # destroy task window
+        task_window.get_window().set_cursor(None)
+        task_window.destroy()
+
+        self._running = True
+        self.notify('running')
+
+        return GLib.SOURCE_REMOVE
+
     def _cleanup(self):
+        #pylint: disable=no-member
         logger.debug('Running cleanup!')
 
         # we are going to do this 'ask for forgiveness, not permission'-style
 
         # restore old bucket notifications
-        logger.debug(f'{self.old_bucket_notification_config=}')
         try:
             self.s3_client.put_bucket_notification_configuration(
                 Bucket=self.params.bucket_name,
@@ -200,14 +230,14 @@ class AWSS3BucketEngine(Engine):
         else:
             logger.debug(f'Successfully deleted SQS queue {self.dlq_url}')
 
-    def __del__(self):
-        logger.debug(f'Calling __del__')
-        self._cleanup()
+        self._running = False
+        self.notify('running')
 
 class AWSS3BucketEngineThread(ExitableThread):
-    def __init__(self, engine: AWSS3BucketEngine):
+    def __init__(self, engine: AWSS3BucketEngine, task_window: LongTaskWindow):
         super().__init__()
         self._engine : AWSS3BucketEngine = engine
+        self._task_window = task_window
 
     def run(self):
         client_options = self._engine._get_client_options()
@@ -318,8 +348,8 @@ class AWSS3BucketEngineThread(ExitableThread):
         )
 
         # if we get here, things should be working.
-        self._engine._running = True
-        self._engine.notify('running')
+        # close task_window
+        GLib.idle_add(self._engine._kill_task_window, self._task_window, priority=GLib.PRIORITY_DEFAULT_IDLE)
 
         # start the big while loop and start consuming incoming messages
         while True:

@@ -204,7 +204,7 @@ class FileGeneratorThread(ExitableThread):
         self._engine = engine
 
     def run(self):
-        index = self._engine.params.start_index
+        index = int(self._engine.params.start_index)
         while 1:
             if self.should_exit:
                 logger.info('Killing FileGeneratorThread')

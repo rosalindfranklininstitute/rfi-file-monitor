@@ -84,8 +84,8 @@ def class_in_object_iterable(iterable: Iterable, klass) -> bool:
             return True
     return False
 
-def get_patterns_from_string(input: str, defaults: List =None) -> List[str]:
-    if not defaults:
+def get_patterns_from_string(input: str, defaults: Optional[List[str]]=None) -> List[str]:
+    if defaults is None:
         if input or  input.strip():
             return list(map(lambda x: x.strip(), input.split(',')))
         else:

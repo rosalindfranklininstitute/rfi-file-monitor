@@ -183,6 +183,7 @@ class QueueManager(WidgetParams, Gtk.Grid):
                     logger.debug(f"New file {file_path} created")
                 elif _file.status == FileStatus.SAVED:
                     logger.debug(f'Adding existing file {file_path}')
+                    _file.saved = time()
                 else:
                     raise NotImplementedError('Newly created files must have CREATED or SAVED as status!')
 

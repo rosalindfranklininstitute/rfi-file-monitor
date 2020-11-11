@@ -4,6 +4,7 @@ gi.require_version("Gdk", "3.0")
 from gi.repository import Gtk, GLib, Gdk
 import boto3
 import botocore
+from pathtools.patterns import match_path
 
 import string
 import random
@@ -14,10 +15,11 @@ from copy import deepcopy
 import urllib.parse
 
 from ..engine import Engine
+from .aws_s3_bucket_engine_advanced_settings import AWSS3BucketEngineAdvancedSettings
 from ..file import AWSS3Object, FileStatus
-from ..utils.decorators import exported_filetype
+from ..utils.decorators import exported_filetype, with_advanced_settings
 from ..utils.exceptions import AlreadyRunning, NotYetRunning
-from ..utils import ExitableThread, LongTaskWindow
+from ..utils import ExitableThread, LongTaskWindow, get_patterns_from_string
 from ..operations.s3_uploader import AWS_S3_ENGINE_IGNORE_ME
 
 import logging
@@ -40,6 +42,7 @@ AVAILABLE_CONFIGURATIONS = (
 
 
 @exported_filetype(filetype=AWSS3Object)
+@with_advanced_settings(engine_advanced_settings=AWSS3BucketEngineAdvancedSettings)
 class AWSS3BucketEngine(Engine):
 
     NAME = 'AWS S3 Bucket Monitor'
@@ -327,7 +330,6 @@ class AWSS3BucketEngineThread(ExitableThread):
 
         logger.debug(f'{self._engine.old_bucket_notification_config=}')
 
-
         new_bucket_notification_config = deepcopy(self._engine.old_bucket_notification_config)
 
         sqs_notification = {
@@ -346,6 +348,50 @@ class AWSS3BucketEngineThread(ExitableThread):
             Bucket=self._engine.params.bucket_name,
             NotificationConfiguration=new_bucket_notification_config
         )
+
+        # prepare patterns
+        included_patterns = get_patterns_from_string(self._engine.params.allowed_patterns)
+        ignore_pattern_strings = get_patterns_from_string(self._engine.params.ignore_patterns, defaults=[])
+
+        # if required, add existing files to queue
+        if self._engine.params.process_existing_files:
+            paginator = self._engine.s3_client.get_paginator('list_objects_v2')
+            page_iterator = paginator.paginate(Bucket=self._engine.params.bucket_name)
+
+            existing_files = []
+
+            for page in page_iterator:
+                logger.debug(f"{page['Contents']}")
+                for _object in page['Contents']:
+                    key = _object['Key']
+
+                    if not match_path(key,
+                        included_patterns=included_patterns,
+                        excluded_patterns=ignore_pattern_strings,
+                        case_sensitive=False):
+                        continue
+
+                    last_modified = _object['LastModified']
+                    etag = _object['ETag'][1:-1] # get rid of those weird quotes
+                    quoted_key = urllib.parse.quote_plus(key)
+
+                    full_path = f"https://{self._engine.params.bucket_name}.s3.{client_options['region_name']}.amazonaws.com/{quoted_key}"
+                    relative_path = PurePosixPath(key)
+                    created = last_modified.timestamp()
+
+                    _file = AWSS3Object(
+                        full_path,
+                        relative_path,
+                        created,
+                        FileStatus.SAVED,
+                        self._engine.params.bucket_name,
+                        etag,
+                        client_options['region_name'])
+                    
+                    existing_files.append(_file)
+
+            GLib.idle_add(self._engine._appwindow._queue_manager.add, existing_files, priority=GLib.PRIORITY_HIGH)
+
 
         # if we get here, things should be working.
         # close task_window
@@ -389,6 +435,13 @@ class AWSS3BucketEngineThread(ExitableThread):
                     s3_info = record['s3']
                     object_info = s3_info['object']
                     key = urllib.parse.unquote_plus(object_info['key'])
+                    etag = object_info['eTag']
+
+                    if not match_path(key,
+                        included_patterns=included_patterns,
+                        excluded_patterns=ignore_pattern_strings,
+                        case_sensitive=False):
+                        continue
 
                     # ensure that this is not an S3Uploader testfile!
                     try:
@@ -414,7 +467,14 @@ class AWSS3BucketEngineThread(ExitableThread):
 
                     if self._engine.props.running and \
                         self._engine._appwindow._queue_manager.props.running:
-                        _file = AWSS3Object(full_path, relative_path, created, FileStatus.SAVED, self._engine.params.bucket_name, client_options['region_name'])
+                        _file = AWSS3Object(
+                            full_path,
+                            relative_path,
+                            created,
+                            FileStatus.SAVED,
+                            self._engine.params.bucket_name,
+                            etag,
+                            client_options['region_name'])
                         GLib.idle_add(self._engine._appwindow._queue_manager.add, _file, priority=GLib.PRIORITY_HIGH)
 
 

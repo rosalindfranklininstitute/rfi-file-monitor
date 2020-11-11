@@ -176,12 +176,13 @@ class RegularFile(File):
 class AbstractS3Object(File):
 
     @abstractmethod
-    def __init__(self, \
-        filename: str, \
-        relative_filename: PurePath, \
-        created: int, \
-        status: FileStatus, \
+    def __init__(self,
+        filename: str,
+        relative_filename: PurePath,
+        created: int,
+        status: FileStatus,
         bucket_name: str,
+        etag: str,
         ):
 
         super().__init__(
@@ -189,6 +190,7 @@ class AbstractS3Object(File):
             created, status,
         )
         self._bucket_name = bucket_name
+        self._etag = etag
 
     @property
     def bucket_name(self):
@@ -198,19 +200,28 @@ class AbstractS3Object(File):
     def bucket_name(self, value):
         self._bucket_name = value
 
+    @property
+    def etag(self):
+        return self._etag
+
+    @etag.setter
+    def etag(self, value):
+        self._etag = value
+
 class AWSS3Object(AbstractS3Object):
-    def __init__(self, \
-        filename: str, \
-        relative_filename: PurePath, \
-        created: int, \
-        status: FileStatus, \
-        bucket_name: str, \
-        region_name: str, \
+    def __init__(self,
+        filename: str,
+        relative_filename: PurePath,
+        created: int,
+        status: FileStatus,
+        bucket_name: str,
+        etag: str,
+        region_name: str,
         ):
 
         super().__init__(
             filename, relative_filename, created,
-            status, bucket_name
+            status, bucket_name, etag
         )
         self._region_name = region_name
 

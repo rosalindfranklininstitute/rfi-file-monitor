@@ -18,7 +18,7 @@ from typing import Optional
 from ..engine import Engine
 from .aws_s3_bucket_engine_advanced_settings import AWSS3BucketEngineAdvancedSettings
 from ..file import AWSS3Object, FileStatus
-from ..utils.decorators import exported_filetype, with_advanced_settings
+from ..utils.decorators import exported_filetype, with_advanced_settings, with_pango_docs
 from ..utils.exceptions import AlreadyRunning, NotYetRunning
 from ..utils import ExitableThread, LongTaskWindow, get_patterns_from_string
 from ..operations.s3_uploader import AWS_S3_ENGINE_IGNORE_ME
@@ -44,6 +44,7 @@ AVAILABLE_CONFIGURATIONS = (
 
 @exported_filetype(filetype=AWSS3Object)
 @with_advanced_settings(engine_advanced_settings=AWSS3BucketEngineAdvancedSettings)
+@with_pango_docs(filename='aws_s3_bucket_engine.pango')
 class AWSS3BucketEngine(Engine):
 
     NAME = 'AWS S3 Bucket Monitor'

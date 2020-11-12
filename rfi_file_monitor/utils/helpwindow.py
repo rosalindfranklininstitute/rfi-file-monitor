@@ -103,7 +103,7 @@ class HelpWindow(Gtk.Window):
         )
         self._contents_label = Gtk.Label(
            **EXPAND_AND_FILL,
-           wrap=True, use_markup=True, selectable=False,
+           wrap=True, use_markup=True, selectable=True,
            wrap_mode=Pango.WrapMode.WORD_CHAR,
            xalign=0, yalign=0,
            margin_start=5, margin_end=5,

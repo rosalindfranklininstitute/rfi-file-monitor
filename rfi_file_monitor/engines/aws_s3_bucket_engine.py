@@ -13,6 +13,7 @@ from pathlib import Path, PurePosixPath
 import json
 from copy import deepcopy
 import urllib.parse
+from typing import Optional
 
 from ..engine import Engine
 from .aws_s3_bucket_engine_advanced_settings import AWSS3BucketEngineAdvancedSettings
@@ -207,34 +208,57 @@ class AWSS3BucketEngine(Engine):
         # we are going to do this 'ask for forgiveness, not permission'-style
 
         # restore old bucket notifications
-        try:
-            self.s3_client.put_bucket_notification_configuration(
-                Bucket=self.params.bucket_name,
-                NotificationConfiguration=self.old_bucket_notification_config
-            )
-        except Exception as e:
-            logger.debug(f'Could not restore bucket notification config: {str(e)}')
-        else:
-            logger.debug(f'Successfully restored bucket notification config')
+        if hasattr(self, 'old_bucket_notification_config'):
+            try:
+                self.s3_client.put_bucket_notification_configuration(
+                    Bucket=self.params.bucket_name,
+                    NotificationConfiguration=self.old_bucket_notification_config
+                )
+                logger.debug(f'Successfully restored bucket notification config')
+            except Exception as e:
+                logger.debug(f'Could not restore bucket notification config: {str(e)}')
 
         # delete SQS queue
-        try:
-            self.sqs_client.delete_queue(QueueUrl=self.queue_url)
-        except Exception as e:
-            logger.debug(f'Could not delete SQS queue {self.queue_url}: {str(e)}')
-        else:
-            logger.debug(f'Successfully deleted SQS queue {self.queue_url}')
+        if hasattr(self, 'queue_url'):
+            try:
+                self.sqs_client.delete_queue(QueueUrl=self.queue_url)
+                logger.debug(f'Successfully deleted SQS queue {self.queue_url}')
+            except Exception as e:
+                logger.debug(f'Could not delete SQS queue {self.queue_url}: {str(e)}')
+                GLib.idle_add(self._abort, None, e)
     
         # delete SQS DLQ
-        try:
-            self.sqs_client.delete_queue(QueueUrl=self.dlq_url)
-        except Exception as e:
-            logger.debug(f'Could not delete SQS queue {self.dlq_url}: {str(e)}')
-        else:
-            logger.debug(f'Successfully deleted SQS queue {self.dlq_url}')
+        if hasattr(self, 'dlq_url'):
+            try:
+                self.sqs_client.delete_queue(QueueUrl=self.dlq_url)
+                logger.debug(f'Successfully deleted SQS queue {self.dlq_url}')
+            except Exception as e:
+                logger.debug(f'Could not delete SQS queue {self.dlq_url}: {str(e)}')
 
+        GLib.idle_add(self._stop_running)
+
+    def _stop_running(self):
         self._running = False
         self.notify('running')
+
+        return GLib.SOURCE_REMOVE
+
+    def _abort(self, task_window: Optional[LongTaskWindow], e: Exception):
+        if task_window:
+            # destroy task window
+            task_window.get_window().set_cursor(None)
+            task_window.destroy()
+
+        # display dialog with error message
+        dialog = Gtk.MessageDialog(transient_for=self.get_toplevel(),
+                modal=True, destroy_with_parent=True,
+                message_type=Gtk.MessageType.ERROR,
+                buttons=Gtk.ButtonsType.CLOSE, text=f"Could not start {self.NAME}",
+                secondary_text=str(e) + '\n\nEnsure you are using valid credentials and bucket name, and that an appropriate policy is attached to the user or role.')
+        dialog.run()
+        dialog.destroy()
+
+        return GLib.SOURCE_REMOVE
 
 class AWSS3BucketEngineThread(ExitableThread):
     def __init__(self, engine: AWSS3BucketEngine, task_window: LongTaskWindow):
@@ -249,8 +273,12 @@ class AWSS3BucketEngineThread(ExitableThread):
         self._engine.s3_client = boto3.client('s3', **client_options)
 
         # first confirm that the bucket exists and that we can read it
-        if not self._engine._confirm_bucket_exists(self._engine.s3_client):
-            # abort saying bucket could not be accessed
+        try:
+            logger.debug(f"Checking if bucket {self._engine.params.bucket_name} exists")
+            self._engine.s3_client.head_bucket(Bucket=self._engine.params.bucket_name)
+        except Exception as e:
+            self._engine._cleanup()
+            GLib.idle_(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
             return
 
         # set up sqs client
@@ -260,23 +288,33 @@ class AWSS3BucketEngineThread(ExitableThread):
         self._engine.queue_name = 'rfi-file-monitor-s3-bucket-engine-' + ''.join(random.choice(string.ascii_lowercase) for i in range(6))
         try:
             self._engine.queue_url = self._engine.sqs_client.create_queue(QueueName=self._engine.queue_name)['QueueUrl']
-        except botocore.exceptions.ClientError as e:
-            # abort saying queue could not be created
-            logger.debug(f'Coult not create SQS queue: {str(e)}')
+        except Exception as e:
+            self._engine._cleanup()
+            GLib.idle_(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
             return
 
         # create dead-letter-queue
         self._engine.dlq_name = self._engine.queue_name + '-dlq'
-        self._engine.dlq_url = self._engine.sqs_client.create_queue(QueueName=self._engine.dlq_name)['QueueUrl']
+        try:
+            self._engine.dlq_url = self._engine.sqs_client.create_queue(QueueName=self._engine.dlq_name)['QueueUrl']
+        except Exception as e:
+            self._engine._cleanup()
+            GLib.idle_(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+            return
 
         # sleep 1 second to make sure the queue is available
         time.sleep(1)
 
-        # get queue ARN
-        self._engine.queue_arn = self._engine.sqs_client.get_queue_attributes(QueueUrl=self._engine.queue_url, AttributeNames=['QueueArn'])['Attributes']['QueueArn']
+        try:
+            # get queue ARN
+            self._engine.queue_arn = self._engine.sqs_client.get_queue_attributes(QueueUrl=self._engine.queue_url, AttributeNames=['QueueArn'])['Attributes']['QueueArn']
         
-        # get dlq ARN
-        self._engine.dlq_arn = self._engine.sqs_client.get_queue_attributes(QueueUrl=self._engine.dlq_url, AttributeNames=['QueueArn'])['Attributes']['QueueArn']
+            # get dlq ARN
+            self._engine.dlq_arn = self._engine.sqs_client.get_queue_attributes(QueueUrl=self._engine.dlq_url, AttributeNames=['QueueArn'])['Attributes']['QueueArn']
+        except Exception as e:
+            self._engine._cleanup()
+            GLib.idle_(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+            return
 
         # set queue policy
         sqs_policy = {
@@ -301,12 +339,18 @@ class AWSS3BucketEngineThread(ExitableThread):
                 }
             ]
         }
-        self._engine.sqs_client.set_queue_attributes(
-            QueueUrl=self._engine.queue_url,
-            Attributes={
-                'Policy': json.dumps(sqs_policy)
-            }
-        )
+
+        try:
+            self._engine.sqs_client.set_queue_attributes(
+                QueueUrl=self._engine.queue_url,
+                Attributes={
+                    'Policy': json.dumps(sqs_policy)
+                }
+            )
+        except Exception as e:
+            self._engine._cleanup()
+            GLib.idle_(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+            return
 
         # set dlq policy
         redrive_policy = {
@@ -314,40 +358,50 @@ class AWSS3BucketEngineThread(ExitableThread):
             'maxReceiveCount': '10'
         }
 
-        self._engine.sqs_client.set_queue_attributes(
-            QueueUrl=self._engine.queue_url,
-            Attributes={
-                'RedrivePolicy': json.dumps(redrive_policy)
+        try:
+            self._engine.sqs_client.set_queue_attributes(
+                QueueUrl=self._engine.queue_url,
+                Attributes={
+                    'RedrivePolicy': json.dumps(redrive_policy)
+                }
+            )
+        except Exception as e:
+            self._engine._cleanup()
+            GLib.idle_(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+            return
+
+        try:
+            # get current bucket notifications
+            response = self._engine.s3_client.get_bucket_notification_configuration(
+                Bucket=self._engine.params.bucket_name,
+            )
+
+            self._engine.old_bucket_notification_config = {configs: response.get(configs, []) for configs in AVAILABLE_CONFIGURATIONS}
+
+            logger.debug(f'{self._engine.old_bucket_notification_config=}')
+
+            new_bucket_notification_config = deepcopy(self._engine.old_bucket_notification_config)
+
+            sqs_notification = {
+                'QueueArn': self._engine.queue_arn,
+                'Events': [
+                    's3:ObjectCreated:*',
+                    's3:ObjectRemoved:*',
+                    's3:ObjectRestore:*'
+                ]
             }
-        )
 
-        # get current bucket notifications
-        response = self._engine.s3_client.get_bucket_notification_configuration(
-            Bucket=self._engine.params.bucket_name,
-        )
+            new_bucket_notification_config['QueueConfigurations'].append(sqs_notification)
 
-        self._engine.old_bucket_notification_config = {configs: response.get(configs, []) for configs in AVAILABLE_CONFIGURATIONS}
-
-        logger.debug(f'{self._engine.old_bucket_notification_config=}')
-
-        new_bucket_notification_config = deepcopy(self._engine.old_bucket_notification_config)
-
-        sqs_notification = {
-            'QueueArn': self._engine.queue_arn,
-            'Events': [
-                's3:ObjectCreated:*',
-                's3:ObjectRemoved:*',
-                's3:ObjectRestore:*'
-            ]
-        }
-
-        new_bucket_notification_config['QueueConfigurations'].append(sqs_notification)
-
-        # set bucket notifications
-        self._engine.s3_client.put_bucket_notification_configuration(
-            Bucket=self._engine.params.bucket_name,
-            NotificationConfiguration=new_bucket_notification_config
-        )
+            # set bucket notifications
+            self._engine.s3_client.put_bucket_notification_configuration(
+                Bucket=self._engine.params.bucket_name,
+                NotificationConfiguration=new_bucket_notification_config
+            )
+        except Exception as e:
+            self._engine._cleanup()
+            GLib.idle_(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+            return
 
         # prepare patterns
         included_patterns = get_patterns_from_string(self._engine.params.allowed_patterns)
@@ -355,47 +409,52 @@ class AWSS3BucketEngineThread(ExitableThread):
 
         # if required, add existing files to queue
         if self._engine.params.process_existing_files:
-            paginator = self._engine.s3_client.get_paginator('list_objects_v2')
-            page_iterator = paginator.paginate(Bucket=self._engine.params.bucket_name)
+            try:
+                paginator = self._engine.s3_client.get_paginator('list_objects_v2')
+                page_iterator = paginator.paginate(Bucket=self._engine.params.bucket_name)
 
-            existing_files = []
+                existing_files = []
 
-            for page in page_iterator:
-                logger.debug(f"{page['Contents']}")
-                for _object in page['Contents']:
-                    key = _object['Key']
+                for page in page_iterator:
+                    logger.debug(f"{page['Contents']}")
+                    for _object in page['Contents']:
+                        key = _object['Key']
 
-                    if not match_path(key,
-                        included_patterns=included_patterns,
-                        excluded_patterns=ignore_pattern_strings,
-                        case_sensitive=False):
-                        continue
+                        if not match_path(key,
+                            included_patterns=included_patterns,
+                            excluded_patterns=ignore_pattern_strings,
+                            case_sensitive=False):
+                            continue
 
-                    last_modified = _object['LastModified']
-                    etag = _object['ETag'][1:-1] # get rid of those weird quotes
-                    quoted_key = urllib.parse.quote_plus(key)
+                        last_modified = _object['LastModified']
+                        etag = _object['ETag'][1:-1] # get rid of those weird quotes
+                        quoted_key = urllib.parse.quote_plus(key)
 
-                    full_path = f"https://{self._engine.params.bucket_name}.s3.{client_options['region_name']}.amazonaws.com/{quoted_key}"
-                    relative_path = PurePosixPath(key)
-                    created = last_modified.timestamp()
+                        full_path = f"https://{self._engine.params.bucket_name}.s3.{client_options['region_name']}.amazonaws.com/{quoted_key}"
+                        relative_path = PurePosixPath(key)
+                        created = last_modified.timestamp()
 
-                    _file = AWSS3Object(
-                        full_path,
-                        relative_path,
-                        created,
-                        FileStatus.SAVED,
-                        self._engine.params.bucket_name,
-                        etag,
-                        client_options['region_name'])
+                        _file = AWSS3Object(
+                            full_path,
+                            relative_path,
+                            created,
+                            FileStatus.SAVED,
+                            self._engine.params.bucket_name,
+                            etag,
+                            client_options['region_name'])
                     
-                    existing_files.append(_file)
+                        existing_files.append(_file)
 
-            GLib.idle_add(self._engine._appwindow._queue_manager.add, existing_files, priority=GLib.PRIORITY_HIGH)
+                GLib.idle_add(self._engine._appwindow._queue_manager.add, existing_files, priority=GLib.PRIORITY_HIGH)
+            except Exception as e:
+                self._engine._cleanup()
+                GLib.idle_(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+                return
 
 
         # if we get here, things should be working.
         # close task_window
-        GLib.idle_add(self._engine._kill_task_window, self._task_window, priority=GLib.PRIORITY_DEFAULT_IDLE)
+        GLib.idle_add(self._engine._kill_task_window, self._task_window, priority=GLib.PRIORITY_HIGH)
 
         # start the big while loop and start consuming incoming messages
         while True:
@@ -406,12 +465,17 @@ class AWSS3BucketEngineThread(ExitableThread):
                 self._engine._cleanup()
                 return
 
-            resp = self._engine.sqs_client.receive_message(
-                QueueUrl=self._engine.queue_url,
-                AttributeNames=['All'],
-                MaxNumberOfMessages=10,
-                WaitTimeSeconds=10,
-            )
+            try:
+                resp = self._engine.sqs_client.receive_message(
+                    QueueUrl=self._engine.queue_url,
+                    AttributeNames=['All'],
+                    MaxNumberOfMessages=10,
+                    WaitTimeSeconds=10,
+                )
+            except Exception as e:
+                self._engine._cleanup()
+                GLib.idle_(self._engine._abort, None, e, priority=GLib.PRIORITY_HIGH)
+                return
 
             if 'Messages' not in resp:
                 logger.debug('No messages found')
@@ -454,7 +518,7 @@ class AWSS3BucketEngineThread(ExitableThread):
                         if error_code == 404:
                             logger.debug(f"{key} does not exist in {self._engine.params.bucket_name}")
                         else:
-                            logger.exception(f'head_object failur for {key} in {self._engine.params.bucket_name}')
+                            logger.exception(f'head_object failure for {key} in {self._engine.params.bucket_name}')
                         continue
 
                     if 'Metadata' in response and AWS_S3_ENGINE_IGNORE_ME in response['Metadata']:
@@ -477,18 +541,20 @@ class AWSS3BucketEngineThread(ExitableThread):
                             client_options['region_name'])
                         GLib.idle_add(self._engine._appwindow._queue_manager.add, _file, priority=GLib.PRIORITY_HIGH)
 
-
-
+            # delete messages from the queue
             entries = [
                 {'Id': msg['MessageId'], 'ReceiptHandle': msg['ReceiptHandle']}
                 for msg in resp['Messages']
             ]
 
-            resp = self._engine.sqs_client.delete_message_batch(
-                QueueUrl=self._engine.queue_url, Entries=entries
-            )
+            try:
+                resp = self._engine.sqs_client.delete_message_batch(
+                    QueueUrl=self._engine.queue_url, Entries=entries
+                )
+            except Exception as e:
+                self._engine._cleanup()
+                GLib.idle_(self._engine._abort, None, e, priority=GLib.PRIORITY_HIGH)
+                return
 
             if len(resp['Successful']) != len(entries):
-                raise RuntimeError(
-                    f"Failed to delete messages: entries={entries!r} resp={resp!r}"
-                )
+                logger.warn(f"Failed to delete messages: entries={entries!r} resp={resp!r}")

@@ -13,6 +13,7 @@ from time import ctime
 from threading import Thread, current_thread
 import inspect
 import collections.abc
+import traceback
 
 from .utils import PATTERN_PLACEHOLDER_TEXT, MONITOR_YAML_VERSION
 from .utils.paramswindow import ParamsWindow
@@ -501,6 +502,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                     secondary_text='\n'.join(exception_msgs))
             dialog.run()
             dialog.destroy()
+            self.lookup_action('play').set_enabled(True)
             return
 
         # Launch the queue manager and the engine
@@ -684,8 +686,8 @@ class PreflightCheckThread(Thread):
             try:
                 operation.preflight_check()
             except Exception as e:
-                logger.debug(f"Exception caught from {operation.NAME}")
-                exception_msgs.append('* ' + str(e))
+                logger.debug(f"Exception caught from {operation.NAME}: {traceback.format_exc()}")
+                exception_msgs.append(f'* {operation.NAME}: ' + str(e))
 
         if exception_msgs:
             for operation in self._appwindow._operations_box:

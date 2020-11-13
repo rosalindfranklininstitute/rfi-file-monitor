@@ -279,7 +279,7 @@ class AWSS3BucketEngineThread(ExitableThread):
             self._engine.s3_client.head_bucket(Bucket=self._engine.params.bucket_name)
         except Exception as e:
             self._engine._cleanup()
-            GLib.idle_(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+            GLib.idle_add(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
             return
 
         # set up sqs client
@@ -291,7 +291,7 @@ class AWSS3BucketEngineThread(ExitableThread):
             self._engine.queue_url = self._engine.sqs_client.create_queue(QueueName=self._engine.queue_name)['QueueUrl']
         except Exception as e:
             self._engine._cleanup()
-            GLib.idle_(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+            GLib.idle_add(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
             return
 
         # create dead-letter-queue
@@ -300,7 +300,7 @@ class AWSS3BucketEngineThread(ExitableThread):
             self._engine.dlq_url = self._engine.sqs_client.create_queue(QueueName=self._engine.dlq_name)['QueueUrl']
         except Exception as e:
             self._engine._cleanup()
-            GLib.idle_(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+            GLib.idle_add(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
             return
 
         # sleep 1 second to make sure the queue is available
@@ -314,7 +314,7 @@ class AWSS3BucketEngineThread(ExitableThread):
             self._engine.dlq_arn = self._engine.sqs_client.get_queue_attributes(QueueUrl=self._engine.dlq_url, AttributeNames=['QueueArn'])['Attributes']['QueueArn']
         except Exception as e:
             self._engine._cleanup()
-            GLib.idle_(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+            GLib.idle_add(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
             return
 
         # set queue policy
@@ -350,7 +350,7 @@ class AWSS3BucketEngineThread(ExitableThread):
             )
         except Exception as e:
             self._engine._cleanup()
-            GLib.idle_(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+            GLib.idle_add(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
             return
 
         # set dlq policy
@@ -368,7 +368,7 @@ class AWSS3BucketEngineThread(ExitableThread):
             )
         except Exception as e:
             self._engine._cleanup()
-            GLib.idle_(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+            GLib.idle_add(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
             return
 
         try:
@@ -401,7 +401,7 @@ class AWSS3BucketEngineThread(ExitableThread):
             )
         except Exception as e:
             self._engine._cleanup()
-            GLib.idle_(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+            GLib.idle_add(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
             return
 
         # prepare patterns
@@ -449,7 +449,7 @@ class AWSS3BucketEngineThread(ExitableThread):
                 GLib.idle_add(self._engine._appwindow._queue_manager.add, existing_files, priority=GLib.PRIORITY_HIGH)
             except Exception as e:
                 self._engine._cleanup()
-                GLib.idle_(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+                GLib.idle_add(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
                 return
 
 
@@ -475,7 +475,7 @@ class AWSS3BucketEngineThread(ExitableThread):
                 )
             except Exception as e:
                 self._engine._cleanup()
-                GLib.idle_(self._engine._abort, None, e, priority=GLib.PRIORITY_HIGH)
+                GLib.idle_add(self._engine._abort, None, e, priority=GLib.PRIORITY_HIGH)
                 return
 
             if 'Messages' not in resp:
@@ -554,7 +554,7 @@ class AWSS3BucketEngineThread(ExitableThread):
                 )
             except Exception as e:
                 self._engine._cleanup()
-                GLib.idle_(self._engine._abort, None, e, priority=GLib.PRIORITY_HIGH)
+                GLib.idle_add(self._engine._abort, None, e, priority=GLib.PRIORITY_HIGH)
                 return
 
             if len(resp['Successful']) != len(entries):

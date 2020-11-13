@@ -5,3 +5,7 @@ dist
 build
 .idea
 .ropeproject
+.env
+rfi-infrastructure.yml
+ldap_connect.json
+rfi-instruments-dev*.yml

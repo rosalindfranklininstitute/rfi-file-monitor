@@ -4,16 +4,14 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib, GObject
 
-from pathlib import PurePath
 from typing import OrderedDict as OrderedDictType
-from typing import Final, List, Union, Sequence, Tuple
+from typing import Final, List, Union, Sequence
 from collections import OrderedDict
 from threading import RLock
 import logging
 import os
 from time import time
 from dataclasses import dataclass, astuple as dc_astuple
-import platform
 
 from .file import FileStatus, File
 from .job import Job
@@ -21,8 +19,6 @@ from .utils.exceptions import AlreadyRunning, NotYetRunning
 from .utils.widgetparams import WidgetParams
 
 logger = logging.getLogger(__name__)
-
-NewFile = Tuple[str, str]
 
 class QueueManager(WidgetParams, Gtk.Grid):
     MAX_JOBS = len(getattr(os, 'sched_getaffinity')(0)) if hasattr(os, 'sched_getaffinity') else os.cpu_count()
@@ -160,60 +156,47 @@ class QueueManager(WidgetParams, Gtk.Grid):
     def running(self):
         return self._running
 
-    def add(self, file_path: Union[NewFile, Sequence[NewFile]], status: FileStatus):
+    def add(self, file_or_files: Union[File, Sequence[File]]):
         """Add one or more new files to the queue. Call from the GUI thread!"""
 
         if not self._running:
             raise NotYetRunning('The queue manager needs to be started before it can be stopped.')
 
-        if isinstance(file_path, tuple) and \
-            len(file_path) == 2 and \
-            isinstance(file_path[0], str) and \
-            isinstance(file_path[1], str):
-
-            file_paths = [file_path]
+        if isinstance(file_or_files, File):
+            file_paths = [file_or_files]
         else:
-            file_paths = file_path
+            file_paths = file_or_files
         
         with self._files_dict_lock:
-            for file_path, relative_file_path in file_paths:
-                if not isinstance(file_path, str) or not isinstance(relative_file_path, str):
-                    raise TypeError()
+            for _file in file_paths:
+                if not isinstance(_file, File):
+                    raise TypeError(f'{str(_file)} must be a File object')
+
+                file_path = _file.filename
+
                 if file_path in self._files_dict:
+                    # FIXME: send to saved instead??
                     logger.warning(f"{file_path} has been recreated! Ignoring...")
                     continue
 
-                if status == FileStatus.CREATED:
+                if _file.status == FileStatus.CREATED:
                     logger.debug(f"New file {file_path} created")
-                    _creation_timestamp = time()
-
-                elif status == FileStatus.SAVED:
+                elif _file.status == FileStatus.SAVED:
                     logger.debug(f'Adding existing file {file_path}')
-
-                    # get creation time, or something similar...
-                    # https://stackoverflow.com/a/39501288
-                    if platform.system() == 'Windows':
-                        _creation_timestamp = os.stat(file_path).st_ctime
-                    else:
-                        try:
-                            # this should work on macOS
-                            _creation_timestamp = os.stat(file_path).st_birthtime
-                        except AttributeError:
-                            _creation_timestamp = os.stat(file_path).st_mtime
+                    _file.saved = time()
                 else:
                     raise NotImplementedError('Newly created files must have CREATED or SAVED as status!')
 
                 # add new entry to model
-                _relative_file_path = PurePath(relative_file_path)
-
                 outputrow = OutputRow(
-                    relative_filename=relative_file_path,
-                    creation_timestamp=_creation_timestamp,
-                    status=int(status),
+                    relative_filename=str(_file.relative_filename),
+                    creation_timestamp=_file.created,
+                    status=int(_file.status),
                     operation_name="All",
                 )
                 iter = self._appwindow._files_tree_model.append(parent=None, row=dc_astuple(outputrow))
                 _row_reference = Gtk.TreeRowReference.new(self._appwindow._files_tree_model, self._appwindow._files_tree_model.get_path(iter))
+
                 # create its children, one for each operation
                 for _operation in self._appwindow._operations_box:
                     outputrow = OutputRow(
@@ -224,13 +207,7 @@ class QueueManager(WidgetParams, Gtk.Grid):
                     )
                     self._appwindow._files_tree_model.append(parent=iter, row=dc_astuple(outputrow))
                 
-                # TODO: this will need to be rewritten if we decide to add support for multiple exported filetypes
-                _file = self._appwindow.get_property('application').engines_exported_filetype_map[type(self._appwindow.active_engine)](
-                    filename=file_path,
-                    relative_filename=_relative_file_path,
-                    created=_creation_timestamp,
-                    status=status,
-                    row_reference=_row_reference)
+                _file.row_reference = _row_reference
                 self._files_dict[file_path] = _file
 
     def saved(self, file_path: Union[str, Sequence[str]]):

@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 import hashlib
 import os
+import platform
 from threading import Thread
 
 from .exceptions import SkippedOperation
@@ -83,8 +84,8 @@ def class_in_object_iterable(iterable: Iterable, klass) -> bool:
             return True
     return False
 
-def get_patterns_from_string(input: str, defaults: List =None) -> List[str]:
-    if not defaults:
+def get_patterns_from_string(input: str, defaults: Optional[List[str]]=None) -> List[str]:
+    if defaults is None:
         if input or  input.strip():
             return list(map(lambda x: x.strip(), input.split(',')))
         else:
@@ -103,14 +104,28 @@ def get_md5(fname: os.PathLike) -> str:
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
+def get_file_creation_timestamp(file_path: os.PathLike):
+    # get creation time, or something similar...
+    # https://stackoverflow.com/a/39501288
+    if platform.system() == 'Windows':
+        creation_timestamp = os.stat(file_path).st_ctime
+    else:
+        try:
+            # this should work on macOS
+            creation_timestamp = os.stat(file_path).st_birthtime
+        except AttributeError:
+            creation_timestamp = os.stat(file_path).st_mtime
+    return creation_timestamp
+
+
 class LongTaskWindow(Gtk.Window):
     def __init__(self, parent_window: Optional[Gtk.Window] = None, *args, **kwargs):
         kwargs.update(dict(
             transient_for=parent_window,
 		    window_position=Gtk.WindowPosition.CENTER_ON_PARENT,
 		    modal=True,
-    		default_width=200,
-		    default_height=50,
+    		default_width=250,
+		    default_height=100,
     		type=Gtk.WindowType.TOPLEVEL,
 		    destroy_with_parent=True,
     		decorated=False,

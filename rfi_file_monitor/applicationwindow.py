@@ -13,6 +13,7 @@ from time import ctime
 from threading import Thread, current_thread
 import inspect
 import collections.abc
+import traceback
 
 from .utils import PATTERN_PLACEHOLDER_TEXT, MONITOR_YAML_VERSION
 from .utils.paramswindow import ParamsWindow
@@ -487,7 +488,6 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     def on_stop(self, action, param):
         self.lookup_action('stop').set_enabled(False)
 
-        self._active_engine_running_changed_handler_id = self._active_engine.connect('notify::running', self._active_engine_running_changed)
         self._active_engine.stop()
 
     def _preflight_check_cb(self, task_window: LongTaskWindow, exception_msgs: Optional[List[str]]):
@@ -502,6 +502,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                     secondary_text='\n'.join(exception_msgs))
             dialog.run()
             dialog.destroy()
+            self.lookup_action('play').set_enabled(True)
             return
 
         # Launch the queue manager and the engine
@@ -512,13 +513,12 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             operation.set_sensitive(False)
 
         self._queue_manager_running_changed_handler_id = self._queue_manager.connect('notify::running', self._queue_manager_running_changed)
+        self._active_engine_running_changed_handler_id = self._active_engine.connect('notify::running', self._active_engine_running_changed)
         self._queue_manager.start()
 
     def _queue_manager_running_changed(self, queue_manager, param):
         logger.debug(f'Calling _queue_manager_running_changed from {current_thread()} with value {queue_manager.props.running}')
-        queue_manager.disconnect(self._queue_manager_running_changed_handler_id)
         if queue_manager.props.running:
-            self._active_engine_running_changed_handler_id = self._active_engine.connect('notify::running', self._active_engine_running_changed)
             self._active_engine.start()
         else:
             # at this point everything should have stopped, except for Jobs that still need to finish and cannot be killed
@@ -528,16 +528,19 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             for operation in self._operations_box:
                 operation.set_sensitive(True)
 
+            self._active_engine.disconnect(self._active_engine_running_changed_handler_id)
+            self._queue_manager.disconnect(self._queue_manager_running_changed_handler_id)
+            del self._active_engine_running_changed_handler_id
+            del self._queue_manager_running_changed_handler_id
             self.lookup_action('play').set_enabled(True)
 
     def _active_engine_running_changed(self, active_engine, param):
         logger.debug(f'Calling _active_engine_running_changed from {current_thread()} with value {active_engine.props.running}')
-        active_engine.disconnect(self._active_engine_running_changed_handler_id)
         if active_engine.props.running:
             # at this point things should really be running.
             self.lookup_action('stop').set_enabled(True)
         else:
-            self._queue_manager_running_changed_handler_id = self._queue_manager.connect('notify::running', self._queue_manager_running_changed)
+            self.lookup_action('stop').set_enabled(False)
             self._queue_manager.stop()
 
     def _engine_valid_changed_cb(self, engine, param):
@@ -635,6 +638,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                     logger.debug(f"load_from_yaml_dict: no match found for operation {op['name']}")
 
         self._engines_notebook.set_current_page(active_engine_index)
+        self._update_monitor_switch_sensitivity()
 
     @property
     def preflight_check_metadata(self) -> dict:
@@ -682,8 +686,8 @@ class PreflightCheckThread(Thread):
             try:
                 operation.preflight_check()
             except Exception as e:
-                logger.debug(f"Exception caught from {operation.NAME}")
-                exception_msgs.append('* ' + str(e))
+                logger.debug(f"Exception caught from {operation.NAME}: {traceback.format_exc()}")
+                exception_msgs.append(f'* {operation.NAME}: ' + str(e))
 
         if exception_msgs:
             for operation in self._appwindow._operations_box:

@@ -6,6 +6,7 @@ from gi.repository import Gtk, GLib, Gio
 import logging
 from pathlib import PurePath
 from typing import Final, Dict, Any, Optional
+from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
 
@@ -24,19 +25,19 @@ class FileStatus(IntEnum):
         #pylint: disable=no-member
         return self.name.lower().capitalize().replace('_', ' ')
 
-class File:
+class File(ABC):
+
     def __init__(self, \
         filename: str, \
         relative_filename: PurePath, \
         created: int, \
-        status: FileStatus, \
-        row_reference: Gtk.TreeRowReference):
+        status: FileStatus):
 
         self._filename = filename
         self._relative_filename = relative_filename
         self._created = created
         self._status = status
-        self._row_reference = row_reference
+        self._row_reference : Gtk.TreeRowReference = None
         self._operation_metadata : Final[Dict[int, Dict[str, Any]]] = dict()
         self._cancellable = Gio.Cancellable()
         self._saved : int = 0
@@ -87,8 +88,15 @@ class File:
         self._requeue = value
 
     @property
-    def row_reference(self):
+    def row_reference(self) -> Gtk.TreeRowReference:
         return self._row_reference
+
+    @row_reference.setter
+    def row_reference(self, value: Gtk.TreeRowReference):
+        self._row_reference = value
+
+    def __str__(self):
+        return f'{type(self).__name__}: {self._filename} -> {str(self._status)}'
 
     def _update_progressbar_worker_cb(self, index: int, value: float):
         #logger.debug(f"_update_progressbar_worker_cb: {index=} {value=}")
@@ -164,3 +172,63 @@ class File:
 
 class RegularFile(File):
     pass
+
+class AbstractS3Object(File):
+
+    @abstractmethod
+    def __init__(self,
+        filename: str,
+        relative_filename: PurePath,
+        created: int,
+        status: FileStatus,
+        bucket_name: str,
+        etag: str,
+        ):
+
+        super().__init__(
+            filename, relative_filename,
+            created, status,
+        )
+        self._bucket_name = bucket_name
+        self._etag = etag
+
+    @property
+    def bucket_name(self):
+        return self._bucket_name
+
+    @bucket_name.setter
+    def bucket_name(self, value):
+        self._bucket_name = value
+
+    @property
+    def etag(self):
+        return self._etag
+
+    @etag.setter
+    def etag(self, value):
+        self._etag = value
+
+class AWSS3Object(AbstractS3Object):
+    def __init__(self,
+        filename: str,
+        relative_filename: PurePath,
+        created: int,
+        status: FileStatus,
+        bucket_name: str,
+        etag: str,
+        region_name: str,
+        ):
+
+        super().__init__(
+            filename, relative_filename, created,
+            status, bucket_name, etag
+        )
+        self._region_name = region_name
+
+    @property
+    def region_name(self):
+        return self._region_name
+
+    @region_name.setter
+    def region_name(self, value):
+        self._region_name = value

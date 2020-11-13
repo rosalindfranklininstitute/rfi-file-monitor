@@ -10,9 +10,9 @@ from ..utils import ExitableThread
 
 import logging
 from tempfile import TemporaryDirectory
-from pathlib import Path
+from pathlib import Path, PurePath
 import os
-from time import sleep
+from time import sleep, time
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +31,6 @@ class TemporaryFileEngine(Engine):
 
     def __init__(self, appwindow):
         super().__init__(appwindow)
-
-        # always true
-        self._valid = True
 
         # Set filesize
         filesize_grid = Gtk.Grid(
@@ -62,12 +59,23 @@ class TemporaryFileEngine(Engine):
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False), 'filesize_number', desensitized=True)
         filesize_grid.attach(filesize_number_spinbutton, 2, 0, 1, 1)
-        filesize_unit_combobox = Gtk.ComboBoxText()
+        filesize_unit_combobox = Gtk.ComboBoxText(
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+        )
         for unit in SIZE_UNITS:
             filesize_unit_combobox.append_text(unit)
         filesize_unit_combobox.set_active(0)
         self.register_widget(filesize_unit_combobox, 'filesize_unit', desensitized=True)
         filesize_grid.attach(filesize_unit_combobox, 3, 0, 1, 1)
+
+        # Add horizontal separator
+        separator = Gtk.Separator(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+        )
+        self.attach(separator, 0, 1, 3, 1)
 
         # set time between files being created
         time_grid = Gtk.Grid(
@@ -75,7 +83,7 @@ class TemporaryFileEngine(Engine):
             hexpand=True, vexpand=False,
             column_spacing=5
         )
-        self.attach(time_grid, 0, 1, 1, 1)
+        self.attach(time_grid, 0, 2, 1, 1)
         label = Gtk.Label(
             label='Time between file creation events: ',
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
@@ -96,6 +104,73 @@ class TemporaryFileEngine(Engine):
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False), 'creation_delay', desensitized=True)
         time_grid.attach(time_number_spinbutton, 2, 0, 1, 1)
+
+        # Add vertical separator
+        separator = Gtk.Separator(
+            orientation=Gtk.Orientation.VERTICAL,
+            halign=Gtk.Align.CENTER, valign=Gtk.Align.FILL,
+            hexpand=False, vexpand=True,
+        )
+        self.attach(separator, 1, 0, 1, 3)
+
+        # start index
+        start_index_grid = Gtk.Grid(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            column_spacing=5
+        )
+        self.attach(start_index_grid, 2, 0, 1, 1)
+        label = Gtk.Label(
+            label='Start index: ',
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+        )
+        start_index_grid.attach(label, 0, 0, 1, 1)
+        start_index_spinbutton = self.register_widget(Gtk.SpinButton(
+            adjustment=Gtk.Adjustment(
+                lower=0,
+                upper=10000,
+                value=0,
+                page_size=0,
+                step_increment=1),
+            value=0,
+            update_policy=Gtk.SpinButtonUpdatePolicy.IF_VALID,
+            numeric=True,
+            climb_rate=5,
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False), 'start_index', desensitized=False)
+        start_index_grid.attach(start_index_spinbutton, 1, 0, 1, 1)
+
+        # prefix
+        prefix_grid = Gtk.Grid(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            column_spacing=5
+        )
+        self.attach(prefix_grid, 2, 2, 1, 1)
+        label = Gtk.Label(
+            label='File prefix: ',
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+        )
+        prefix_grid.attach(label, 0, 0, 1, 1)
+        self._prefix_entry = self.register_widget(Gtk.Entry(
+            text='test_',
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+        ), 'file_prefix', desensitized=False)
+        prefix_grid.attach(self._prefix_entry, 1, 0, 1, 1)
+
+        # this starts out as valid
+        self._valid = True
+
+    def _file_prefix_entry_changed_cb(self, entry):
+        if self.params.file_prefix:
+            self._valid = True
+        else:
+            self._valid = False
+
+        self.notify('valid')
 
     def start(self):
         if self._running:
@@ -121,8 +196,7 @@ class TemporaryFileEngine(Engine):
 
 
 class FileGeneratorThread(ExitableThread):
-    # these can be turned into engine params if necessary
-    PREFIX = 'test_'
+
     SUFFIX = '.dat'
 
     def __init__(self, engine: TemporaryFileEngine):
@@ -130,19 +204,20 @@ class FileGeneratorThread(ExitableThread):
         self._engine = engine
 
     def run(self):
-        index = 0
+        index = int(self._engine.params.start_index)
         while 1:
             if self.should_exit:
                 logger.info('Killing FileGeneratorThread')
                 return
-            basename = f"{self.PREFIX}{index}{self.SUFFIX}"
+            basename = f"{self._engine.params.file_prefix}{index}{self.SUFFIX}"
             path = Path(self._engine._tempdir.name, basename)
             path.write_bytes(os.urandom(int(self._engine.params.filesize_number * SIZE_UNITS[self._engine.params.filesize_unit])))
             logger.debug(f'Writing {str(path)}')
             index = index + 1
             if self._engine.props.running and \
                 self._engine._appwindow._queue_manager.props.running:
-                GLib.idle_add(self._engine._appwindow._queue_manager.add, (str(path), basename), FileStatus.CREATED, priority=GLib.PRIORITY_HIGH)
+                _file = RegularFile(str(path), PurePath(basename), time(), FileStatus.CREATED)
+                GLib.idle_add(self._engine._appwindow._queue_manager.add, _file, priority=GLib.PRIORITY_HIGH)
             sleep(self._engine.params.creation_delay)
             
             

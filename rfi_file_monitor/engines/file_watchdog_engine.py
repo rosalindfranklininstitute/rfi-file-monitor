@@ -105,7 +105,7 @@ class FileWatchdogEngine(Engine):
 
 
     def _process_existing_files_thread_cb(self, task_window: LongTaskWindow, existing_files: List[Path]):
-        self._appwindow._queue_manager.add(existing_files, FileStatus.SAVED)
+        self._appwindow._queue_manager.add(existing_files)
 
         # destroy task window
         task_window.get_window().set_cursor(None)

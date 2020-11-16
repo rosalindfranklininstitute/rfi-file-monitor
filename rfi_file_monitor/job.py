@@ -5,6 +5,8 @@ import logging
 from .file import File, FileStatus
 from .operation import SkippedOperation
 
+from tenacity import RetryError
+
 logger = logging.getLogger(__name__)
 
 class Job(threading.Thread):
@@ -39,13 +41,17 @@ class Job(threading.Thread):
                     rv = operation.run(self._file)
                 except SkippedOperation as e:
                     rv = e
+                except RetryError as e:
+                    # happens when the run method is wrapped with tenacity.retry
+                    # and we ran out of retries
+                    rv = str(e.last_attempt.result())
                 except Exception as e:
                     # exceptions caught here indicate a programming error,
                     # as exceptions should be caught during run, and if necessary,
                     # run should appropriate error message instead of None
                     # The only reason to catch it here is to avoid it taking the app down...
                     rv = str(e)
-                    logger.exception("run() exception caught!")
+                    logger.exception(f"run() exception caught: {rv}!")
             else:
                 # If we get here then an error was returned in a previous operation already
                 rv = self.ERROR_MESSAGE

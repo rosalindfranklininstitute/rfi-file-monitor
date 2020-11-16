@@ -381,19 +381,23 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     def _files_tree_model_visible_func(self, model, iter, data):
         # Children should always be shown when the parent is visible
         if model.iter_parent(iter) is not None:
-            status_filter = True
-        else:
-            status = FileStatus(model[iter][2])
+            return True
+
+        status = FileStatus(model[iter][2])
+        try:
             status_filter = self.get_action_state(f'status-filter-{status.name.lower()}').get_boolean()
+        except AttributeError:
+            logger.exception(f'{status=}')
+            status_filter = False
+
+        if status_filter is False:
+            return False
 
         pattern = self._name_filter_entry.get_text().strip()
 
         if not pattern:
-            name_filter = True
-        else:
-            name_filter = fnmatch(model[iter][0], pattern)
-
-        return status_filter and name_filter
+            return True
+        return fnmatch(model[iter][0], pattern)
 
     def _engine_advanced_settings_button_clicked_cb(self, button, engine):
         # To avoid problems with the params, we have to reuse the window

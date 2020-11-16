@@ -15,10 +15,9 @@ import logging
 import os
 import tempfile
 from pathlib import PurePosixPath, Path
-from stat import S_ISDIR, S_ISREG
 import stat
 import posixpath
-from typing import Tuple, List
+from typing import List
 from threading import RLock
 
 logger = logging.getLogger(__name__)
@@ -451,13 +450,13 @@ class SftpProgressPercentage(object):
 # the following methods have been inspired by pysftp
 def isdir(sftp_client: paramiko.SFTPClient, remotepath: str):
     try:
-        return S_ISDIR(sftp_client.stat(remotepath).st_mode)
+        return stat.S_ISDIR(sftp_client.stat(remotepath).st_mode)
     except IOError: # no such file
         return False
 
 def isfile(sftp_client: paramiko.SFTPClient, remotepath: str):
     try:
-        return S_ISREG(sftp_client.stat(remotepath).st_mode)
+        return stat.S_ISREG(sftp_client.stat(remotepath).st_mode)
     except IOError: # no such file
         return False
 

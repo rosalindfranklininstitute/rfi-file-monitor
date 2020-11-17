@@ -12,7 +12,7 @@ import hashlib
 import os
 import platform
 from threading import Thread
-
+import time
 from .exceptions import SkippedOperation
 
 # bump this number when the yaml layout changes!
@@ -108,7 +108,14 @@ def get_file_creation_timestamp(file_path: os.PathLike):
     # get creation time, or something similar...
     # https://stackoverflow.com/a/39501288
     if platform.system() == 'Windows':
-        creation_timestamp = os.stat(file_path).st_ctime
+        try:
+            creation_timestamp = os.stat(file_path).st_ctime
+        except FileNotFoundError:
+            time.sleep(1)
+            try:
+                creation_timestamp = os.stat(file_path).st_ctime
+            except FileNotFoundError:
+                creation_timestamp = None
     else:
         try:
             # this should work on macOS

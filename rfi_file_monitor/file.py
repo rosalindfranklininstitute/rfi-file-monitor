@@ -144,10 +144,10 @@ class File(ABC):
             model[iter][5] = "100.0 %"
         elif status == FileStatus.FAILURE:
             model[iter][6] = "red"
-            model[iter][7] = message
+            model[iter][7] = GLib.markup_escape_text(message)
         elif status == FileStatus.SKIPPED:
             model[iter][6] = "grey"
-            model[iter][7] = message
+            model[iter][7] = GLib.markup_escape_text(message)
 
         return GLib.SOURCE_REMOVE
 

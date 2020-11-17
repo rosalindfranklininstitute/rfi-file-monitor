@@ -143,6 +143,7 @@ class ProcessExistingFilesThread(Thread):
         existing_files = self._search_for_existing_files(Path(self._engine.params.monitored_directory))
         GLib.idle_add(self._engine._process_existing_files_thread_cb, self._task_window, existing_files, priority=GLib.PRIORITY_DEFAULT_IDLE)
 
+
 class EventHandler(PatternMatchingEventHandler):
     def __init__(self, engine: FileWatchdogEngine):
         self._engine = engine 
@@ -156,7 +157,12 @@ class EventHandler(PatternMatchingEventHandler):
         relative_file_path = PurePath(os.path.relpath(file_path, self._engine.params.monitored_directory))
         if self._engine.props.running and \
             self._engine._appwindow._queue_manager.props.running:
-            _file = RegularFile(file_path, relative_file_path, get_file_creation_timestamp(file_path), FileStatus.CREATED)
+            creation_timestamp = get_file_creation_timestamp(file_path)
+            if creation_timestamp:
+                _file = RegularFile(file_path, relative_file_path, creation_timestamp, FileStatus.CREATED)
+            else:
+                logger.debug(f"File Not found, {file_path} has been skipped")
+                return None
             GLib.idle_add(self._engine._appwindow._queue_manager.add, _file, priority=GLib.PRIORITY_HIGH)
 
     def on_modified(self, event):

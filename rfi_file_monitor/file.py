@@ -173,9 +173,7 @@ class File(ABC):
 class RegularFile(File):
     pass
 
-class AbstractS3Object(File):
-
-    @abstractmethod
+class S3Object(File):
     def __init__(self,
         filename: str,
         relative_filename: PurePath,
@@ -204,7 +202,7 @@ class AbstractS3Object(File):
     def key(self):
         return str(PurePosixPath(*self._relative_filename.parts))
 
-class AWSS3Object(AbstractS3Object):
+class AWSS3Object(S3Object):
     def __init__(self,
         filename: str,
         relative_filename: PurePath,

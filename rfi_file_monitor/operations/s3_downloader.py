@@ -7,7 +7,7 @@ import boto3
 import boto3.s3.transfer
 import botocore
 
-from ..file import AbstractS3Object
+from ..file import S3Object
 from ..operation import Operation
 from ..utils.decorators import supported_filetypes, with_pango_docs
 from ..utils import get_random_string
@@ -19,7 +19,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-@supported_filetypes(filetypes=[AbstractS3Object])
+@supported_filetypes(filetypes=[S3Object])
 @with_pango_docs(filename='s3_downloader.pango')
 class S3DownloaderOperation(Operation):
 
@@ -64,7 +64,7 @@ class S3DownloaderOperation(Operation):
         temp_filename.write_text('delete me')
         temp_filename.unlink()
 
-    def run(self, file: AbstractS3Object):
+    def run(self, file: S3Object):
         
         s3_client = self.appwindow.active_engine.s3_client
         bucket_name = self.appwindow.active_engine.params.bucket_name

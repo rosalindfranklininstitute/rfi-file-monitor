@@ -27,6 +27,7 @@ class FileStatus(IntEnum):
 
 class File(ABC):
 
+    @abstractmethod
     def __init__(self, \
         filename: str, \
         relative_filename: PurePath, \
@@ -171,7 +172,17 @@ class File(ABC):
         GLib.idle_add(self._update_progressbar_worker_cb, index, value)
 
 class RegularFile(File):
-    pass
+    def __init__(self,
+        filename: str,
+        relative_filename: PurePath,
+        created: int,
+        status: FileStatus
+        ):
+
+        super().__init__(
+            filename, relative_filename,
+            created, status,
+        )
 
 class S3Object(File):
     def __init__(self,

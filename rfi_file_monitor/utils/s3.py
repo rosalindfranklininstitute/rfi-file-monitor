@@ -3,8 +3,6 @@ import boto3.s3.transfer
 from ..file import File
 
 import os
-from threading import Lock
-from pathlib import Path
 import hashlib
 from typing import Optional
 

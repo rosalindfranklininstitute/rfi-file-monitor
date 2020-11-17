@@ -17,9 +17,7 @@ from ..utils.s3 import S3ProgressPercentage, TransferConfig, calculate_etag
 import os
 import logging
 import tempfile
-import hashlib
 from pathlib import PurePosixPath, Path
-from threading import current_thread, Lock
 import urllib
 from typing import Sequence, Dict, Any
 

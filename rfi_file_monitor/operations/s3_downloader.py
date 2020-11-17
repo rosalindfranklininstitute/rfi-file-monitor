@@ -3,9 +3,6 @@ from __future__ import annotations
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
-import boto3
-import boto3.s3.transfer
-import botocore
 
 from ..file import S3Object
 from ..operation import Operation

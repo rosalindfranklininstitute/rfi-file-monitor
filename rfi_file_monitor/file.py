@@ -4,7 +4,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib, Gio
 
 import logging
-from pathlib import PurePath
+from pathlib import PurePath, PurePosixPath
 from typing import Final, Dict, Any, Optional
 from abc import ABC, abstractmethod
 
@@ -196,17 +196,13 @@ class AbstractS3Object(File):
     def bucket_name(self):
         return self._bucket_name
 
-    @bucket_name.setter
-    def bucket_name(self, value):
-        self._bucket_name = value
-
     @property
     def etag(self):
         return self._etag
 
-    @etag.setter
-    def etag(self, value):
-        self._etag = value
+    @property
+    def key(self):
+        return str(PurePosixPath(*self._relative_filename.parts))
 
 class AWSS3Object(AbstractS3Object):
     def __init__(self,
@@ -228,7 +224,3 @@ class AWSS3Object(AbstractS3Object):
     @property
     def region_name(self):
         return self._region_name
-
-    @region_name.setter
-    def region_name(self, value):
-        self._region_name = value

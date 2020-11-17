@@ -1,17 +1,18 @@
+from __future__ import annotations
+
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 import boto3
-import boto3.s3.transfer
 import botocore
 from munch import Munch
 
 from ..operation import Operation
 from ..utils.exceptions import SkippedOperation
 from ..file import File
-from ..job import Job
 from ..utils import query_metadata
 from ..utils.decorators import with_pango_docs
+from ..utils.s3 import S3ProgressPercentage, TransferConfig, calculate_etag
 
 import os
 import logging
@@ -49,10 +50,6 @@ ALLOWED_OBJECT_ACL_OPTIONS = (
 )
 
 AWS_S3_ENGINE_IGNORE_ME = 'rfi-file-monitor-ignore-me'
-
-KB = 1024
-MB = KB * KB
-TransferConfig = boto3.s3.transfer.TransferConfig(max_concurrency=1, multipart_chunksize=8*MB, multipart_threshold=8*MB)
 
 @with_pango_docs(filename='s3_uploader.pango')
 class S3UploaderOperation(Operation):
@@ -135,30 +132,6 @@ class S3UploaderOperation(Operation):
             hexpand=False, vexpand=False,
         ), 'force_bucket_creation')
         self._grid.attach(widget, 2, 3, 1, 1)
-
-    @classmethod
-    def _calculate_etag(cls, file: File):
-        # taken from https://stackoverflow.com/a/52300584
-        with Path(file.filename).open('rb') as f:
-            md5hash = hashlib.md5()
-            filesize = 0
-            block_count = 0
-            md5string = b''
-            for block in iter(lambda: f.read(TransferConfig.multipart_chunksize), b''):
-                md5hash = hashlib.md5()
-                md5hash.update(block)
-                md5string += md5hash.digest()
-                filesize += len(block)
-                block_count += 1
-
-        if filesize > TransferConfig.multipart_threshold:
-            md5hash = hashlib.md5()
-            md5hash.update(md5string)
-            md5hash = md5hash.hexdigest() + "-" + str(block_count)
-        else:
-            md5hash = md5hash.hexdigest()
-
-        return md5hash
 
     @classmethod
     def _get_dict_tagset(cls, preflight_check_metadata: Dict[int, Dict[str, Any]], tagtype: str) -> dict:
@@ -290,7 +263,6 @@ class S3UploaderOperation(Operation):
 
     @classmethod
     def _run(cls, file: File, preflight_check_metadata: Dict[int, Dict[str, Any]], params: Munch, operation_index:int):
-        thread = current_thread()
         client_options = cls._get_client_options(params)
         s3_client = boto3.client('s3', **client_options)
 
@@ -315,19 +287,19 @@ class S3UploaderOperation(Operation):
         else:
             if Path(file.filename).stat().st_size == int(response['ContentLength']):
                 remote_etag = response['ETag'][1:-1] # get rid of those extra quotes
-                local_etag = cls._calculate_etag(file)
+                local_etag = calculate_etag(file.filename)
                 if remote_etag == local_etag:
                     # attach metadata
                     cls._attach_metadata(file, client_options['endpoint_url'], key, params, operation_index)
                     raise SkippedOperation('File has been uploaded already')
 
         try:
-            s3_client.upload_file( \
-                Filename=file.filename,\
+            s3_client.upload_file(
+                Filename=file.filename,
                 Bucket=params.bucket_name,
                 Key=key,
                 Config=TransferConfig,
-                Callback=S3ProgressPercentage(file, thread, operation_index),
+                Callback=S3ProgressPercentage(file, file.filename, operation_index),
                 )
             if object_tags:
                 s3_client.put_object_tagging(
@@ -357,24 +329,3 @@ class S3UploaderOperation(Operation):
         return self._run(file, self.appwindow.preflight_check_metadata, self.params, self.index)
 
 
-# taken from https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-uploading-files.html
-class S3ProgressPercentage(object):
-
-    def __init__(self, file: File, thread: Job, operation_index: int):
-        self._file = file
-        self._filename = file._filename
-        self._size = float(os.path.getsize(self._filename))
-        self._seen_so_far = 0
-        self._last_percentage = 0
-        self._lock = Lock() # not sure this is necessary since we are using just one thread
-        self._thread = thread
-        self._operation_index = operation_index
-
-    def __call__(self, bytes_amount):
-        # To simplify, assume this is hooked up to a single filename
-        with self._lock:
-            self._seen_so_far += bytes_amount
-            percentage = (self._seen_so_far / self._size) * 100
-            if int(percentage) > self._last_percentage:
-                self._last_percentage = int(percentage)
-                self._file.update_progressbar(self._operation_index, self._last_percentage)

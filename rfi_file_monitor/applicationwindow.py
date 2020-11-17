@@ -18,7 +18,7 @@ import traceback
 from .utils import PATTERN_PLACEHOLDER_TEXT, MONITOR_YAML_VERSION
 from .utils.paramswindow import ParamsWindow
 from .utils import add_action_entries, EXPAND_AND_FILL, LongTaskWindow, class_in_object_iterable
-from .file import FileStatus
+from .file import FileStatus, File
 from .queue_manager import QueueManager
 from .engine import Engine
 from .operation import Operation
@@ -358,7 +358,14 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     def _repopulate_available_operations(self):
         # get active engine
         filetype_cls = self.get_property('application').engines_exported_filetype_map[type(self._active_engine)]
-        operation_cls_list = self.get_property('application').filetypes_supported_operations_map[filetype_cls]
+        operation_cls_list = []
+
+        for _cls in filetype_cls.__mro__:
+            if _cls is File:
+                break
+            operation_cls_list.extend(self.get_property('application').filetypes_supported_operations_map[_cls])
+
+        operation_cls_list.sort(key=lambda operation: operation.NAME)
 
         self._controls_operations_model.clear()
         for _class in operation_cls_list:

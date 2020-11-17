@@ -8,12 +8,11 @@ from ..operation import Operation
 from ..utils.exceptions import SkippedOperation
 from ..queue_manager import QueueManager
 from ..utils.decorators import with_pango_docs
+from ..utils import get_random_string
 from ..file import File
 
 import logging
 import os
-import string
-import random
 from pathlib import PurePosixPath
 import hashlib
 import re
@@ -456,13 +455,6 @@ class DropboxUploaderOperation(Operation):
             dialog.run()
             dialog.destroy()
 
-    @classmethod
-    def _get_random_string(cls, length):
-        # Random string with the combination of lower and upper case
-        letters = string.ascii_letters
-        result_str = ''.join(random.choice(letters) for i in range(length))
-        return result_str
-
     def preflight_check(self):
         if not self.params.destination_folder:
             raise Exception('Destination folder cannot be an empty string')
@@ -484,7 +476,7 @@ class DropboxUploaderOperation(Operation):
         except dropbox.exceptions.ApiError:
             # an exception is thrown if the directory already exists
             pass
-        test_filename = f'{self._base_folder}/test-file-{self._get_random_string(6)}.txt'
+        test_filename = f'{self._base_folder}/test-file-{get_random_string(6)}.txt'
         self._dropbox.files_upload(b'Dummy contents', path=test_filename)
 
         # delete file

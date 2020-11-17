@@ -88,6 +88,9 @@ class S3DownloaderOperation(Operation):
                 if remote_etag == local_etag:
                     # attach metadata
                     raise SkippedOperation('File has been downloaded already')
+        else:
+            # ensure the parent directories exist
+            destination.parent.mkdir(parents=True, exist_ok=True)
 
         try:
             s3_client.download_file(

@@ -9,7 +9,7 @@ from watchdog.events import PatternMatchingEventHandler
 from ..engine import Engine
 from ..utils import LongTaskWindow, get_patterns_from_string, get_file_creation_timestamp
 from ..file import FileStatus, RegularFile
-from ..utils.exceptions import AlreadyRunning, NotYetRunning, SkippedOperation
+from ..utils.exceptions import AlreadyRunning, NotYetRunning
 from ..utils.decorators import exported_filetype, with_advanced_settings, with_pango_docs
 from .file_watchdog_engine_advanced_settings import FileWatchdogEngineAdvancedSettings
 
@@ -161,7 +161,7 @@ class EventHandler(PatternMatchingEventHandler):
             if creation_timestamp:
                 _file = RegularFile(file_path, relative_file_path, creation_timestamp, FileStatus.CREATED)
             else:
-                logger.debug("File Not found, skipped")
+                logger.debug(f"File Not found, {file_path} has been skipped")
                 return None
             GLib.idle_add(self._engine._appwindow._queue_manager.add, _file, priority=GLib.PRIORITY_HIGH)
 

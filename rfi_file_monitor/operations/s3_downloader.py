@@ -9,7 +9,7 @@ import botocore
 
 from ..file import AbstractS3Object
 from ..operation import Operation
-from ..utils.decorators import supported_filetypes
+from ..utils.decorators import supported_filetypes, with_pango_docs
 from ..utils import get_random_string
 from ..utils.exceptions import SkippedOperation
 from ..utils.s3 import calculate_etag, TransferConfig, S3ProgressPercentage
@@ -20,6 +20,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 @supported_filetypes(filetypes=[AbstractS3Object])
+@with_pango_docs(filename='s3_downloader.pango')
 class S3DownloaderOperation(Operation):
 
     NAME = 'S3 Downloader'

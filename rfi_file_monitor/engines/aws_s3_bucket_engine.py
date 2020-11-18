@@ -428,6 +428,7 @@ class AWSS3BucketEngineThread(ExitableThread):
                             continue
 
                         last_modified = _object['LastModified']
+                        size = _object['Size']
                         etag = _object['ETag'][1:-1] # get rid of those weird quotes
                         quoted_key = urllib.parse.quote_plus(key)
 
@@ -442,6 +443,7 @@ class AWSS3BucketEngineThread(ExitableThread):
                             FileStatus.SAVED,
                             self._engine.params.bucket_name,
                             etag,
+                            size,
                             client_options['region_name'])
                     
                         existing_files.append(_file)
@@ -501,6 +503,7 @@ class AWSS3BucketEngineThread(ExitableThread):
                     object_info = s3_info['object']
                     key = urllib.parse.unquote_plus(object_info['key'])
                     etag = object_info['eTag']
+                    size = object_info['size']
 
                     if not match_path(key,
                         included_patterns=included_patterns,
@@ -539,7 +542,9 @@ class AWSS3BucketEngineThread(ExitableThread):
                             FileStatus.SAVED,
                             self._engine.params.bucket_name,
                             etag,
-                            client_options['region_name'])
+                            size,
+                            client_options['region_name'],
+                            )
                         GLib.idle_add(self._engine._appwindow._queue_manager.add, _file, priority=GLib.PRIORITY_HIGH)
 
             # delete messages from the queue

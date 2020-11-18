@@ -3,7 +3,7 @@ from __future__ import annotations
 import boto3
 import botocore
 
-from ..utils.decorators import supported_filetypes
+from ..utils.decorators import supported_filetypes, with_pango_docs
 from ..utils.exceptions import SkippedOperation
 from ..utils.s3 import S3ProgressPercentage, TransferConfig
 from ..file import S3Object
@@ -14,6 +14,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 @supported_filetypes(filetypes=S3Object)
+@with_pango_docs(filename='s3_copier.pango')
 class S3CopierOperation(S3UploaderOperation):
 
     NAME = 'S3 Copier'

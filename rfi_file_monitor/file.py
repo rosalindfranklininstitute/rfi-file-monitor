@@ -4,7 +4,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib, Gio
 
 import logging
-from pathlib import PurePath
+from pathlib import PurePath, PurePosixPath
 from typing import Final, Dict, Any, Optional
 from abc import ABC, abstractmethod
 
@@ -27,6 +27,7 @@ class FileStatus(IntEnum):
 
 class File(ABC):
 
+    @abstractmethod
     def __init__(self, \
         filename: str, \
         relative_filename: PurePath, \
@@ -171,11 +172,19 @@ class File(ABC):
         GLib.idle_add(self._update_progressbar_worker_cb, index, value)
 
 class RegularFile(File):
-    pass
+    def __init__(self,
+        filename: str,
+        relative_filename: PurePath,
+        created: int,
+        status: FileStatus
+        ):
 
-class AbstractS3Object(File):
+        super().__init__(
+            filename, relative_filename,
+            created, status,
+        )
 
-    @abstractmethod
+class S3Object(File):
     def __init__(self,
         filename: str,
         relative_filename: PurePath,
@@ -183,6 +192,7 @@ class AbstractS3Object(File):
         status: FileStatus,
         bucket_name: str,
         etag: str,
+        size: int,
         ):
 
         super().__init__(
@@ -191,24 +201,26 @@ class AbstractS3Object(File):
         )
         self._bucket_name = bucket_name
         self._etag = etag
+        self._size = size
+        self._key = str(PurePosixPath(*self._relative_filename.parts))
 
     @property
     def bucket_name(self):
         return self._bucket_name
 
-    @bucket_name.setter
-    def bucket_name(self, value):
-        self._bucket_name = value
-
     @property
     def etag(self):
         return self._etag
 
-    @etag.setter
-    def etag(self, value):
-        self._etag = value
+    @property
+    def key(self):
+        return self._key
 
-class AWSS3Object(AbstractS3Object):
+    @property
+    def size(self):
+        return self._size
+
+class AWSS3Object(S3Object):
     def __init__(self,
         filename: str,
         relative_filename: PurePath,
@@ -216,19 +228,16 @@ class AWSS3Object(AbstractS3Object):
         status: FileStatus,
         bucket_name: str,
         etag: str,
+        size: int,
         region_name: str,
         ):
 
         super().__init__(
             filename, relative_filename, created,
-            status, bucket_name, etag
+            status, bucket_name, etag, size
         )
         self._region_name = region_name
 
     @property
     def region_name(self):
         return self._region_name
-
-    @region_name.setter
-    def region_name(self, value):
-        self._region_name = value

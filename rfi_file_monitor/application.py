@@ -257,7 +257,14 @@ class Application(Gtk.Application):
         about_dialog.present()
 
     def on_quit(self, action, param):
-        self.quit()
+        windows = filter(lambda window: isinstance(window, ApplicationWindow), self.get_windows())
+
+        for index, window in enumerate(windows):
+            logger.debug(f'Closing Window {index}')
+            if window.active_engine.props.running:
+                window.close()
+            else:
+                self.remove_window(window)
 
     def on_help_url(self, action, param):
         webbrowser.open_new_tab(param.get_string())

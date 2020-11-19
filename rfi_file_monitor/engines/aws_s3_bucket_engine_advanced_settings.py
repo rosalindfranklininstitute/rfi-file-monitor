@@ -13,17 +13,6 @@ class AWSS3BucketEngineAdvancedSettings(EngineAdvancedSettings):
 
         self._row_counter = 0
 
-        # Process existing files in monitored directory
-        self._process_existing_files_checkbutton = engine.register_widget(Gtk.CheckButton(
-            label='Process existing files in bucket',
-            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
-            hexpand=True, vexpand=False,
-            active=False), 'process_existing_files')
-        self.attach(self._process_existing_files_checkbutton, 0, self._row_counter, 1, 1)
-        self._row_counter += 1
-
-        self._add_horizontal_separator()
-
         # Specify allowed file patterns
         allowed_patterns_grid = Gtk.Grid(
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,

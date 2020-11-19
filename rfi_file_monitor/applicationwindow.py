@@ -18,7 +18,7 @@ import traceback
 from .utils import PATTERN_PLACEHOLDER_TEXT, MONITOR_YAML_VERSION
 from .utils.paramswindow import ParamsWindow
 from .utils import add_action_entries, EXPAND_AND_FILL, LongTaskWindow, class_in_object_iterable
-from .file import FileStatus
+from .file import FileStatus, File
 from .queue_manager import QueueManager
 from .engine import Engine
 from .operation import Operation
@@ -347,6 +347,55 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         for _index, _status in enumerate(statuses):
             self._status_grid.attach(Gtk.Label(label=f'{_status}: 0'), _index, 0, 1, 1)
 
+        # connect delete-event signal handler
+        self.connect('delete-event', self._delete_event_cb)
+
+    def _delete_event_dialog_timeout(self, dialog):
+        if self._active_engine.props.running:
+            return GLib.SOURCE_CONTINUE
+
+        dialog.response(Gtk.ResponseType.CLOSE)
+
+        return GLib.SOURCE_REMOVE
+
+    def _delete_event_killer(self, engine, _):
+        if engine.props.running is False:
+            self.destroy()
+
+    def _delete_event_cb(self, window, event):
+        logger.debug(f'Enterng _delete_event_cb')
+
+        # If nothing is running, just close it down
+        if not self._active_engine.props.running and not self._queue_manager.get_property('running'):
+            return False
+
+        # else, pop up a dialog asking for confirmation
+        dialog = Gtk.MessageDialog(
+            buttons=Gtk.ButtonsType.OK_CANCEL,
+            message_type=Gtk.MessageType.QUESTION,
+            text='The monitor engine is still running!',
+            secondary_text='Are you sure you want to close this window?',
+            transient_for=self,
+            modal=True,
+            destroy_with_parent=True,
+        )
+
+        source_id = GLib.timeout_add_seconds(1, self._delete_event_dialog_timeout, dialog)
+        rv = dialog.run()
+        dialog.destroy()
+        GLib.source_remove(source_id)
+        
+        if rv in (Gtk.ResponseType.CANCEL, Gtk.ResponseType.DELETE_EVENT):
+            return True
+        elif rv in (Gtk.ResponseType.OK, Gtk.ResponseType.CLOSE):
+            if self._active_engine.props.running and self._queue_manager.get_property('running'):
+                # hookup signal to active_engine running property
+                self._queue_manager.connect('notify::running', self._delete_event_killer)
+                # stop it manually
+                self._active_engine.stop()
+                return True
+            return False
+
     def _switch_page_cb(self, notebook, page, page_num):
         logger.debug(f'_switch_page_cb: {page_num=}')
         self._active_engine.disconnect(self._active_engine_valid_handler_id)
@@ -358,7 +407,14 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     def _repopulate_available_operations(self):
         # get active engine
         filetype_cls = self.get_property('application').engines_exported_filetype_map[type(self._active_engine)]
-        operation_cls_list = self.get_property('application').filetypes_supported_operations_map[filetype_cls]
+        operation_cls_list = []
+
+        for _cls in filetype_cls.__mro__:
+            if _cls is File:
+                break
+            operation_cls_list.extend(self.get_property('application').filetypes_supported_operations_map[_cls])
+
+        operation_cls_list.sort(key=lambda operation: operation.NAME)
 
         self._controls_operations_model.clear()
         for _class in operation_cls_list:
@@ -469,7 +525,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         self.iconify()
 
     def on_close(self, action, param):
-        self.destroy()
+        self.close()
 
     def on_status_filter(self, action, param, arg):
         logger.debug(f'{action.get_state()=} for {str(arg)}')

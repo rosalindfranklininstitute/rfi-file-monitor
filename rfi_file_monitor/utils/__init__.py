@@ -13,6 +13,9 @@ import os
 import platform
 from threading import Thread
 import time
+import string
+import random
+
 from .exceptions import SkippedOperation
 
 # bump this number when the yaml layout changes!
@@ -123,6 +126,11 @@ def get_file_creation_timestamp(file_path: os.PathLike):
         except AttributeError:
             creation_timestamp = os.stat(file_path).st_mtime
     return creation_timestamp
+
+def get_random_string(length: int):
+    letters = string.ascii_letters
+    result_str = ''.join(random.choice(letters) for i in range(length))
+    return result_str
 
 
 class LongTaskWindow(Gtk.Window):

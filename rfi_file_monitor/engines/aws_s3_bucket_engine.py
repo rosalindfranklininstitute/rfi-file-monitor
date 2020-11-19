@@ -9,7 +9,7 @@ from pathtools.patterns import match_path
 import string
 import random
 import time
-from pathlib import Path, PurePosixPath
+from pathlib import PurePosixPath
 import json
 from copy import deepcopy
 import urllib.parse

@@ -14,6 +14,7 @@ import json
 from copy import deepcopy
 import urllib.parse
 from typing import Optional
+import logging
 
 from ..engine import Engine
 from .aws_s3_bucket_engine_advanced_settings import AWSS3BucketEngineAdvancedSettings
@@ -23,24 +24,13 @@ from ..utils.exceptions import AlreadyRunning, NotYetRunning
 from ..utils import ExitableThread, LongTaskWindow, get_patterns_from_string
 from ..operations.s3_uploader import AWS_S3_ENGINE_IGNORE_ME
 
-import logging
-
 logger = logging.getLogger(__name__)
-
-# get endpoints info
-with Path(botocore.__file__).parent.joinpath('data', 'endpoints.json').open('r') as f:
-    _j = json.load(f)
-
-_main_regions = list(_j['partitions'][0]['regions'].keys())
-_main_regions_str = [f"{_region} ({_value['description']})"  for _region, _value in _j['partitions'][0]['regions'].items()]
-_us_east_1_index = _main_regions.index('us-east-1')
 
 AVAILABLE_CONFIGURATIONS = (
     'LambdaFunctionConfigurations',
     'TopicConfigurations',
     'QueueConfigurations'
 )
-
 
 @exported_filetype(filetype=AWSS3Object)
 @with_advanced_settings(engine_advanced_settings=AWSS3BucketEngineAdvancedSettings)

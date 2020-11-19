@@ -58,32 +58,29 @@ class AWSS3BucketEngine(Engine):
         # 3. access key
         # 4. secret key
 
-        # AWS Region
-        self.attach(Gtk.Label(
-            label="AWS Region", 
-            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
-            hexpand=False, vexpand=False,
-        ), 0, 0, 1, 1)
-        self._region_combobox = self.register_widget(Gtk.ComboBoxText(
-            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
-            hexpand=True, vexpand=False,
-        ), 'region')
-        self.attach(self._region_combobox, 1, 0, 1, 1)
-        for _region in _main_regions_str:
-            self._region_combobox.append_text(_region)
-        self._region_combobox.set_active(_us_east_1_index)
-
         # add bucket name -> this bucket must already exist!!!
         self.attach(Gtk.Label(
             label="Bucket Name", 
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False,
-        ), 2, 0, 1, 1)
+        ), 0, 0, 1, 1)
         self._bucket_name_entry = self.register_widget(Gtk.Entry(
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
         ), 'bucket_name')
-        self.attach(self._bucket_name_entry, 3, 0, 1, 1)
+        self.attach(self._bucket_name_entry, 1, 0, 1, 1)
+
+        # Process existing files in monitored directory
+        process_existing_files_switch = self.register_widget(Gtk.Switch(
+            halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+            active=False), 'process_existing_files')
+        self.attach(process_existing_files_switch, 2, 0, 1, 1)
+        self.attach(Gtk.Label(
+            label='Process existing files in bucket',
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+        ), 3, 0, 1, 1)
 
         # Access key
         self.attach(Gtk.Label(
@@ -167,7 +164,6 @@ class AWSS3BucketEngine(Engine):
 
     def _get_client_options(self) -> dict:
         client_options = dict()
-        client_options['region_name'] = _main_regions[_main_regions_str.index(self.params.region)]
         client_options['aws_access_key_id'] = self.params.access_key
         client_options['aws_secret_access_key'] = self.params.secret_key
         return client_options
@@ -270,17 +266,32 @@ class AWSS3BucketEngineThread(ExitableThread):
     def run(self):
         client_options = self._engine._get_client_options()
 
-        # set up s3 client
-        self._engine.s3_client = boto3.client('s3', **client_options)
+        # set up temporary s3 client
+        temp_s3_client = boto3.client('s3', **client_options)
 
         # first confirm that the bucket exists and that we can read it
         try:
             logger.debug(f"Checking if bucket {self._engine.params.bucket_name} exists")
-            self._engine.s3_client.head_bucket(Bucket=self._engine.params.bucket_name)
+            temp_s3_client.head_bucket(Bucket=self._engine.params.bucket_name)
         except Exception as e:
             self._engine._cleanup()
             GLib.idle_add(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
             return
+
+        # next try to get the region the bucket is located in
+        # see https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html#S3.Client.get_bucket_location
+        try:
+            logger.debug(f'Getting {self._engine.params.bucket_name} location')
+            response = temp_s3_client.get_bucket_location(Bucket=self._engine.params.bucket_name)
+        except Exception as e:
+            self._engine._cleanup()
+            GLib.idle_add(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+            return
+        
+        client_options['region_name'] = response['LocationConstraint'] if response['LocationConstraint'] else 'us-east-1'
+
+        # set up proper s3 client
+        self._engine.s3_client = boto3.client('s3', **client_options)
 
         # set up sqs client
         self._engine.sqs_client = boto3.client('sqs', **client_options)
@@ -417,7 +428,9 @@ class AWSS3BucketEngineThread(ExitableThread):
                 existing_files = []
 
                 for page in page_iterator:
-                    logger.debug(f"{page['Contents']}")
+                    logger.debug(f"{page}")
+                    if page['KeyCount'] == 0:
+                        continue
                     for _object in page['Contents']:
                         key = _object['Key']
 
@@ -447,8 +460,8 @@ class AWSS3BucketEngineThread(ExitableThread):
                             client_options['region_name'])
                     
                         existing_files.append(_file)
-
-                GLib.idle_add(self._engine._appwindow._queue_manager.add, existing_files, priority=GLib.PRIORITY_HIGH)
+                if existing_files:
+                    GLib.idle_add(self._engine._appwindow._queue_manager.add, existing_files, priority=GLib.PRIORITY_HIGH)
             except Exception as e:
                 self._engine._cleanup()
                 GLib.idle_add(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)

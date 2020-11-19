@@ -52,6 +52,9 @@ class WidgetParams:
     def _combobox_changed_cb(self,combobox: Gtk.ComboBoxText, param_name: str):
         self._params[param_name] = combobox.get_active_text()
 
+    @final
+    def _switch_value_changed_cb(self, switch: Gtk.Switch, _, param_name: str):
+        self._params[param_name] = switch.get_active()
 
     @final
     def register_widget(self,
@@ -63,7 +66,10 @@ class WidgetParams:
         if param_name in self._params:
             raise ValueError("register_widget cannot overwrite existing parameters!")
 
-        if isinstance(widget, Gtk.SpinButton):
+        if isinstance(widget, Gtk.Switch):
+            self._params[param_name] = widget.get_active()
+            self._signal_ids[param_name] = widget.connect("notify::active", self._switch_value_changed_cb, param_name)
+        elif isinstance(widget, Gtk.SpinButton):
             self._params[param_name] = widget.get_value()
             self._signal_ids[param_name] = widget.connect("value-changed", self._spinbutton_value_changed_cb, param_name)
         elif isinstance(widget, Gtk.CheckButton):
@@ -106,7 +112,7 @@ class WidgetParams:
 
                 if isinstance(widget, Gtk.SpinButton):
                     widget.set_value(value)
-                elif isinstance(widget, Gtk.CheckButton):
+                elif isinstance(widget, Gtk.CheckButton) or isinstance(widget, Gtk.Switch):
                     widget.set_active(value)
                 elif isinstance(widget, Gtk.FileChooserButton):
                     if value is None or not Path(value).exists:

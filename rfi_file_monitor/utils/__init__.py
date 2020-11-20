@@ -4,6 +4,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gio, GLib, Gtk
 from tenacity.retry import retry_base
+from requests.adapters import HTTPAdapter
 
 from typing import Callable, Optional, Final, Any, Dict, List, Iterable
 import logging
@@ -27,7 +28,23 @@ PREFERENCES_CONFIG_FILE = Path(GLib.get_user_config_dir(), 'rfi-file-monitor', '
 
 PATTERN_PLACEHOLDER_TEXT = 'e.g *.txt, *.csv or *temp* or *log*'
 
+DEFAULT_TIMEOUT = 5 # seconds
+
 logger = logging.getLogger(__name__)
+
+class TimeoutHTTPAdapter(HTTPAdapter):
+    def __init__(self, *args, **kwargs):
+        self.timeout = DEFAULT_TIMEOUT
+        if "timeout" in kwargs:
+            self.timeout = kwargs["timeout"]
+            del kwargs["timeout"]
+        super().__init__(*args, **kwargs)
+
+    def send(self, request, **kwargs):
+        timeout = kwargs.get("timeout")
+        if timeout is None:
+            kwargs["timeout"] = self.timeout
+        return super().send(request, **kwargs)
 
 # had to write my own retry condition class to support:
 # 1. retry if an exception was thrown that was not a SkippedOperation

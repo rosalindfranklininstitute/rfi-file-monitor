@@ -49,7 +49,7 @@ test:
     - rfi_file_monitor.engines.file_watchdog_engine_advanced_settings
     - rfi_file_monitor.engines.file_watchdog_engine
     - rfi_file_monitor.engines.temporary_file_engine
-    - rfi_file_monitor.engines.url_engine
+    - rfi_file_monitor.engines.urls_engine
     - rfi_file_monitor.file
     - rfi_file_monitor.job
     - rfi_file_monitor.operation

@@ -5,7 +5,6 @@ from gi.repository import Gtk, Gdk, GLib
 
 from ..engine import Engine
 from ..file import URL, FileStatus
-from ..operation import Operation
 from ..utils import ExitableThread, LongTaskWindow
 from ..utils.decorators import exported_filetype, with_pango_docs
 from ..utils.exceptions import AlreadyRunning, NotYetRunning

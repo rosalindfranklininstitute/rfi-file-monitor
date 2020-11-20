@@ -1,6 +1,3 @@
-import gi
-gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, GLib
 import requests
 #pylint: disable=import-error
 from requests.packages.urllib3.util.retry import Retry
@@ -53,7 +50,7 @@ class UrlDownloaderOperation(S3DownloaderOperation):
 
         try:
             url_size = int(response.headers['Content-Length'])
-        except:
+        except Exception:
             url_size = None
 
         if destination.exists():
@@ -67,7 +64,7 @@ class UrlDownloaderOperation(S3DownloaderOperation):
                         raise SkippedOperation('File has been downloaded already')
             except SkippedOperation:
                 raise
-            except:
+            except Exception:
                 pass
         else:
             destination.parent.mkdir(parents=True, exist_ok=True)

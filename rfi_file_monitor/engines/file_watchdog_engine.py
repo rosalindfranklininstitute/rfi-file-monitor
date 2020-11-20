@@ -60,7 +60,7 @@ class FileWatchdogEngine(Engine):
             try:
                 os.listdir(self.params.monitored_directory)
                 self._valid = True
-            except PermissionError:
+            except Exception:
                 self._valid = False
         logger.debug(f'_directory_chooser_button_cb: {self._valid}')
         self.notify('valid')

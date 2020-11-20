@@ -184,6 +184,19 @@ class RegularFile(File):
             created, status,
         )
 
+class URL(File):
+    def __init__(self,
+        filename: str,
+        relative_filename: PurePath,
+        created: int,
+        status: FileStatus
+        ):
+
+        super().__init__(
+            filename, relative_filename,
+            created, status,
+        )
+
 class S3Object(File):
     def __init__(self,
         filename: str,

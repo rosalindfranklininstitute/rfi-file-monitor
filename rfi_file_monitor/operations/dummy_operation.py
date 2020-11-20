@@ -10,12 +10,12 @@ from random import random
 from ..operation import Operation
 from ..utils.exceptions import SkippedOperation
 from ..utils.decorators import with_pango_docs, supported_filetypes
-from ..file import File, RegularFile, AWSS3Object
+from ..file import File, RegularFile, AWSS3Object, URL
 
 logger = logging.getLogger(__name__)
 
 @with_pango_docs(filename='dummy_operation.pango')
-@supported_filetypes(filetypes=[RegularFile, AWSS3Object])
+@supported_filetypes(filetypes=[RegularFile, AWSS3Object, URL])
 class DummyOperation(Operation):
     NAME = "Dummy Operation"
 

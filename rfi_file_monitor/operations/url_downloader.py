@@ -9,7 +9,7 @@ from ..file import URL
 from ..queue_manager import QueueManager
 from .s3_downloader import S3DownloaderOperation
 from ..utils import get_file_creation_timestamp, TimeoutHTTPAdapter
-from ..utils.decorators import supported_filetypes
+from ..utils.decorators import supported_filetypes, with_pango_docs
 from ..utils.exceptions import SkippedOperation
 
 import logging
@@ -32,6 +32,7 @@ SESSION.mount("https://", adapter)
 SESSION.mount("http://", adapter)
 
 @supported_filetypes(filetypes=URL)
+@with_pango_docs(filename='url_downloader.pango')
 class UrlDownloaderOperation(S3DownloaderOperation):
 
     NAME = 'URL Downloader'

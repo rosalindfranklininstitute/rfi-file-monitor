@@ -7,7 +7,7 @@ from ..engine import Engine
 from ..file import URL, FileStatus
 from ..operation import Operation
 from ..utils import ExitableThread, LongTaskWindow
-from ..utils.decorators import exported_filetype
+from ..utils.decorators import exported_filetype, with_pango_docs
 from ..utils.exceptions import AlreadyRunning, NotYetRunning
 
 import logging
@@ -18,6 +18,7 @@ from time import time
 
 logger = logging.getLogger(__name__)
 
+@with_pango_docs(filename='urls_engine.pango')
 @exported_filetype(filetype=URL)
 class URLsEngine(Engine):
 

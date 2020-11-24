@@ -1,0 +1,18 @@
+<span size="xx-large">URLs from File Loader</span>
+
+<span size="x-large">Purpose</span>
+
+This engine reads a list of URLs from a text file and passes them on the Queue Manager. Empty lines and lines starting with '#' are ignored in the text file.
+
+<span size="x-large">Options</span>
+
+* <b>File with URLs</b>: the name of the file containing URLs to 
+load.
+
+<span size="x-large">Exported File Format</span>
+
+<b>URL</b>
+
+<span size="x-large">Author</span>
+
+Tom Schoonjans

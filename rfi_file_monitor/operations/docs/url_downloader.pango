@@ -1,0 +1,17 @@
+<span size="xx-large">URL Downloader</span>
+
+<span size="x-large">Purpose</span>
+
+Use this operation to download URLs to the local filesystem.
+
+<span size="x-large">Options</span>
+
+* <b>Download Destination</b>: the name of the directory to write the downloaded URLs into.
+
+<span size="x-large">Supported File Formats</span>
+
+<b>URL</b>
+
+<span size="x-large">Author</span>
+
+Tom Schoonjans

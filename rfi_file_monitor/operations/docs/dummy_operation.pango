@@ -14,7 +14,7 @@ Potentially interesting options are:
 
 <span size="x-large">Supported File Formats</span>
 
-<b>RegularFile</b>, <b>S3Object</b>
+<b>RegularFile</b>, <b>S3Object</b>, <b>URL</b>, <b>Directory</b>
 
 <span size="x-large">Author</span>
 

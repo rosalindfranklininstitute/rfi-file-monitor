@@ -46,6 +46,7 @@ test:
     - rfi_file_monitor.engines
     - rfi_file_monitor.engines.aws_s3_bucket_engine
     - rfi_file_monitor.engines.aws_s3_bucket_engine_advanced_settings
+    - rfi_file_monitor.engines.directory_watchdog_engine
     - rfi_file_monitor.engines.file_watchdog_engine_advanced_settings
     - rfi_file_monitor.engines.file_watchdog_engine
     - rfi_file_monitor.engines.temporary_file_engine

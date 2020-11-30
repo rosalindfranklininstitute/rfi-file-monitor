@@ -52,7 +52,6 @@ class FileWatchdogEngine(Engine):
         self._monitor : Final[Observer] = None
 
     def _directory_chooser_button_cb(self, button):
-        #self.set_title(f"Monitoring: {self.params.monitored_directory}")
         if self.params.monitored_directory is None or \
             Path(self.params.monitored_directory).is_dir() is False:
             self._valid = False

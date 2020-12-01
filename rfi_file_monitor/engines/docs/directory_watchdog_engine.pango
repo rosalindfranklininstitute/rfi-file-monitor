@@ -1,0 +1,23 @@
+<span size="xx-large">Directories Monitor</span>
+
+<span size="x-large">Purpose</span>
+
+The Directories Monitor observes a folder for new subdirectories being created directly within it. This engine exports <i>Directory</i> instances, which are a representation of all files and folders contained within a subdirectory, and operations will be expected to process the entire directory structure contained within.
+
+<span size="x-large">Options</span>
+
+* <b>Monitored Directory</b>: the directory that will be monitored by the engine.
+
+The following options are availabled when clicking the Advanced Settings button:
+
+* <b>Process existing directories in target directory</b>: turn this option on to add existing directories (with status <i>Saved</i>) to the queue manager before launching Watchdog.
+* <b>Allowed filename and directory patterns</b>: enter a comma separated list of patterns containing wildcards to only process a subset of the available directories. When processing the directory with an operation, the patterns will also be applied to the filenames within the directory.
+* <b>Ignored filename and directory patterns</b>: enter a comma separated list of patterns containing wildcards to exclude a subset of the available directories. When processing the directory with an operation, the patterns will also be used to exclude filenames within the directory.
+
+<span size="x-large">Exported File Format</span>
+
+<b>Directory</b>
+
+<span size="x-large">Author</span>
+
+Tom Schoonjans

@@ -12,7 +12,7 @@ from .directory_watchdog_engine_advanced_settings import DirectoryWatchdogEngine
 from ..engine import Engine
 from ..file import Directory, FileStatus
 from ..utils import get_file_creation_timestamp, LongTaskWindow, get_patterns_from_string, DEFAULT_IGNORE_PATTERNS
-from ..utils.decorators import exported_filetype, with_advanced_settings
+from ..utils.decorators import exported_filetype, with_advanced_settings, with_pango_docs
 from ..utils.exceptions import AlreadyRunning, NotYetRunning
 
 import logging
@@ -23,6 +23,7 @@ from threading import Thread
 
 logger = logging.getLogger(__name__)
 
+@with_pango_docs(filename='directory_watchdog_engine.pango')
 @with_advanced_settings(engine_advanced_settings=DirectoryWatchdogEngineAdvancedSettings)
 @exported_filetype(filetype=Directory)
 class DirectoryWatchdogEngine(Engine):

@@ -3,23 +3,27 @@ from __future__ import annotations
 import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
-from gi.repository import Gtk, GLib
+from gi.repository import Gtk, GLib, Gdk
+from pathtools.patterns import match_path
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler, DirCreatedEvent, FileCreatedEvent, FileModifiedEvent
 
+from .directory_watchdog_engine_advanced_settings import DirectoryWatchdogEngineAdvancedSettings
 from ..engine import Engine
 from ..file import Directory, FileStatus
-from ..utils import get_file_creation_timestamp
-from ..utils.decorators import exported_filetype
+from ..utils import get_file_creation_timestamp, LongTaskWindow, get_patterns_from_string, DEFAULT_IGNORE_PATTERNS
+from ..utils.decorators import exported_filetype, with_advanced_settings
 from ..utils.exceptions import AlreadyRunning, NotYetRunning
 
 import logging
 from typing import Final, List
 from pathlib import Path, PurePath
 import os
+from threading import Thread
 
 logger = logging.getLogger(__name__)
 
+@with_advanced_settings(engine_advanced_settings=DirectoryWatchdogEngineAdvancedSettings)
 @exported_filetype(filetype=Directory)
 class DirectoryWatchdogEngine(Engine):
 
@@ -71,7 +75,18 @@ class DirectoryWatchdogEngine(Engine):
         if self._running:
             raise AlreadyRunning('The engine is already running. It needs to be stopped before it may be restarted')
 
-        self._start_watchdog()
+        if self.params.process_existing_directories:
+            # pop up a long task window
+            # spawn a thread for this to avoid GUI freezes
+            task_window = LongTaskWindow(self._appwindow)
+            task_window.set_text("<b>Checking for existing directories</b>")
+            task_window.show()
+            watch_cursor = Gdk.Cursor.new_for_display(Gdk.Display.get_default(), Gdk.CursorType.WATCH)
+            task_window.get_window().set_cursor(watch_cursor)
+
+            ProcessExistingDirectoriesThread(self, task_window).start()
+        else:
+            self._start_watchdog()
 
     def stop(self):
         if not self._running:
@@ -82,13 +97,72 @@ class DirectoryWatchdogEngine(Engine):
         self._running = False
         self.notify('running')
 
+    def _process_existing_directories_thread_cb(self, task_window: LongTaskWindow, existing_directories: List[Directory]):
+        self._appwindow._queue_manager.add(existing_directories)
+
+        # destroy task window
+        task_window.get_window().set_cursor(None)
+        task_window.destroy()
+
+        self._start_watchdog()
+
+        return GLib.SOURCE_REMOVE
+
+class ProcessExistingDirectoriesThread(Thread):
+    def __init__(self, engine: DirectoryWatchdogEngine, task_window: LongTaskWindow):
+        super().__init__()
+        self._engine = engine
+        self._task_window = task_window
+        self._included_patterns = get_patterns_from_string(self._engine.params.allowed_patterns)
+        self._excluded_patterns = get_patterns_from_string(self._engine.params.ignore_patterns, defaults=DEFAULT_IGNORE_PATTERNS)
+
+    def _search_for_existing_files(self, directory: Path) -> int:
+        rv: int = 0
+        for child in directory.iterdir():
+            if child.is_file() \
+                and not child.is_symlink() \
+                and match_path(str(child), included_patterns=self._included_patterns, excluded_patterns=self._excluded_patterns,
+                               case_sensitive=False):
+                
+                rv += 1
+            elif child.is_dir() and not child.is_symlink():
+                rv += self._search_for_existing_files(directory.joinpath(child))
+        return rv
+    
+    def _dir_filter(self, child: Path) -> bool:
+        return child.is_dir() and \
+            not child.is_symlink() and \
+            match_path(str(child),
+                included_patterns=self._included_patterns,
+                excluded_patterns=self._excluded_patterns,
+                case_sensitive=False) and \
+            (self._search_for_existing_files(child) > 0)
+
+    def _search_for_existing_directories(self, directory: Path) -> List[Directory]:
+        rv: List[Directory] = list()
+        dirs = filter(self._dir_filter, directory.iterdir())
+
+        for _dir in dirs:
+            rv.append(Directory(
+                str(_dir),
+                PurePath(_dir.name),
+                get_file_creation_timestamp(_dir),
+                FileStatus.SAVED,
+                self._included_patterns,
+                self._excluded_patterns,
+                ))
+        return rv
+
+    def run(self):
+        existing_directories = self._search_for_existing_directories(Path(self._engine.params.monitored_directory))
+        GLib.idle_add(self._engine._process_existing_directories_thread_cb, self._task_window, existing_directories, priority=GLib.PRIORITY_DEFAULT_IDLE)
+
 class EventHandler(PatternMatchingEventHandler):
     def __init__(self, engine: DirectoryWatchdogEngine):
         self._engine = engine 
-        super().__init__(ignore_directories=False)
-        #included_patterns = get_patterns_from_string(self._engine.params.allowed_patterns)
-        #ignore_patterns =  get_patterns_from_string(self._engine.params.ignore_patterns, defaults=IGNORE_PATTERNS)
-        #super().__init__(patterns=included_patterns, ignore_patterns=ignore_patterns, ignore_directories=True)
+        self._included_patterns = get_patterns_from_string(self._engine.params.allowed_patterns)
+        self._excluded_patterns = get_patterns_from_string(self._engine.params.ignore_patterns, defaults=DEFAULT_IGNORE_PATTERNS)
+        super().__init__(patterns=self._included_patterns, ignore_patterns=self._excluded_patterns, ignore_directories=False)
 
         self._empty_directories : List[Directory] = []
 
@@ -128,7 +202,13 @@ class EventHandler(PatternMatchingEventHandler):
                 new_path = os.path.join(self._engine.params.monitored_directory, rel_path.parts[0])
                 creation_timestamp = get_file_creation_timestamp(new_path)
                 if creation_timestamp:
-                    _dir = Directory(new_path, PurePath(rel_path.parts[0]), creation_timestamp, FileStatus.CREATED)
+                    _dir = Directory(
+                        new_path,
+                        PurePath(rel_path.parts[0]),
+                        creation_timestamp,
+                        FileStatus.CREATED,
+                        self._included_patterns,
+                        self._excluded_patterns)
                 else:
                     logger.debug(f"File Not found, {path} has been skipped")
                     return 
@@ -140,7 +220,6 @@ class EventHandler(PatternMatchingEventHandler):
                 new_path = os.path.join(self._engine.params.monitored_directory, rel_path.parts[0])
                 GLib.idle_add(self._engine._appwindow._queue_manager.saved, new_path, priority=GLib.PRIORITY_HIGH)
 
-            
         else:
             raise NotImplementedError(f'Unknown event type {str(event)} in on_created')
 

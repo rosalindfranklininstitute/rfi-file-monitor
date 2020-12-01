@@ -5,7 +5,7 @@ from gi.repository import Gtk, GLib, Gio
 
 import logging
 from pathlib import PurePath, PurePosixPath
-from typing import Final, Dict, Any, Optional
+from typing import Final, Dict, Any, Optional, List
 from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
@@ -189,13 +189,26 @@ class Directory(File):
         filename: str,
         relative_filename: PurePath,
         created: int,
-        status: FileStatus
+        status: FileStatus,
+        included_patterns: Optional[List[str]],
+        excluded_patterns: Optional[List[str]],
         ):
 
         super().__init__(
             filename, relative_filename,
             created, status,
         )
+
+        self._included_patterns = included_patterns
+        self._excluded_patterns = excluded_patterns
+
+    @property
+    def included_patterns(self):
+        return self._included_patterns
+
+    @property
+    def excluded_patterns(self):
+        return self._excluded_patterns
 
 class URL(File):
     def __init__(self,

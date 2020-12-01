@@ -407,7 +407,7 @@ class AWSS3BucketEngineThread(ExitableThread):
 
         # prepare patterns
         included_patterns = get_patterns_from_string(self._engine.params.allowed_patterns)
-        ignore_pattern_strings = get_patterns_from_string(self._engine.params.ignore_patterns, defaults=[])
+        excluded_patterns = get_patterns_from_string(self._engine.params.ignore_patterns, defaults=[])
 
         # if required, add existing files to queue
         if self._engine.params.process_existing_files:
@@ -426,7 +426,7 @@ class AWSS3BucketEngineThread(ExitableThread):
 
                         if not match_path(key,
                             included_patterns=included_patterns,
-                            excluded_patterns=ignore_pattern_strings,
+                            excluded_patterns=excluded_patterns,
                             case_sensitive=False):
                             continue
 
@@ -510,7 +510,7 @@ class AWSS3BucketEngineThread(ExitableThread):
 
                     if not match_path(key,
                         included_patterns=included_patterns,
-                        excluded_patterns=ignore_pattern_strings,
+                        excluded_patterns=excluded_patterns,
                         case_sensitive=False):
                         continue
 

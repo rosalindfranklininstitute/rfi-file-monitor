@@ -1,12 +1,15 @@
-from enum import auto, IntEnum, unique
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib, Gio
+from pathtools.patterns import match_path
 
+from enum import auto, IntEnum, unique
 import logging
-from pathlib import PurePath, PurePosixPath
-from typing import Final, Dict, Any, Optional, List
+from pathlib import PurePath, PurePosixPath, Path
+from typing import Final, Dict, Any, Optional, List, Tuple
 from abc import ABC, abstractmethod
+from time import time
+
 
 logger = logging.getLogger(__name__)
 
@@ -224,6 +227,10 @@ class Directory(File):
         self._included_patterns = included_patterns
         self._excluded_patterns = excluded_patterns
 
+        self._filelist : List[Tuple[str, int]] = []
+        self._filelist_timestamp : int = 0
+        self._total_size : int = 0
+
     @property
     def included_patterns(self):
         return self._included_patterns
@@ -231,6 +238,36 @@ class Directory(File):
     @property
     def excluded_patterns(self):
         return self._excluded_patterns
+
+    def _get_filelist(self, _dir: Path) -> List[Tuple[str, int]]:
+        rv: List[Tuple[str, int]] = []
+        for entry in _dir.iterdir():
+            if not match_path(str(entry), included_patterns=self._included_patterns, excluded_patterns=self._excluded_patterns, case_sensitive=False):
+                continue
+            if entry.is_file() and not entry.is_symlink():
+                size = entry.stat().st_size
+                self._total_size += size
+                rv.append((str(entry), size, ))
+            elif entry.is_dir() and not entry.is_symlink():
+                rv.extend(self._get_filelist(entry))
+        return rv
+
+    def _refresh_filelist(self):
+        self._total_size = 0
+        self._filelist = self._get_filelist(Path(self.filename))
+        self._filelist_timestamp = time()
+
+    @property
+    def total_size(self):
+        if self._filelist_timestamp < self._saved:
+            self._refresh_filelist()
+        return self._total_size
+
+    def __iter__(self):
+        if self._filelist_timestamp < self._saved:
+            self._refresh_filelist()
+        yield from self._filelist
+
 
 class URL(File):
     def __init__(self,

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from gi.repository import Gio
-from pathtools.patterns import match_path
 
 from ..engine_advanced_settings import EngineAdvancedSettings
 from ..engine import Engine
@@ -9,7 +8,7 @@ from ..utils.exceptions import SkippedOperation
 from ..file import File, RegularFile, Directory, WeightedRegularFile, FileStatus
 from ..operation import Operation
 
-from typing import Type, Union, Sequence, Callable, Optional, List, Tuple
+from typing import Type, Union, Sequence, Callable, Optional
 import logging
 import inspect
 from pathlib import Path
@@ -97,38 +96,22 @@ def supported_filetypes(filetypes: Union[Type[File], Sequence[Type[File]]]):
         return cls
     return _supported_filetypes
 
-def _get_filelist(_dir: Path, included_patterns, excluded_patterns) -> List[Tuple[str, int]]:
-    rv: List[Tuple[str, int]] = []
-    for entry in _dir.iterdir():
-        if not match_path(str(entry), included_patterns=included_patterns, excluded_patterns=excluded_patterns, case_sensitive=False):
-            continue
-        if entry.is_file() and not entry.is_symlink():
-            rv.append((str(entry), entry.stat().st_size, ))
-        elif entry.is_dir() and not entry.is_symlink():
-            rv.extend(_get_filelist(entry, included_patterns, excluded_patterns))
-    
-    return rv
-
 # currently I am using filesize to determine weight in progressbar changes
 # it shouldnt be hard to add support for other types of weights as well, which could be as easy as the file index in the list...
 def add_directory_support(run: Callable[[Operation, File], Optional[str]]):
     @functools.wraps(run)
     def wrapper(self: Operation, file: File):
         current_thread = threading.current_thread()
+
         if isinstance(file, RegularFile):
             return run(self, file)
         elif isinstance(file, Directory):
             # get all files contained with Directory, as well as their sizes
             _path = Path(file.filename)
             _parent = _path.parent
-            file_list = _get_filelist(_path, file.included_patterns, file.excluded_patterns)
-            if not file_list:
-                return "Directory contains no useful files"
-            total_size = 0
-            for _, size in file_list:
-                total_size += size
+            total_size = file.total_size
             size_seen = 0
-            for filename, size in file_list:
+            for filename, size in file:
                 # abort if job has been cancelled
                 if current_thread.should_exit:
                     return str('Thread killed')
@@ -159,7 +142,6 @@ def add_directory_support(run: Callable[[Operation, File], Optional[str]]):
                     return rv
 
             return None
-
         else:
             raise NotImplementedError(f'{type(file)} is currently unsupported')
     return wrapper

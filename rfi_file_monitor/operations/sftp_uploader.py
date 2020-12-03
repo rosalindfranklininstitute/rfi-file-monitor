@@ -9,9 +9,9 @@ from tenacity import retry, stop_after_attempt, wait_exponential, \
 
 from ..operation import Operation
 from ..utils.exceptions import SkippedOperation
-from ..file import File
+from ..file import File, RegularFile, Directory
 from ..utils import monitor_retry_condition
-from ..utils.decorators import with_pango_docs
+from ..utils.decorators import with_pango_docs, supported_filetypes, add_directory_support
 
 import logging
 import os
@@ -25,6 +25,7 @@ from threading import RLock
 logger = logging.getLogger(__name__)
 
 @with_pango_docs(filename='sftp_uploader.pango')
+@supported_filetypes(filetypes=(RegularFile, Directory))
 class SftpUploaderOperation(Operation):
 
     NAME = "SFTP Uploader"
@@ -433,6 +434,7 @@ class SftpUploaderOperation(Operation):
             cls._attach_metadata(file, remote_filename_full, params, operation_index)
         return None
 
+    @add_directory_support
     def run(self, file: File):
         return self._run(file, self.params, self.index, self._processed_dirs, self._processed_dirs_lock)
 

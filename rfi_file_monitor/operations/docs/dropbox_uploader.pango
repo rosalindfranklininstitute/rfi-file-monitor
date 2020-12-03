@@ -18,7 +18,7 @@ It is possible to add multiple Dropbox accounts to a pipeline, as long as they h
 
 <span size="x-large">Supported File Formats</span>
 
-<b>RegularFile</b>
+<b>RegularFile</b>, <b>Directory</b>
 
 <span size="x-large">Author</span>
 

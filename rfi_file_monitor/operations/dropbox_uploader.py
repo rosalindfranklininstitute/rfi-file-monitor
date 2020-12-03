@@ -7,9 +7,9 @@ import keyring
 from ..operation import Operation
 from ..utils.exceptions import SkippedOperation
 from ..queue_manager import QueueManager
-from ..utils.decorators import with_pango_docs
+from ..utils.decorators import with_pango_docs, supported_filetypes, add_directory_support
 from ..utils import get_random_string
-from ..file import File
+from ..file import File, RegularFile, Directory
 
 import logging
 import os
@@ -249,6 +249,7 @@ class DropboxSpaceCheckerThread(Thread):
         GLib.idle_add(self._operation._update_space_usage, usage, priority=GLib.PRIORITY_DEFAULT_IDLE)
 
 @with_pango_docs(filename='dropbox_uploader.pango')
+@supported_filetypes(filetypes=[RegularFile, Directory])
 class DropboxUploaderOperation(Operation):
     NAME = "Dropbox Uploader"
 
@@ -482,6 +483,7 @@ class DropboxUploaderOperation(Operation):
         # delete file
         self._dropbox.files_delete_v2(test_filename)
 
+    @add_directory_support
     def run(self, file: File):
         # check first if file already exists
         # if it does, then first get its size

@@ -9,9 +9,9 @@ from munch import Munch
 
 from ..operation import Operation
 from ..utils.exceptions import SkippedOperation
-from ..file import File
+from ..file import File, RegularFile, Directory
 from ..utils import query_metadata
-from ..utils.decorators import with_pango_docs
+from ..utils.decorators import with_pango_docs, supported_filetypes, add_directory_support
 from ..utils.s3 import S3ProgressPercentage, TransferConfig, calculate_etag
 
 import os
@@ -50,6 +50,7 @@ ALLOWED_OBJECT_ACL_OPTIONS = (
 AWS_S3_ENGINE_IGNORE_ME = 'rfi-file-monitor-ignore-me'
 
 @with_pango_docs(filename='s3_uploader.pango')
+@supported_filetypes(filetypes=(RegularFile, Directory))
 class S3UploaderOperation(Operation):
     NAME = "S3 Uploader"
 
@@ -323,6 +324,7 @@ class S3UploaderOperation(Operation):
             del client_options
         return None
 
+    @add_directory_support
     def run(self, file: File):
         return self._run(file, self.appwindow.preflight_check_metadata, self.params, self.index)
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import gi
 from gi.repository import GLib
 import requests
 
@@ -35,8 +34,8 @@ class GoogleAnalyticsConsumer(ExitableThread):
                 try:
                     response.raise_for_status()
                     logger.debug(f'Event sent to Google Analytics!: {data} -> {response.status_code}')
-                except:
-                    logger.debug('post failure')
+                except Exception as e:
+                    logger.debug(f'post failure: {str(e)}')
  
             time.sleep(0.1)
 
@@ -61,7 +60,7 @@ class GoogleAnalyticsContext:
             try:
                 self._config_file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
                 self._config_file.write_text(_uuid)
-            except:
+            except Exception:
                 pass
 
         self._base_payload = dict(

@@ -66,10 +66,12 @@ test:
     - rfi_file_monitor.utils
     - rfi_file_monitor.utils.decorators
     - rfi_file_monitor.utils.exceptions
+    - rfi_file_monitor.utils.googleanalytics
     - rfi_file_monitor.utils.helpwindow
     - rfi_file_monitor.utils.paramswindow
     - rfi_file_monitor.utils.s3
     - rfi_file_monitor.utils.widgetparams
+    - rfi_file_monitor.version
   commands:
     - pip check
     - test -f $SP_DIR/rfi_file_monitor/docs/queue_manager.pango  # [unix]

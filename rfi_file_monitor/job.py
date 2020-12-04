@@ -4,6 +4,7 @@ import logging
 from .file import File, FileStatus
 from .utils.exceptions import SkippedOperation
 from .utils import ExitableThread
+from .utils.googleanalytics import DEFAULT_CONTEXT
 
 from tenacity import RetryError
 
@@ -37,6 +38,7 @@ class Job(ExitableThread):
                 rv = "Monitoring aborted"
             elif rv is None:
                 try:
+                    DEFAULT_CONTEXT.send_event('RUN-OPERATION', operation.NAME)
                     rv = operation.run(self._file)
                 except SkippedOperation as e:
                     rv = e

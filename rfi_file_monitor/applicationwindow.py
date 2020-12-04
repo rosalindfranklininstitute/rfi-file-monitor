@@ -17,6 +17,7 @@ import traceback
 
 from .utils import PATTERN_PLACEHOLDER_TEXT, MONITOR_YAML_VERSION
 from .utils.paramswindow import ParamsWindow
+from .utils.googleanalytics import DEFAULT_CONTEXT
 from .utils import add_action_entries, EXPAND_AND_FILL, LongTaskWindow, class_in_object_iterable
 from .file import FileStatus, File
 from .queue_manager import QueueManager
@@ -599,6 +600,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         if active_engine.props.running:
             # at this point things should really be running.
             self.lookup_action('stop').set_enabled(True)
+            DEFAULT_CONTEXT.send_event('RUN-ENGINE', active_engine.NAME)
         else:
             self.lookup_action('stop').set_enabled(False)
             self._queue_manager.stop()

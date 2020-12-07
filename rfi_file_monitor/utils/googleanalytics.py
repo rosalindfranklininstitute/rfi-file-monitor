@@ -77,6 +77,10 @@ class GoogleAnalyticsContext:
         # launch consumer thread
         self._consumer_thread = GoogleAnalyticsConsumer(self)
         self._consumer_thread.start()
+    
+    def __del__(self):
+        if self._consumer_thread.is_alive():
+            self._consumer_thread.should_exit = True
 
     @property
     def consumer_thread(self):
@@ -94,7 +98,8 @@ class GoogleAnalyticsContext:
             return
 
         try:
-            self._queue.put_nowait((category, action, label))
+            if self._consumer_thread.is_alive():
+                self._queue.put_nowait((category, action, label))
         except Full:
             logger.exception('queue is full!')
 
@@ -104,14 +109,3 @@ class GoogleAnalyticsContext:
         except ValueError:
             return False
         return True
-
-
-
-
-DEFAULT_CONTEXT = GoogleAnalyticsContext(
-    endpoint="https://www.google-analytics.com/collect",
-    tracking_id="UA-184737687-1",
-    application_name="RFI-File-Monitor",
-    application_version=__version__,
-    config_file=Path(GLib.get_user_config_dir(), 'rfi-file-monitor', 'ga.conf'),
-)

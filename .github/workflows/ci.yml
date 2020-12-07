@@ -28,8 +28,6 @@ jobs:
       - name: Install conda-build
         run: conda install -c conda-forge -y conda-build
       - name: Run conda-build
-        timeout-minutes: 60
-        run: |
-          conda build --quiet -c conda-forge --python ${{ matrix.python-version }} conda-build
-          echo "The end..."
+        timeout-minutes: 30
+        run: conda build --quiet -c conda-forge --python ${{ matrix.python-version }} conda-build
 

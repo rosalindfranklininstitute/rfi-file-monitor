@@ -19,7 +19,7 @@ from .preferences import Preference
 from .preferenceswindow import PreferencesWindow
 from .file import RegularFile, File
 from .utils.helpwindow import HelpWindow
-from .utils.googleanalytics import DEFAULT_CONTEXT
+from .utils.googleanalytics import GoogleAnalyticsContext
 from .applicationwindow import ApplicationWindow
 from .engine import Engine
 from .engine_advanced_settings import EngineAdvancedSettings
@@ -68,12 +68,15 @@ class Application(Gtk.Application):
     def pango_docs_map(self):
         return self._pango_docs_map
 
+    @property
+    def google_analytics_context(self):
+        return self._google_analytics_context
+
     def do_shutdown(self):
         logger.debug('Calling do_shutdown')
         Gtk.Application.do_shutdown(self)
 
-        DEFAULT_CONTEXT.consumer_thread.should_exit = True
-
+        self._google_analytics_context.consumer_thread.should_exit = True
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
@@ -182,8 +185,17 @@ class Application(Gtk.Application):
         # add our help window, which will be shared by all appwindows
         self._help_window = HelpWindow(self._pango_docs_map)
 
+        # acquire google analytics context
+        self._google_analytics_context = GoogleAnalyticsContext(
+            endpoint="https://www.google-analytics.com/collect",
+            tracking_id="UA-184737687-1",
+            application_name="RFI-File-Monitor",
+            application_version=__version__,
+            config_file=Path(GLib.get_user_config_dir(), 'rfi-file-monitor', 'ga.conf'),
+        )
+
         # send event to Google Analytics
-        DEFAULT_CONTEXT.send_event('LAUNCH', 'Monitor-{}-Python-{}-{}'.format(__version__, platform.python_version(), platform.platform()), None)
+        self._google_analytics_context.send_event('LAUNCH', 'Monitor-{}-Python-{}-{}'.format(__version__, platform.python_version(), platform.platform()), None)
 
     def _update_supported_filetypes(self):
         # this will update filetypes_supported_operations_map 

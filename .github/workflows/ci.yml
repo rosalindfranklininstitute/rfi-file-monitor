@@ -14,18 +14,22 @@ on:
 
 jobs:
   install:
+    name: Test conda-build (Python ${{ matrix.python-version }} on ${{ matrix.os }})
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.8", "3.9"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
       - uses: conda-incubator/setup-miniconda@v2
         with:
           auto-activate-base: true
-      - shell: bash -l {0}
+      - name: Install conda-build
+        run: conda install -c conda-forge -y conda-build
+      - name: Run conda-build
+        timeout-minutes: 60
         run: |
-          conda update --all -y -c conda-forge
-          conda install -c conda-forge -y conda-build
-          conda build -c conda-forge --python 3.8 conda-build
+          conda build --quiet -c conda-forge --python ${{ matrix.python-version }} conda-build
+          echo "The end..."
 

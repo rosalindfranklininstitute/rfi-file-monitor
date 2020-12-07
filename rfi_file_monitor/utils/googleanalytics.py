@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from gi.repository import GLib
 import requests
 
 from . import ExitableThread

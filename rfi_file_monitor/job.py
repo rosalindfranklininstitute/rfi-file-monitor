@@ -37,6 +37,7 @@ class Job(ExitableThread):
                 rv = "Monitoring aborted"
             elif rv is None:
                 try:
+                    self._queue_manager._appwindow.props.application.google_analytics_context.send_event('RUN-OPERATION', operation.NAME)
                     rv = operation.run(self._file)
                 except SkippedOperation as e:
                     rv = e

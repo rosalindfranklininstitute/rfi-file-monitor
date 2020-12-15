@@ -5,8 +5,8 @@ from .application import Application
 
 import bugsnag
 from bugsnag.handlers import BugsnagHandler
+from .version import __version__
 
-__version__ = "0.1.11"
 BUGSNAG_API_KEY = 'b19e59eb84b9eb30d31d57a97e03406a'
 
 logger = logging.getLogger(__name__)

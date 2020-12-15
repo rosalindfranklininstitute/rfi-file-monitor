@@ -599,6 +599,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         if active_engine.props.running:
             # at this point things should really be running.
             self.lookup_action('stop').set_enabled(True)
+            self.get_property('application').google_analytics_context.send_event('RUN-ENGINE', active_engine.NAME)
         else:
             self.lookup_action('stop').set_enabled(False)
             self._queue_manager.stop()

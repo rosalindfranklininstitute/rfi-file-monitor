@@ -9,14 +9,15 @@ from random import random
 
 from ..operation import Operation
 from ..utils.exceptions import SkippedOperation
-from ..utils.decorators import with_pango_docs, supported_filetypes
-from ..file import File, RegularFile, AWSS3Object, URL
+from ..utils.decorators import with_pango_docs, supported_filetypes, add_directory_support
+from ..file import File, RegularFile, AWSS3Object, URL, Directory
 
 logger = logging.getLogger(__name__)
 
 @with_pango_docs(filename='dummy_operation.pango')
-@supported_filetypes(filetypes=[RegularFile, AWSS3Object, URL])
+@supported_filetypes(filetypes=[RegularFile, AWSS3Object, URL, Directory])
 class DummyOperation(Operation):
+
     NAME = "Dummy Operation"
 
     def __init__(self, *args, **kwargs):
@@ -71,6 +72,13 @@ class DummyOperation(Operation):
         ), 'enable_random_skips')
         self._grid.attach(widget, 0, 6, 2, 1)
 
+        widget = self.register_widget(Gtk.CheckButton(
+            active=False, label="Process as directories if supported",
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+        ), 'enable_directories')
+        self._grid.attach(widget, 0, 7, 2, 1)
+
 
     def preflight_check(self):
         metadata = dict()
@@ -119,6 +127,11 @@ class DummyOperation(Operation):
             self.appwindow.preflight_check_metadata[self.index] = metadata
 
     def run(self, file: File):
+        if isinstance(file, Directory) and self.params.enable_directories:
+            return add_directory_support(type(self)._run)(self, file)
+        return self._run(file)
+
+    def _run(self, file: File):
         logger.debug(f'Processing {file.filename}')
         thread = current_thread()
         for i in range(10):

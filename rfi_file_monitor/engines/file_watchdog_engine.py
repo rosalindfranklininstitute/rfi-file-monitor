@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
@@ -7,19 +9,17 @@ from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
 from ..engine import Engine
-from ..utils import LongTaskWindow, get_patterns_from_string, get_file_creation_timestamp
+from ..utils import LongTaskWindow, get_patterns_from_string, get_file_creation_timestamp, DEFAULT_IGNORE_PATTERNS
 from ..file import FileStatus, RegularFile
 from ..utils.exceptions import AlreadyRunning, NotYetRunning
 from ..utils.decorators import exported_filetype, with_advanced_settings, with_pango_docs
 from .file_watchdog_engine_advanced_settings import FileWatchdogEngineAdvancedSettings
 
 from threading import Thread
-from typing import List, Final, Tuple
+from typing import List, Final
 from pathlib import Path, PurePath
 import logging
 import os
-
-IGNORE_PATTERNS = ['*.swp', '*.swx']
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,6 @@ class FileWatchdogEngine(Engine):
         self._monitor : Final[Observer] = None
 
     def _directory_chooser_button_cb(self, button):
-        #self.set_title(f"Monitoring: {self.params.monitored_directory}")
         if self.params.monitored_directory is None or \
             Path(self.params.monitored_directory).is_dir() is False:
             self._valid = False
@@ -104,7 +103,7 @@ class FileWatchdogEngine(Engine):
         self.notify('running')
 
 
-    def _process_existing_files_thread_cb(self, task_window: LongTaskWindow, existing_files: List[Path]):
+    def _process_existing_files_thread_cb(self, task_window: LongTaskWindow, existing_files: List[RegularFile]):
         self._appwindow._queue_manager.add(existing_files)
 
         # destroy task window
@@ -120,15 +119,15 @@ class ProcessExistingFilesThread(Thread):
         super().__init__()
         self._engine = engine
         self._task_window = task_window
+        self._included_patterns = get_patterns_from_string(self._engine.params.allowed_patterns)
+        self._excluded_patterns = get_patterns_from_string(self._engine.params.ignore_patterns, defaults=DEFAULT_IGNORE_PATTERNS)
 
-    def _search_for_existing_files(self, directory: Path) -> List[Tuple[str, str]]:
-        rv: List[Tuple[str, str]] = list()
-        included_patterns = get_patterns_from_string(self._engine.params.allowed_patterns)
-        ignore_pattern_strings = get_patterns_from_string(self._engine.params.ignore_patterns, defaults=IGNORE_PATTERNS)
+    def _search_for_existing_files(self, directory: Path) -> List[RegularFile]:
+        rv: List[RegularFile] = list()
         for child in directory.iterdir():
             if child.is_file() \
                 and not child.is_symlink() \
-                and match_path(str(child), included_patterns=included_patterns, excluded_patterns=ignore_pattern_strings,
+                and match_path(str(child), included_patterns=self._included_patterns, excluded_patterns=self._excluded_patterns,
                                case_sensitive=False):
                 
                 file_path = directory.joinpath(child)
@@ -148,7 +147,7 @@ class EventHandler(PatternMatchingEventHandler):
     def __init__(self, engine: FileWatchdogEngine):
         self._engine = engine 
         included_patterns = get_patterns_from_string(self._engine.params.allowed_patterns)
-        ignore_patterns =  get_patterns_from_string(self._engine.params.ignore_patterns, defaults=IGNORE_PATTERNS)
+        ignore_patterns =  get_patterns_from_string(self._engine.params.ignore_patterns, defaults=DEFAULT_IGNORE_PATTERNS)
         super().__init__(patterns=included_patterns, ignore_patterns=ignore_patterns, ignore_directories=True)
         
     def on_created(self, event):

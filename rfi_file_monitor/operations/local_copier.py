@@ -4,9 +4,9 @@ from gi.repository import Gtk, Gio, GLib
 
 from ..operation import Operation
 from ..utils.exceptions import SkippedOperation
-from ..file import File
+from ..file import File, RegularFile, Directory
 from ..utils import get_md5
-from ..utils.decorators import with_pango_docs
+from ..utils.decorators import with_pango_docs, supported_filetypes, add_directory_support
 
 import logging
 import tempfile
@@ -17,6 +17,7 @@ from threading import current_thread
 logger = logging.getLogger(__name__)
 
 @with_pango_docs(filename='local_copier.pango')
+@supported_filetypes(filetypes=(RegularFile, Directory))
 class LocalCopierOperation(Operation):
 
     NAME = 'Local Copier'
@@ -115,6 +116,7 @@ class LocalCopierOperation(Operation):
         file.operation_metadata[self.index] = {'local copy path': destination_file}
         logger.debug(f"{file.operation_metadata[self.index]=}")
 
+    @add_directory_support
     def run(self, file: File):
         try:
             gsource_file = Gio.File.new_for_path(file.filename)

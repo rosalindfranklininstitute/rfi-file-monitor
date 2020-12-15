@@ -4,14 +4,17 @@ from gi.repository import Gio
 
 from ..engine_advanced_settings import EngineAdvancedSettings
 from ..engine import Engine
-from ..file import File
+from ..utils.exceptions import SkippedOperation
+from ..file import File, RegularFile, Directory, WeightedRegularFile, FileStatus
 from ..operation import Operation
 
-from typing import Type, Union, Sequence
+from typing import Type, Union, Sequence, Callable, Optional
 import logging
 import inspect
 from pathlib import Path
 import collections.abc
+import functools
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -92,4 +95,55 @@ def supported_filetypes(filetypes: Union[Type[File], Sequence[Type[File]]]):
                 _app.filetypes_supported_operations_map[filetype] = [cls]
         return cls
     return _supported_filetypes
+
+# currently I am using filesize to determine weight in progressbar changes
+# it shouldnt be hard to add support for other types of weights as well, which could be as easy as the file index in the list...
+def add_directory_support(run: Callable[[Operation, File], Optional[str]]):
+    @functools.wraps(run)
+    def wrapper(self: Operation, file: File):
+        current_thread = threading.current_thread()
+
+        if isinstance(file, RegularFile):
+            return run(self, file)
+        elif isinstance(file, Directory):
+            # get all files contained with Directory, as well as their sizes
+            _path = Path(file.filename)
+            _parent = _path.parent
+            total_size = file.total_size
+            size_seen = 0
+            for filename, size in file:
+                # abort if job has been cancelled
+                if current_thread.should_exit:
+                    return str('Thread killed')
+
+                offset = size_seen/total_size
+                size_seen += size
+                weight = size/total_size
+
+                _file = WeightedRegularFile(
+                    filename,
+                    Path(filename).relative_to(_parent),
+                    0,
+                    FileStatus.CREATED,
+                    offset,
+                    weight
+                    )
+                # reuse the row_reference to ensure the progress bars are updated
+                _file.row_reference = file.row_reference
+
+                # run the wrapped method, and do the usual exception and return value handling
+                try:
+                    rv = run(self, _file)
+                except SkippedOperation:
+                    continue
+                # other exceptions should propagate
+
+                if rv:
+                    return rv
+
+            return None
+        else:
+            raise NotImplementedError(f'{type(file)} is currently unsupported')
+    return wrapper
+
     

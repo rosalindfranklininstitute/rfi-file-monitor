@@ -19,7 +19,7 @@ Currently buckets are created in the default region, which for AWS corresponds t
 
 <span size="x-large">Supported File Formats</span>
 
-<b>RegularFile</b>
+<b>RegularFile</b>, <b>Directory</b>
 
 <span size="x-large">Author</span>
 

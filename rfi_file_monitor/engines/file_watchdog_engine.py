@@ -127,7 +127,8 @@ class ProcessExistingFilesThread(Thread):
         for child in directory.iterdir():
             if child.is_file() \
                 and not child.is_symlink() \
-                and match_path(PurePosixPath(child), included_patterns=self._included_patterns, excluded_patterns=self._excluded_patterns):
+                and match_path(PurePosixPath(child), included_patterns=self._included_patterns, excluded_patterns=self._excluded_patterns,
+                               case_sensitive=False):
                 
                 file_path = directory.joinpath(child)
                 relative_file_path = file_path.relative_to(self._engine.params.monitored_directory)

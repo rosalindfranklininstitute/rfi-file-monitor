@@ -426,7 +426,8 @@ class AWSS3BucketEngineThread(ExitableThread):
 
                         if not match_path( PurePosixPath(key),
                             included_patterns=included_patterns,
-                            excluded_patterns=excluded_patterns):
+                            excluded_patterns=excluded_patterns,
+                                           case_sensitive=False):
                             continue
 
                         last_modified = _object['LastModified']
@@ -509,7 +510,8 @@ class AWSS3BucketEngineThread(ExitableThread):
 
                     if not match_path( PurePosixPath(key),
                         included_patterns=included_patterns,
-                        excluded_patterns=excluded_patterns):
+                        excluded_patterns=excluded_patterns,
+                                       case_sensitive=False):
                         continue
 
                     # ensure that this is not an S3Uploader testfile!

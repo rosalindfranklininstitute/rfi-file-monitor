@@ -4,7 +4,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import Gtk, Gdk, GLib
-from pathtools.patterns import match_path
+from ..utils import match_path
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
@@ -17,7 +17,7 @@ from .file_watchdog_engine_advanced_settings import FileWatchdogEngineAdvancedSe
 
 from threading import Thread
 from typing import List, Final
-from pathlib import Path, PurePath
+from pathlib import Path, PurePath, PurePosixPath
 import logging
 import os
 
@@ -127,8 +127,7 @@ class ProcessExistingFilesThread(Thread):
         for child in directory.iterdir():
             if child.is_file() \
                 and not child.is_symlink() \
-                and match_path(str(child), included_patterns=self._included_patterns, excluded_patterns=self._excluded_patterns,
-                               case_sensitive=False):
+                and match_path(PurePosixPath(child), included_patterns=self._included_patterns, excluded_patterns=self._excluded_patterns):
                 
                 file_path = directory.joinpath(child)
                 relative_file_path = file_path.relative_to(self._engine.params.monitored_directory)

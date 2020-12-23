@@ -4,7 +4,7 @@ gi.require_version("Gdk", "3.0")
 from gi.repository import Gtk, GLib, Gdk
 import boto3
 import botocore
-from pathtools.patterns import match_path
+from ..utils import match_path
 
 import string
 import random
@@ -424,10 +424,9 @@ class AWSS3BucketEngineThread(ExitableThread):
                     for _object in page['Contents']:
                         key = _object['Key']
 
-                        if not match_path(key,
+                        if not match_path( PurePosixPath(key),
                             included_patterns=included_patterns,
-                            excluded_patterns=excluded_patterns,
-                            case_sensitive=False):
+                            excluded_patterns=excluded_patterns):
                             continue
 
                         last_modified = _object['LastModified']
@@ -508,10 +507,9 @@ class AWSS3BucketEngineThread(ExitableThread):
                     etag = object_info['eTag']
                     size = object_info['size']
 
-                    if not match_path(key,
+                    if not match_path( PurePosixPath(key),
                         included_patterns=included_patterns,
-                        excluded_patterns=excluded_patterns,
-                        case_sensitive=False):
+                        excluded_patterns=excluded_patterns):
                         continue
 
                     # ensure that this is not an S3Uploader testfile!

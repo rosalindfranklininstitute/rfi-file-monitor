@@ -191,3 +191,11 @@ class ExitableThread(Thread):
     @should_exit.setter
     def should_exit(self, value: bool):
         self._should_exit = value
+
+
+def match_path(path, included_patterns, excluded_patterns):
+  common_patterns = included_patterns & excluded_patterns
+  if common_patterns:
+    raise ValueError(f'conflicting patterns `{common_patterns}` included and excluded')
+  return (any(path.match(p) for p in included_patterns) and
+          not any(path.match(p) for p in excluded_patterns))

@@ -30,7 +30,7 @@ PATTERN_PLACEHOLDER_TEXT = 'e.g *.txt, *.csv or *temp* or *log*'
 
 DEFAULT_TIMEOUT = 5 # seconds
 
-DEFAULT_IGNORE_PATTERNS = list('*.swp', '*.swx', )
+DEFAULT_IGNORE_PATTERNS = ['*.swp', '*.swx']
 
 logger = logging.getLogger(__name__)
 

@@ -30,7 +30,7 @@ PATTERN_PLACEHOLDER_TEXT = 'e.g *.txt, *.csv or *temp* or *log*'
 
 DEFAULT_TIMEOUT = 5 # seconds
 
-DEFAULT_IGNORE_PATTERNS = ('*.swp', '*.swx', )
+DEFAULT_IGNORE_PATTERNS = list('*.swp', '*.swx', )
 
 logger = logging.getLogger(__name__)
 
@@ -114,8 +114,7 @@ def get_patterns_from_string(input: str, defaults: Optional[List[str]]=None) -> 
             return ['*']
     else:
         if input or input.strip():
-             print(defaults)
-             return list(map(lambda x: x.strip(), input.split(','))) + list(defaults)
+             return list(map(lambda x: x.strip(), input.split(','))) + defaults
 
         else:
             return defaults

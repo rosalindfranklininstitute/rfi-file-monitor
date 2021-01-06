@@ -155,7 +155,7 @@ class Application(Gtk.Application):
             modal=True,
             authors=["Tom Schoonjans"],
             logo=logo,
-            version="0.1.11",
+            version="0.1.12",
             )
         about_dialog.present()
 

@@ -11,7 +11,7 @@ from ..operation import Operation
 from ..utils.exceptions import SkippedOperation
 from ..utils.decorators import with_pango_docs, supported_filetypes, add_directory_support
 from ..file import File, RegularFile, AWSS3Object, URL, Directory
-
+import random
 logger = logging.getLogger(__name__)
 
 @with_pango_docs(filename='dummy_operation.pango')
@@ -129,9 +129,13 @@ class DummyOperation(Operation):
     def run(self, file: File):
         if isinstance(file, Directory) and self.params.enable_directories:
             return add_directory_support(type(self)._run)(self, file)
-        return self._run(file)
+        return self._run(file, self.index)
 
-    def _run(self, file: File):
+    @classmethod
+    def _attach_metadata(cls, file: File, operation_index:int):
+        file.operation_metadata[operation_index] = {'number':random.random()}
+
+    def _run(self, file: File, operation_index):
         logger.debug(f'Processing {file.filename}')
         thread = current_thread()
         for i in range(10):
@@ -146,7 +150,7 @@ class DummyOperation(Operation):
                 raise SkippedOperation("Unfavorable RNG!")
 
             file.update_progressbar(self.index, (i + 1) * 10)
-
+            self._attach_metadata(file, operation_index)
         # None indicates success, a string failure, with its contents set to an error message
         return None
 

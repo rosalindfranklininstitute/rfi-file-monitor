@@ -230,6 +230,7 @@ class Directory(File):
         self._filelist : List[Tuple[str, int]] = []
         self._filelist_timestamp : int = 0
         self._total_size : int = 0
+        self._total_size : int = 0
 
     @property
     def included_patterns(self):
@@ -274,6 +275,7 @@ class Directory(File):
 
     def __len__(self):
         return len(self._filelist)
+
 
 
 class URL(File):

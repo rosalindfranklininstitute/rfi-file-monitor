@@ -138,14 +138,16 @@ def add_directory_support(run: Callable[[Operation, File], Optional[str]]):
 
                 # run the wrapped method, and do the usual exception and return value handling
                 try:
-                    rv = run(self, _file)
+                    metadata, rv = run(self, _file)
                 except SkippedOperation:
                     continue
                 # other exceptions should propagate
 
+                if _file.operation_metadata:
+                    file.operation_metadata[_file.filename] = _file.operation_metadata.values()
+
                 if rv:
                     return rv
-
             return None
         else:
             raise NotImplementedError(f'{type(file)} is currently unsupported')

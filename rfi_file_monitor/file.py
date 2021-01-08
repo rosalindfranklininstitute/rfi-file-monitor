@@ -230,6 +230,7 @@ class Directory(File):
         self._filelist : List[Tuple[str, int]] = []
         self._filelist_timestamp : int = 0
         self._total_size : int = 0
+        self._total_size : int = 0
 
     @property
     def included_patterns(self):
@@ -267,6 +268,7 @@ class Directory(File):
         if self._filelist_timestamp < self._saved:
             self._refresh_filelist()
         yield from self._filelist
+
 
 
 class URL(File):

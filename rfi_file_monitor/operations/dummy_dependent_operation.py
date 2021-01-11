@@ -24,20 +24,23 @@ class DependentDummyOperation(Operation):
         )
         self.add(self._grid)
         self._grid.attach(Gtk.Label(label='This is a dummy dependent operation'), 0, 0, 1, 1)
-        #
-        # widget = self.register_widget(Gtk.CheckButton(
-        #     active=False, label="Process Directory Operational Metadata",
-        #     halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
-        #     hexpand=True, vexpand=False,
-        # ), 'process_dir_metadata')
-        # self._grid.attach(widget, 0, 8, 2, 1)
 
+        widget = Gtk.CheckButton(
+            active=False, label="Process Directory Operational Metadata",
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+        )
+        self._grid.attach(widget, 0, 8, 2, 1)
+        widget.connect('toggled', self.on_checked)
+
+    def on_checked(self,widget):
+        self.process_dir_metadata = True
 
     def preflight_check(self):
         pass
 
     def run(self, file):
-        # if self.params.process_dir_metadata:
+         if self.process_dir_metadata:
             if isinstance(file, Directory):
                 if file.operation_metadata:
                     for i in file.operation_metadata.values():

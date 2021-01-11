@@ -138,7 +138,7 @@ def add_directory_support(run: Callable[[Operation, File], Optional[str]]):
 
                 # run the wrapped method, and do the usual exception and return value handling
                 try:
-                    metadata, rv = run(self, _file)
+                     rv = run(self, _file)
                 except SkippedOperation:
                     continue
                 # other exceptions should propagate

@@ -9,7 +9,7 @@ from ..utils.decorators import with_pango_docs, supported_filetypes, add_directo
 from ..file import File, RegularFile, AWSS3Object, URL, Directory
 
 logger = logging.getLogger(__name__)
-
+@with_pango_docs(filename='dependent_dummy_operation.pango')
 @supported_filetypes(filetypes=[RegularFile, Directory])
 class DependentDummyOperation(Operation):
 

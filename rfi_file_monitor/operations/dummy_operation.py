@@ -79,6 +79,12 @@ class DummyOperation(Operation):
         ), 'enable_directories')
         self._grid.attach(widget, 0, 7, 2, 1)
 
+        widget = self.register_widget(Gtk.CheckButton(
+            active=False, label="Add Operational Metadata",
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+        ), 'add_metadata')
+        self._grid.attach(widget, 0, 8, 2, 1)
 
     def preflight_check(self):
         metadata = dict()
@@ -150,7 +156,8 @@ class DummyOperation(Operation):
                 raise SkippedOperation("Unfavorable RNG!")
 
             file.update_progressbar(self.index, (i + 1) * 10)
-            self._attach_metadata(file, operation_index)
+            if self.params.add_metadata:
+                self._attach_metadata(file, operation_index)
         # None indicates success, a string failure, with its contents set to an error message
         return None
 

@@ -4,7 +4,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import Gtk, GLib, Gdk
-from pathtools.patterns import match_path
+from ..utils import match_path
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler, DirCreatedEvent, FileCreatedEvent, FileModifiedEvent
 
@@ -122,8 +122,11 @@ class ProcessExistingDirectoriesThread(Thread):
         for child in directory.iterdir():
             if child.is_file() \
                 and not child.is_symlink() \
-                and match_path(str(child), included_patterns=self._included_patterns, excluded_patterns=self._excluded_patterns,
-                               case_sensitive=False):
+                and match_path(
+                    child,
+                    included_patterns=self._included_patterns,
+                    excluded_patterns=self._excluded_patterns,
+                    case_sensitive=False):
                 
                 rv += 1
             elif child.is_dir() and not child.is_symlink():
@@ -133,7 +136,7 @@ class ProcessExistingDirectoriesThread(Thread):
     def _dir_filter(self, child: Path) -> bool:
         return child.is_dir() and \
             not child.is_symlink() and \
-            match_path(str(child),
+            match_path(child,
                 included_patterns=self._included_patterns,
                 excluded_patterns=self._excluded_patterns,
                 case_sensitive=False) and \

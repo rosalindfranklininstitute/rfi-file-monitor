@@ -30,7 +30,7 @@ PATTERN_PLACEHOLDER_TEXT = 'e.g *.txt, *.csv or *temp* or *log*'
 
 DEFAULT_TIMEOUT = 5 # seconds
 
-DEFAULT_IGNORE_PATTERNS = ('*.swp', '*.swx', )
+DEFAULT_IGNORE_PATTERNS = ('*.swp', '*.swx',)
 
 logger = logging.getLogger(__name__)
 
@@ -106,17 +106,19 @@ def class_in_object_iterable(iterable: Iterable, klass) -> bool:
             return True
     return False
 
-def get_patterns_from_string(input: str, defaults: Optional[List[str]]=None) -> List[str]:
+def get_patterns_from_string(input: str, defaults: Optional[Iterable[str]]=None) -> List[str]:
     if defaults is None:
-        if input or  input.strip():
+        if input or input.strip():
             return list(map(lambda x: x.strip(), input.split(',')))
         else:
             return ['*']
     else:
         if input or input.strip():
-             return list(map(lambda x: x.strip(), input.split(','))) + defaults
+            rv = list(map(lambda x: x.strip(), input.split(',')))
+            rv.extend(defaults)
+            return rv
         else:
-            return defaults
+            return list(defaults)
 
 def get_md5(fname: os.PathLike) -> str:
     # taken from https://stackoverflow.com/a/3431838
@@ -191,3 +193,15 @@ class ExitableThread(Thread):
     @should_exit.setter
     def should_exit(self, value: bool):
         self._should_exit = value
+
+
+def match_path(path: PurePath, included_patterns: List[str], excluded_patterns: List[str], case_sensitive=True):
+    if not case_sensitive:
+        included_patterns = [x.lower() for x in included_patterns] + [x.upper() for x in included_patterns]
+        excluded_patterns = [x.lower() for x in excluded_patterns] + [x.upper() for x in excluded_patterns]
+    common_patterns = set(included_patterns).intersection(excluded_patterns)
+
+    if common_patterns:
+        raise ValueError(f'conflicting patterns `{common_patterns}` included and excluded')
+    return (any(path.match(p) for p in included_patterns) and
+        not any(path.match(p) for p in excluded_patterns))

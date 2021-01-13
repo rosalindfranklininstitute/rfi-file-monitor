@@ -108,14 +108,15 @@ def class_in_object_iterable(iterable: Iterable, klass) -> bool:
 
 def get_patterns_from_string(input: str, defaults: Optional[Iterable[str]]=None) -> List[str]:
     if defaults is None:
-        if input or  input.strip():
+        if input or input.strip():
             return list(map(lambda x: x.strip(), input.split(',')))
         else:
             return ['*']
     else:
         if input or input.strip():
-             return list(map(lambda x: x.strip(), input.split(','))).extend(defaults)
-
+            rv = list(map(lambda x: x.strip(), input.split(',')))
+            rv.extend(defaults)
+            return rv
         else:
             return list(defaults)
 
@@ -194,13 +195,13 @@ class ExitableThread(Thread):
         self._should_exit = value
 
 
-def match_path(path, included_patterns, excluded_patterns, case_sensitive=True):
-        if not case_sensitive:
-            included_patterns = [x.lower() for x in included_patterns] + [x.upper() for x in included_patterns]
-            excluded_patterns = [x.lower() for x in excluded_patterns] + [x.upper() for x in excluded_patterns]
-        common_patterns = set(included_patterns).intersection(excluded_patterns)
+def match_path(path: PurePath, included_patterns: List[str], excluded_patterns: List[str], case_sensitive=True):
+    if not case_sensitive:
+        included_patterns = [x.lower() for x in included_patterns] + [x.upper() for x in included_patterns]
+        excluded_patterns = [x.lower() for x in excluded_patterns] + [x.upper() for x in excluded_patterns]
+    common_patterns = set(included_patterns).intersection(excluded_patterns)
 
-        if common_patterns:
-            raise ValueError(f'conflicting patterns `{common_patterns}` included and excluded')
-        return (any(path.match(p) for p in included_patterns) and
-              not any(path.match(p) for p in excluded_patterns))
+    if common_patterns:
+        raise ValueError(f'conflicting patterns `{common_patterns}` included and excluded')
+    return (any(path.match(p) for p in included_patterns) and
+        not any(path.match(p) for p in excluded_patterns))

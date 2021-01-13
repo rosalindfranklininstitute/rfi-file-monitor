@@ -242,7 +242,10 @@ class Directory(File):
     def _get_filelist(self, _dir: Path) -> List[Tuple[str, int]]:
         rv: List[Tuple[str, int]] = []
         for entry in _dir.iterdir():
-            if not match_path(entry, included_patterns=self._included_patterns, excluded_patterns=self._excluded_patterns):
+            if not match_path(
+                entry,
+                included_patterns=self._included_patterns,
+                excluded_patterns=self._excluded_patterns):
                 continue
             if entry.is_file() and not entry.is_symlink():
                 size = entry.stat().st_size

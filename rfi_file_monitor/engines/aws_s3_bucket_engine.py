@@ -15,6 +15,7 @@ from copy import deepcopy
 import urllib.parse
 from typing import Optional
 import logging
+import traceback
 
 from ..engine import Engine
 from .aws_s3_bucket_engine_advanced_settings import AWSS3BucketEngineAdvancedSettings
@@ -237,6 +238,8 @@ class AWSS3BucketEngine(Engine):
             task_window.destroy()
 
         # display dialog with error message
+        traceback.print_exc()
+        logger.debug(''.join(traceback.format_tb(e.__traceback__)))
         dialog = Gtk.MessageDialog(transient_for=self.get_toplevel(),
                 modal=True, destroy_with_parent=True,
                 message_type=Gtk.MessageType.ERROR,
@@ -424,10 +427,10 @@ class AWSS3BucketEngineThread(ExitableThread):
                     for _object in page['Contents']:
                         key = _object['Key']
 
-                        if not match_path( PurePosixPath(key),
+                        if not match_path(PurePosixPath(key),
                             included_patterns=included_patterns,
                             excluded_patterns=excluded_patterns,
-                                           case_sensitive=False):
+                            case_sensitive=False):
                             continue
 
                         last_modified = _object['LastModified']
@@ -511,7 +514,7 @@ class AWSS3BucketEngineThread(ExitableThread):
                     if not match_path( PurePosixPath(key),
                         included_patterns=included_patterns,
                         excluded_patterns=excluded_patterns,
-                                       case_sensitive=False):
+                        case_sensitive=False):
                         continue
 
                     # ensure that this is not an S3Uploader testfile!

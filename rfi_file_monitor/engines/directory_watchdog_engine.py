@@ -122,8 +122,11 @@ class ProcessExistingDirectoriesThread(Thread):
         for child in directory.iterdir():
             if child.is_file() \
                 and not child.is_symlink() \
-                and match_path(child, included_patterns=self._included_patterns, excluded_patterns=self._excluded_patterns,
-                               case_sensitive=False):
+                and match_path(
+                    child,
+                    included_patterns=self._included_patterns,
+                    excluded_patterns=self._excluded_patterns,
+                    case_sensitive=False):
                 
                 rv += 1
             elif child.is_dir() and not child.is_symlink():
@@ -136,7 +139,7 @@ class ProcessExistingDirectoriesThread(Thread):
             match_path(child,
                 included_patterns=self._included_patterns,
                 excluded_patterns=self._excluded_patterns,
-                       case_sensitive=False) and \
+                case_sensitive=False) and \
             (self._search_for_existing_files(child) > 0)
 
     def _search_for_existing_directories(self, directory: Path) -> List[Directory]:

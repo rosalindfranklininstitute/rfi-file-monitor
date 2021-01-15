@@ -6,9 +6,9 @@ from gi.repository import Gio, GLib, Gtk
 from tenacity.retry import retry_base
 from requests.adapters import HTTPAdapter
 
-from typing import Callable, Optional, Final, Any, Dict, List, Iterable
+from typing import Callable, Optional, Final, Any, Dict, List, Iterable, Union, Set
 import logging
-from pathlib import Path
+from pathlib import Path, PurePath
 import hashlib
 import os
 import platform
@@ -89,16 +89,16 @@ def add_action_entries(
     callback_arg: Optional[Any] = None) -> None:
 
     if state:
-        action = Gio.SimpleAction.new_stateful(action, GLib.VariantType.new(param) if param else None, state)
+        simple_action = Gio.SimpleAction.new_stateful(action, GLib.VariantType.new(param) if param else None, state)
     else:
-        action = Gio.SimpleAction.new(action, GLib.VariantType.new(param) if param else None)
+        simple_action = Gio.SimpleAction.new(action, GLib.VariantType.new(param) if param else None)
     
     if callback_arg:
-        action.connect("activate", callback, callback_arg)
+        simple_action.connect("activate", callback, callback_arg)
     else:
-        action.connect("activate", callback)
+        simple_action.connect("activate", callback)
 
-    map.add_action(action)
+    map.add_action(simple_action)
 
 def class_in_object_iterable(iterable: Iterable, klass) -> bool:
     for _iter in iterable:
@@ -120,7 +120,7 @@ def get_patterns_from_string(input: str, defaults: Optional[Iterable[str]]=None)
         else:
             return list(defaults)
 
-def get_md5(fname: os.PathLike) -> str:
+def get_md5(fname: Union[os.PathLike, str]) -> str:
     # taken from https://stackoverflow.com/a/3431838
     hash_md5 = hashlib.md5()
     with open(fname, "rb") as f:
@@ -128,25 +128,24 @@ def get_md5(fname: os.PathLike) -> str:
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-def get_file_creation_timestamp(file_path: os.PathLike):
+def get_file_creation_timestamp(file_path: Union[os.PathLike, str]):
     # get creation time, or something similar...
     # https://stackoverflow.com/a/39501288
     if platform.system() == 'Windows':
         try:
-            creation_timestamp = os.stat(file_path).st_ctime
+            return os.stat(file_path).st_ctime
         except FileNotFoundError:
             time.sleep(1)
             try:
-                creation_timestamp = os.stat(file_path).st_ctime
+                return os.stat(file_path).st_ctime
             except FileNotFoundError:
-                creation_timestamp = None
+                return None
     else:
         try:
             # this should work on macOS
-            creation_timestamp = os.stat(file_path).st_birthtime
+            return os.stat(file_path).st_birthtime
         except AttributeError:
-            creation_timestamp = os.stat(file_path).st_mtime
-    return creation_timestamp
+            return os.stat(file_path).st_mtime
 
 def get_random_string(length: int):
     letters = string.ascii_letters
@@ -184,7 +183,7 @@ class ExitableThread(Thread):
     
     def __init__(self):
         super().__init__()
-        self._should_exit: Final[bool] = False
+        self._should_exit: bool = False
 
     @property
     def should_exit(self):
@@ -195,11 +194,14 @@ class ExitableThread(Thread):
         self._should_exit = value
 
 
-def match_path(path: PurePath, included_patterns: List[str], excluded_patterns: List[str], case_sensitive=True):
+def _get_common_patterns(included_patterns: List[str], excluded_patterns: List[str], case_sensitive: bool) -> Set[str]:
     if not case_sensitive:
         included_patterns = [x.lower() for x in included_patterns] + [x.upper() for x in included_patterns]
         excluded_patterns = [x.lower() for x in excluded_patterns] + [x.upper() for x in excluded_patterns]
-    common_patterns = set(included_patterns).intersection(excluded_patterns)
+    return set(included_patterns).intersection(excluded_patterns)
+
+def match_path(path: PurePath, included_patterns: List[str], excluded_patterns: List[str], case_sensitive: bool=True) -> bool:
+    common_patterns = _get_common_patterns(included_patterns, excluded_patterns, case_sensitive)
 
     if common_patterns:
         raise ValueError(f'conflicting patterns `{common_patterns}` included and excluded')

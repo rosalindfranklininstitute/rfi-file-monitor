@@ -215,8 +215,8 @@ class Directory(File):
         relative_filename: PurePath,
         created: int,
         status: FileStatus,
-        included_patterns: Optional[List[str]],
-        excluded_patterns: Optional[List[str]],
+        included_patterns: List[str],
+        excluded_patterns: List[str],
         ):
 
         super().__init__(
@@ -245,7 +245,8 @@ class Directory(File):
             if not match_path(
                 entry,
                 included_patterns=self._included_patterns,
-                excluded_patterns=self._excluded_patterns):
+                excluded_patterns=self._excluded_patterns,
+                case_sensitive=False):
                 continue
             if entry.is_file() and not entry.is_symlink():
                 size = entry.stat().st_size
@@ -270,6 +271,9 @@ class Directory(File):
         if self._filelist_timestamp < self._saved:
             self._refresh_filelist()
         yield from self._filelist
+
+    def __len__(self):
+        return len(self._filelist)
 
 
 class URL(File):

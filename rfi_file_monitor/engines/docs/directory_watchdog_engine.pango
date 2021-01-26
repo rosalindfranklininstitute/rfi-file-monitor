@@ -11,8 +11,10 @@ The Directories Monitor observes a folder for new subdirectories being created d
 The following options are availabled when clicking the Advanced Settings button:
 
 * <b>Process existing directories in target directory</b>: turn this option on to add existing directories (with status <i>Saved</i>) to the queue manager before launching Watchdog.
-* <b>Allowed filename and directory patterns</b>: enter a comma separated list of patterns containing wildcards to only process a subset of the available directories. When processing the directory with an operation, the patterns will also be applied to the filenames within the directory.
-* <b>Ignored filename and directory patterns</b>: enter a comma separated list of patterns containing wildcards to exclude a subset of the available directories. When processing the directory with an operation, the patterns will also be used to exclude filenames within the directory.
+* <b>Allowed filename patterns</b>: enter a comma separated list of patterns containing wildcards to only consider files matching them.
+* <b>Ignored filename patterns</b>: enter a comma separated list of patterns containing wildcards to exclude files that do not match them.
+* <b>Allowed directory patterns</b>: enter a comma separated list of patterns containing wildcards to only consider those directories matching them.
+* <b>Ignored directory patterns</b>: enter a comma separated list of patterns containing wildcards to exclude directories that do not match them.
 
 <span size="x-large">Exported File Format</span>
 

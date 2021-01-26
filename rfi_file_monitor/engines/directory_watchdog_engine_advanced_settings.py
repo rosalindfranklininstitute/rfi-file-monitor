@@ -25,51 +25,100 @@ class DirectoryWatchdogEngineAdvancedSettings(EngineAdvancedSettings):
         self._add_horizontal_separator()
 
         # Specify allowed file patterns
-        allowed_patterns_grid = Gtk.Grid(
+        allowed_file_patterns_grid = Gtk.Grid(
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
             column_spacing=5
         )
 
-        self.attach(allowed_patterns_grid, 0, self._row_counter, 1, 1)
+        self.attach(allowed_file_patterns_grid, 0, self._row_counter, 1, 1)
         self._row_counter += 1
-        allowed_patterns_grid.attach(Gtk.Label(
-                label='Allowed filename and directory patterns',
+        allowed_file_patterns_grid.attach(Gtk.Label(
+                label='Allowed filename patterns',
                 halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
                 hexpand=False, vexpand=False,
             ),
             0, 0, 1, 1,
         )
-        self._allowed_patterns_entry = engine.register_widget(Gtk.Entry(placeholder_text=PATTERN_PLACEHOLDER_TEXT,
+        self._allowed_file_patterns_entry = engine.register_widget(Gtk.Entry(placeholder_text=PATTERN_PLACEHOLDER_TEXT,
                 halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
                 hexpand=True, vexpand=False,
-        ), 'allowed_patterns')
-        allowed_patterns_grid.attach(self._allowed_patterns_entry, 1, 0, 1, 1)
+        ), 'allowed_file_patterns')
+        allowed_file_patterns_grid.attach(self._allowed_file_patterns_entry, 1, 0, 1, 1)
 
         self._add_horizontal_separator()
 
-        # Specify allowed file patterns
-        ignore_patterns_grid = Gtk.Grid(
+        # Specify ignored file patterns
+        ignore_file_patterns_grid = Gtk.Grid(
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
             column_spacing=5
         )
 
-        self.attach(ignore_patterns_grid, 0, self._row_counter, 1, 2)
+        self.attach(ignore_file_patterns_grid, 0, self._row_counter, 1, 2)
         self._row_counter += 1
-        ignore_patterns_grid.attach(Gtk.Label(
-            label='Ignored filename and directory patterns',
+        ignore_file_patterns_grid.attach(Gtk.Label(
+            label='Ignored filename patterns',
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False,
 
         ),
             0, 0, 1, 1,
         )
-        self._ignored_patterns_entry = engine.register_widget(Gtk.Entry(placeholder_text=PATTERN_PLACEHOLDER_TEXT,
+        self._ignored_file_patterns_entry = engine.register_widget(Gtk.Entry(placeholder_text=PATTERN_PLACEHOLDER_TEXT,
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,
-        ), 'ignore_patterns')
-        ignore_patterns_grid.attach(self._ignored_patterns_entry, 1, 0, 1, 1)
+        ), 'ignore_file_patterns')
+        ignore_file_patterns_grid.attach(self._ignored_file_patterns_entry, 1, 0, 1, 1)
+
+        self._add_horizontal_separator()
+
+        # Specify allowed directory patterns
+        allowed_directory_patterns_grid = Gtk.Grid(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            column_spacing=5
+        )
+
+        self.attach(allowed_directory_patterns_grid, 0, self._row_counter, 1, 1)
+        self._row_counter += 1
+        allowed_directory_patterns_grid.attach(Gtk.Label(
+                label='Allowed directory patterns',
+                halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+                hexpand=False, vexpand=False,
+            ),
+            0, 0, 1, 1,
+        )
+        self._allowed_directory_patterns_entry = engine.register_widget(Gtk.Entry(placeholder_text=PATTERN_PLACEHOLDER_TEXT,
+                halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+                hexpand=True, vexpand=False,
+        ), 'allowed_directory_patterns')
+        allowed_directory_patterns_grid.attach(self._allowed_directory_patterns_entry, 1, 0, 1, 1)
+
+        self._add_horizontal_separator()
+
+        # Specify ignored directory patterns
+        ignore_directory_patterns_grid = Gtk.Grid(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            column_spacing=5
+        )
+
+        self.attach(ignore_directory_patterns_grid, 0, self._row_counter, 1, 2)
+        self._row_counter += 1
+        ignore_directory_patterns_grid.attach(Gtk.Label(
+            label='Ignored directory patterns',
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False,
+
+        ),
+            0, 0, 1, 1,
+        )
+        self._ignored_directory_patterns_entry = engine.register_widget(Gtk.Entry(placeholder_text=PATTERN_PLACEHOLDER_TEXT,
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+        ), 'ignore_directory_patterns')
+        ignore_directory_patterns_grid.attach(self._ignored_directory_patterns_entry, 1, 0, 1, 1)
 
     def _add_horizontal_separator(self):
         self.attach(Gtk.Separator(

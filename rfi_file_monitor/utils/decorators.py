@@ -1,4 +1,5 @@
 from __future__ import annotations
+from rfi_file_monitor.utils import ExitableThread
 
 from gi.repository import Gio
 
@@ -96,12 +97,12 @@ def supported_filetypes(filetypes: Union[Type[File], Sequence[Type[File]]]):
         return cls
     return _supported_filetypes
 
-# currently I am using filesize to determine weight in progressbar changes
-# it shouldnt be hard to add support for other types of weights as well, which could be as easy as the file index in the list...
+# We are using filesize to determine weight in progressbar changes
+# However, if the combined filesize is 0, then the file index will be used instead.
 def add_directory_support(run: Callable[[Operation, File], Optional[str]]):
     @functools.wraps(run)
     def wrapper(self: Operation, file: File):
-        current_thread = threading.current_thread()
+        current_thread : ExitableThread = threading.current_thread()
 
         if isinstance(file, RegularFile):
             return run(self, file)
@@ -111,14 +112,18 @@ def add_directory_support(run: Callable[[Operation, File], Optional[str]]):
             _parent = _path.parent
             total_size = file.total_size
             size_seen = 0
-            for filename, size in file:
+            for file_index, (filename, size) in enumerate(file):
                 # abort if job has been cancelled
                 if current_thread.should_exit:
                     return str('Thread killed')
 
-                offset = size_seen/total_size
-                size_seen += size
-                weight = size/total_size
+                if total_size == 0:
+                    offset = file_index/len(file)
+                    weight = 1/len(file)
+                else:
+                    offset = size_seen/total_size
+                    size_seen += size
+                    weight = size/total_size
 
                 _file = WeightedRegularFile(
                     filename,

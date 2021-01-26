@@ -6,7 +6,7 @@ gi.require_version("Gdk", "3.0")
 from gi.repository import Gtk, GLib, Gdk
 from ..utils import match_path
 from watchdog.observers import Observer
-from watchdog.events import PatternMatchingEventHandler, DirCreatedEvent, FileCreatedEvent, FileModifiedEvent
+from watchdog.events import FileSystemEventHandler, DirCreatedEvent, FileCreatedEvent, FileModifiedEvent
 
 from .directory_watchdog_engine_advanced_settings import DirectoryWatchdogEngineAdvancedSettings
 from ..engine import Engine
@@ -16,7 +16,7 @@ from ..utils.decorators import exported_filetype, with_advanced_settings, with_p
 from ..utils.exceptions import AlreadyRunning, NotYetRunning
 
 import logging
-from typing import Final, List
+from typing import List
 from pathlib import Path, PurePath
 import os
 from threading import Thread
@@ -49,7 +49,7 @@ class DirectoryWatchdogEngine(Engine):
         self.attach(self._directory_chooser_button, 1, 0, 1, 1)
         self._directory_chooser_button.connect("selection-changed", self._directory_chooser_button_cb)
 
-        self._monitor : Final[Observer] = None
+        self._monitor : Observer = None
 
     def _directory_chooser_button_cb(self, button):
         if self.params.monitored_directory is None or \
@@ -114,8 +114,10 @@ class ProcessExistingDirectoriesThread(Thread):
         super().__init__()
         self._engine = engine
         self._task_window = task_window
-        self._included_patterns = get_patterns_from_string(self._engine.params.allowed_patterns)
-        self._excluded_patterns = get_patterns_from_string(self._engine.params.ignore_patterns, defaults=DEFAULT_IGNORE_PATTERNS)
+        self._included_file_patterns = get_patterns_from_string(self._engine.params.allowed_file_patterns)
+        self._excluded_file_patterns = get_patterns_from_string(self._engine.params.ignore_file_patterns, defaults=DEFAULT_IGNORE_PATTERNS)
+        self._included_directory_patterns = get_patterns_from_string(self._engine.params.allowed_directory_patterns)
+        self._excluded_directory_patterns = get_patterns_from_string(self._engine.params.ignore_directory_patterns, defaults=[])
 
     def _search_for_existing_files(self, directory: Path) -> int:
         rv: int = 0
@@ -124,8 +126,8 @@ class ProcessExistingDirectoriesThread(Thread):
                 and not child.is_symlink() \
                 and match_path(
                     child,
-                    included_patterns=self._included_patterns,
-                    excluded_patterns=self._excluded_patterns,
+                    included_patterns=self._included_file_patterns,
+                    excluded_patterns=self._excluded_file_patterns,
                     case_sensitive=False):
                 
                 rv += 1
@@ -137,8 +139,8 @@ class ProcessExistingDirectoriesThread(Thread):
         return child.is_dir() and \
             not child.is_symlink() and \
             match_path(child,
-                included_patterns=self._included_patterns,
-                excluded_patterns=self._excluded_patterns,
+                included_patterns=self._included_directory_patterns,
+                excluded_patterns=self._excluded_directory_patterns,
                 case_sensitive=False) and \
             (self._search_for_existing_files(child) > 0)
 
@@ -152,8 +154,8 @@ class ProcessExistingDirectoriesThread(Thread):
                 PurePath(_dir.name),
                 get_file_creation_timestamp(_dir),
                 FileStatus.SAVED,
-                self._included_patterns,
-                self._excluded_patterns,
+                self._included_file_patterns,
+                self._excluded_file_patterns,
                 ))
         return rv
 
@@ -161,14 +163,39 @@ class ProcessExistingDirectoriesThread(Thread):
         existing_directories = self._search_for_existing_directories(Path(self._engine.params.monitored_directory))
         GLib.idle_add(self._engine._process_existing_directories_thread_cb, self._task_window, existing_directories, priority=GLib.PRIORITY_DEFAULT_IDLE)
 
-class EventHandler(PatternMatchingEventHandler):
+
+class EventHandler(FileSystemEventHandler):
     def __init__(self, engine: DirectoryWatchdogEngine):
         self._engine = engine 
-        self._included_patterns = get_patterns_from_string(self._engine.params.allowed_patterns)
-        self._excluded_patterns = get_patterns_from_string(self._engine.params.ignore_patterns, defaults=DEFAULT_IGNORE_PATTERNS)
-        super().__init__(patterns=self._included_patterns, ignore_patterns=self._excluded_patterns, ignore_directories=False)
+        self._included_file_patterns = get_patterns_from_string(self._engine.params.allowed_file_patterns)
+        self._excluded_file_patterns = get_patterns_from_string(self._engine.params.ignore_file_patterns, defaults=DEFAULT_IGNORE_PATTERNS)
+        self._included_directory_patterns = get_patterns_from_string(self._engine.params.allowed_directory_patterns)
+        self._excluded_directory_patterns = get_patterns_from_string(self._engine.params.ignore_directory_patterns, defaults=[])
+        super().__init__()
 
         self._empty_directories : List[Directory] = []
+
+    def dispatch(self, event):
+
+        paths = []
+        if hasattr(event, 'dest_path'):
+            paths.append(os.fsdecode(event.dest_path))
+        if event.src_path:
+            paths.append(os.fsdecode(event.src_path))
+
+        for path in paths:
+            _path = Path(path)
+            if (_path.is_dir() and match_path(_path,
+                included_patterns=self._included_directory_patterns,
+                excluded_patterns=self._excluded_directory_patterns,
+                case_sensitive=False)) or (
+                match_path(_path,
+                included_patterns=self._included_file_patterns,
+                excluded_patterns=self._excluded_file_patterns,
+                case_sensitive=False)
+                ):
+
+                super().dispatch(event)
 
     def on_created(self, event):
         path = event.src_path
@@ -211,8 +238,8 @@ class EventHandler(PatternMatchingEventHandler):
                         PurePath(rel_path.parts[0]),
                         creation_timestamp,
                         FileStatus.CREATED,
-                        self._included_patterns,
-                        self._excluded_patterns)
+                        self._included_file_patterns,
+                        self._excluded_file_patterns)
                 else:
                     logger.debug(f"File Not found, {path} has been skipped")
                     return 

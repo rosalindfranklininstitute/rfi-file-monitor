@@ -111,6 +111,7 @@ def add_directory_support(run: Callable[[Operation, File], Optional[str]]):
             _parent = _path.parent
             total_size = file.total_size
             size_seen = 0
+            file.operation_metadata[self.index] ={}
             for filename, size in file:
                 # abort if job has been cancelled
                 if current_thread.should_exit:
@@ -139,7 +140,7 @@ def add_directory_support(run: Callable[[Operation, File], Optional[str]]):
                 # other exceptions should propagate
 
                 if _file.operation_metadata:
-                    file.operation_metadata[_file.filename] = _file.operation_metadata.values()
+                    file.operation_metadata[self.index][_file.filename] = _file.operation_metadata[self.index]
 
                 if rv:
                     return rv

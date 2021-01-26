@@ -141,7 +141,7 @@ class DummyOperation(Operation):
     def _attach_metadata(cls, file: File, operation_index:int):
         file.operation_metadata[operation_index] = {'number':random.random()}
 
-    def _run(self, file: File, operation_index):
+    def _run(self, file: File):
         logger.debug(f'Processing {file.filename}')
         thread = current_thread()
         for i in range(10):

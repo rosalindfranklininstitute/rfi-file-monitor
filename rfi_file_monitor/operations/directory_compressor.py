@@ -1,15 +1,17 @@
+from threading import current_thread
 import gi
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gio, GLib
+from gi.repository import Gtk
 
 from ..operation import Operation
-from ..file import File, Directory
-from ..utils import get_random_string
-from ..utils.decorators import with_pango_docs, supported_filetypes
+from ..file import Directory
+from ..utils import ExitableThread, get_random_string
+from ..utils.decorators import supported_filetypes
+from ..utils.exceptions import SkippedOperation
 
 import logging
 from dataclasses import dataclass, field
-from typing import Callable, Optional, Dict, Any
+from typing import Callable, List, Dict, Any, Tuple
 import tarfile
 import zipfile
 from pathlib import Path
@@ -126,18 +128,76 @@ class DirectoryCompressorOperation(Operation):
         else:
             tempfile.unlink(missing_ok=True)
 
+    def _check_existing_zipfile(self, _zipfile: Path, file_list: List[Tuple[str, int]]):
+        if not _zipfile.exists() or not zipfile.is_zipfile(_zipfile):
+            return
+
+        with zipfile.ZipFile(_zipfile) as f:
+            zipped_files = dict(zip(map(lambda x: os.path.join(self._monitored_directory, x), f.namelist()), f.infolist()))
+
+        logger.debug(f'{zipped_files.keys()=}')
+        logger.debug(f'{next(zip(*file_list))=}')
+
+        if len(zipped_files) != len(file_list):
+            return
+
+        for _filename, _size in file_list:
+            if _filename not in zipped_files:
+                return
+            zipped_file = zipped_files[_filename]
+            if _size != zipped_file.file_size:
+                return
+            elif os.stat(_filename).st_mtime > _zipfile.stat().st_mtime:
+                return
+
+        raise SkippedOperation('Zipfile contents are equal to directory')
+
+    def _check_existing_tarfile(self, _tarfile: Path, file_list: List[Tuple[str, int]]):
+        if not _tarfile.exists() or not tarfile.is_tarfile(_tarfile):
+            return
+
+        with tarfile.open(_tarfile) as f:
+            zipped_files = dict(zip(map(lambda x: os.path.join(self._monitored_directory, x), f.getnames()), f.getmembers()))
+
+        logger.debug(f'{zipped_files.keys()=}')
+        logger.debug(f'{next(zip(*file_list))=}')
+
+        if len(zipped_files) != len(file_list):
+            return
+
+        for _filename, _size in file_list:
+            if _filename not in zipped_files:
+                return
+            zipped_file = zipped_files[_filename]
+            if _size != zipped_file.size:
+                return
+            elif os.stat(_filename).st_mtime > zipped_file.mtime:
+                return
+
+        raise SkippedOperation('Tarball contents are equal to directory')
+
     def run(self, dir: Directory): # type: ignore[override]
 
         compressor = COMPRESSORS[self.params.compression_type]
 
         destination_filename = Path(self.params.destination_directory, dir.relative_filename.name).with_suffix(compressor.suffix)
 
+        our_thread = current_thread()
+
         total_size = dir.total_size
+        file_list = list(dir)
         number_of_files = len(dir)
         size_seen = 0
 
+        if 'tar' in compressor.suffix:
+            self._check_existing_tarfile(destination_filename, file_list)
+        elif 'zip' in compressor.suffix:
+            self._check_existing_zipfile(destination_filename, file_list)
+
         with compressor.opener(destination_filename, compressor.mode, **compressor.opener_args) as f:
             for _file_index, (_file, _size) in enumerate(dir):
+                if isinstance(our_thread, ExitableThread) and our_thread.should_exit:
+                    return "Job aborted"
                 arcname = os.path.relpath(_file, self._monitored_directory)
                 getattr(f, compressor.adder)(_file, arcname)
 

@@ -135,7 +135,7 @@ class DummyOperation(Operation):
     def run(self, file: File):
         if isinstance(file, Directory) and self.params.enable_directories:
             return add_directory_support(type(self)._run)(self, file)
-        return self._run(file, self.index)
+        return self._run(file)
 
     @classmethod
     def _attach_metadata(cls, file: File, operation_index:int):
@@ -157,7 +157,7 @@ class DummyOperation(Operation):
 
             file.update_progressbar(self.index, (i + 1) * 10)
             if self.params.add_metadata:
-                self._attach_metadata(file, operation_index)
+                self._attach_metadata(file, self.index)
         # None indicates success, a string failure, with its contents set to an error message
         return None
 

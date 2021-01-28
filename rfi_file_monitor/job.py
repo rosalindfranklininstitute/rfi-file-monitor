@@ -1,4 +1,3 @@
-from typing import Final
 import logging
 
 from .file import File, FileStatus

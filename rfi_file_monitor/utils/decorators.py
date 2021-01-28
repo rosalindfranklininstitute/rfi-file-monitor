@@ -144,7 +144,6 @@ def add_directory_support(run: Callable[[Operation, File], Optional[str]]):
                 except SkippedOperation:
                     continue
                 # other exceptions should propagate
-
                 if self.index in _file.operation_metadata:
                     file.operation_metadata[self.index][_file.filename] = _file.operation_metadata[self.index]
 

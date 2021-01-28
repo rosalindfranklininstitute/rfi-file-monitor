@@ -11,7 +11,7 @@ from ..operation import Operation
 from ..utils.exceptions import SkippedOperation
 from ..utils.decorators import with_pango_docs, supported_filetypes, add_directory_support
 from ..file import File, RegularFile, AWSS3Object, URL, Directory
-import random
+
 logger = logging.getLogger(__name__)
 
 @with_pango_docs(filename='dummy_operation.pango')

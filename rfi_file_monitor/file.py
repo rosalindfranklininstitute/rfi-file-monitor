@@ -276,7 +276,6 @@ class Directory(File):
         return len(self._filelist)
 
 
-
 class URL(File):
     def __init__(self,
         filename: str,

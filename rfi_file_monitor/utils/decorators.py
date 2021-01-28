@@ -112,6 +112,8 @@ def add_directory_support(run: Callable[[Operation, File], Optional[str]]):
             _parent = _path.parent
             total_size = file.total_size
             size_seen = 0
+
+            file.operation_metadata[self.index] ={}
             for file_index, (filename, size) in enumerate(file):
                 # abort if job has been cancelled
                 if current_thread.should_exit:
@@ -142,10 +144,11 @@ def add_directory_support(run: Callable[[Operation, File], Optional[str]]):
                 except SkippedOperation:
                     continue
                 # other exceptions should propagate
+                if self.index in _file.operation_metadata:
+                    file.operation_metadata[self.index][_file.filename] = _file.operation_metadata[self.index]
 
                 if rv:
                     return rv
-
             return None
         else:
             raise NotImplementedError(f'{type(file)} is currently unsupported')

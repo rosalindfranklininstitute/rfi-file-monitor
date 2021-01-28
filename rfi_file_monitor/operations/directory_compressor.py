@@ -6,7 +6,7 @@ from gi.repository import Gtk
 from ..operation import Operation
 from ..file import Directory
 from ..utils import ExitableThread, get_random_string
-from ..utils.decorators import supported_filetypes
+from ..utils.decorators import supported_filetypes, with_pango_docs
 from ..utils.exceptions import SkippedOperation
 
 import logging
@@ -37,6 +37,7 @@ COMPRESSORS: Dict[str, Compressor] = {
 }
 
 @supported_filetypes(filetypes=Directory)
+@with_pango_docs(filename='directory_compressor.pango')
 class DirectoryCompressorOperation(Operation):
 
     NAME = 'Directory Compressor'
@@ -77,7 +78,7 @@ class DirectoryCompressorOperation(Operation):
             ), 0, 1, 2, 1)
 
         label = Gtk.Label(
-            label='Compression type',
+            label='Compression Type',
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False,
         )

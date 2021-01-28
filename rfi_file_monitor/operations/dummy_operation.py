@@ -139,7 +139,7 @@ class DummyOperation(Operation):
 
     @classmethod
     def _attach_metadata(cls, file: File, operation_index:int):
-        file.operation_metadata[operation_index] = {'number':random.random()}
+        file.operation_metadata[operation_index] = {'number': random()}
 
     def _run(self, file: File):
         logger.debug(f'Processing {file.filename}')

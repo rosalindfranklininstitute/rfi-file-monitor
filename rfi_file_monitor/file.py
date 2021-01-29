@@ -34,17 +34,17 @@ class File(ABC):
     def __init__(self, \
         filename: str, \
         relative_filename: PurePath, \
-        created: int, \
+        created: float, \
         status: FileStatus):
 
         self._filename = filename
         self._relative_filename = relative_filename
-        self._created = created
+        self._created : Final[float] = created
         self._status = status
         self._row_reference : Gtk.TreeRowReference = None
         self._operation_metadata : Final[Dict[int, Dict[str, Any]]] = dict()
         self._cancellable = Gio.Cancellable()
-        self._saved : int = 0
+        self._saved : float = 0
         self._requeue : bool = False
 
     @property
@@ -64,11 +64,11 @@ class File(ABC):
         return self._relative_filename
 
     @property
-    def created(self) -> int:
+    def created(self) -> float:
         return self._created
 
     @property
-    def saved(self) -> int:
+    def saved(self) -> float:
         return self._saved
 
     @saved.setter

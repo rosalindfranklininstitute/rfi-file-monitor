@@ -1,3 +1,4 @@
+from rfi_file_monitor.utils import ExitableThread
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
@@ -145,7 +146,7 @@ class DummyOperation(Operation):
         logger.debug(f'Processing {file.filename}')
         thread = current_thread()
         for i in range(10):
-            if thread.should_exit:
+            if isinstance(thread, ExitableThread) and thread.should_exit:
                 logger.info(f"Killing thread {thread.name}")
                 return str('Thread killed')
             time.sleep(1.0)

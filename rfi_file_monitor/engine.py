@@ -5,7 +5,7 @@ from gi.repository import Gtk, GObject
 
 from .utils.widgetparams import WidgetParams
 
-class EngineMeta(ABCMeta, type(Gtk.Grid)):
+class EngineMeta(ABCMeta, Gtk.Grid.__class__):
     pass
 
 class Engine(ABC, WidgetParams, Gtk.Grid, metaclass=EngineMeta):

@@ -3,8 +3,6 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
-from typing import Final
-
 from .file import File
 from .utils.widgetparams import WidgetParams
 
@@ -18,7 +16,7 @@ from .utils.widgetparams import WidgetParams
 # So, the errors that are produced and bring the app down are
 # NotImplementedError exceptions...
 #
-class OperationMeta(ABCMeta, type(Gtk.Frame)):
+class OperationMeta(ABCMeta, Gtk.Frame.__class__):
     pass
 
 class Operation(ABC, Gtk.Frame, WidgetParams, metaclass=OperationMeta):
@@ -26,7 +24,7 @@ class Operation(ABC, Gtk.Frame, WidgetParams, metaclass=OperationMeta):
     @abstractmethod
     def __init__(self, *args, **kwargs):
         self._appwindow = kwargs.pop('appwindow')
-        self._index: Final[int] = 0
+        self._index: int = 0
 
         self._label = Gtk.Label(
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,

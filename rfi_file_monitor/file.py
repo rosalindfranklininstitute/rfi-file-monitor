@@ -298,6 +298,7 @@ class S3Object(File):
         bucket_name: str,
         etag: str,
         size: int,
+        region_name: str = '',
         ):
 
         super().__init__(
@@ -308,6 +309,7 @@ class S3Object(File):
         self._etag = etag
         self._size = size
         self._key = str(PurePosixPath(*self._relative_filename.parts))
+        self._region_name = region_name
 
     @property
     def bucket_name(self):
@@ -324,24 +326,6 @@ class S3Object(File):
     @property
     def size(self):
         return self._size
-
-class AWSS3Object(S3Object):
-    def __init__(self,
-        filename: str,
-        relative_filename: PurePath,
-        created: int,
-        status: FileStatus,
-        bucket_name: str,
-        etag: str,
-        size: int,
-        region_name: str,
-        ):
-
-        super().__init__(
-            filename, relative_filename, created,
-            status, bucket_name, etag, size
-        )
-        self._region_name = region_name
 
     @property
     def region_name(self):

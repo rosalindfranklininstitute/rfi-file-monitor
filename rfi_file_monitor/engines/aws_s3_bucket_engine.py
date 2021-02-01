@@ -1,10 +1,9 @@
+from __future__ import annotations
 import gi
 gi.require_version("Gtk", "3.0")
-gi.require_version("Gdk", "3.0")
-from gi.repository import Gtk, GLib, Gdk
+from gi.repository import Gtk, GLib
 import boto3
 import botocore
-from ..utils import match_path
 
 import string
 import random
@@ -17,12 +16,11 @@ from typing import Optional
 import logging
 import traceback
 
-from ..engine import Engine
 from .aws_s3_bucket_engine_advanced_settings import AWSS3BucketEngineAdvancedSettings
-from ..file import AWSS3Object, FileStatus
+from .base_s3_bucket_engine import BaseS3BucketEngine, BaseS3BucketEngineThread
+from ..file import S3Object, FileStatus
 from ..utils.decorators import exported_filetype, with_advanced_settings, with_pango_docs
-from ..utils.exceptions import AlreadyRunning, NotYetRunning
-from ..utils import ExitableThread, LongTaskWindow, get_patterns_from_string
+from ..utils import LongTaskWindow, get_patterns_from_string, match_path
 from ..operations.s3_uploader import AWS_S3_ENGINE_IGNORE_ME
 
 logger = logging.getLogger(__name__)
@@ -33,15 +31,15 @@ AVAILABLE_CONFIGURATIONS = (
     'QueueConfigurations'
 )
 
-@exported_filetype(filetype=AWSS3Object)
+@exported_filetype(filetype=S3Object)
 @with_advanced_settings(engine_advanced_settings=AWSS3BucketEngineAdvancedSettings)
 @with_pango_docs(filename='aws_s3_bucket_engine.pango')
-class AWSS3BucketEngine(Engine):
+class AWSS3BucketEngine(BaseS3BucketEngine):
 
     NAME = 'AWS S3 Bucket Monitor'
 
     def __init__(self, appwindow):
-        super().__init__(appwindow)
+        super().__init__(appwindow, AWSS3BucketEngineThread)
 
         # Needs:
         # 1. region
@@ -116,79 +114,6 @@ class AWSS3BucketEngine(Engine):
 
         self.notify('valid')
 
-    def start(self):
-        if self._running:
-            raise AlreadyRunning('The engine is already running. It needs to be stopped before it may be restarted')
-
-        # pop up a long task window
-        # spawn a thread for this to avoid GUI freezes
-        task_window = LongTaskWindow(self._appwindow)
-        task_window.set_text(f"<b>Launching {self.NAME}</b>")
-        task_window.show()
-        watch_cursor = Gdk.Cursor.new_for_display(Gdk.Display.get_default(), Gdk.CursorType.WATCH)
-        task_window.get_window().set_cursor(watch_cursor)
-
-        self._thread = AWSS3BucketEngineThread(self, task_window)
-        self._thread.start()
-
-    def stop(self):
-        if not self._running:
-            raise NotYetRunning('The engine needs to be started before it can be stopped.')
-
-        task_window = LongTaskWindow(self._appwindow)
-        task_window.set_text(f"<b>Stopping {self.NAME}</b>")
-        task_window.show()
-        watch_cursor = Gdk.Cursor.new_for_display(Gdk.Display.get_default(), Gdk.CursorType.WATCH)
-        task_window.get_window().set_cursor(watch_cursor)
-
-        self._running_changed_handler_id = self.connect('notify::running', self._running_changed_cb, task_window)                
-
-        # if the thread is sleeping, it will be killed at the next iteration
-        self._thread.should_exit = True
-
-    def _running_changed_cb(self, _self, param, task_window):
-        self.disconnect(self._running_changed_handler_id)
-        if not self._running:
-            task_window.get_window().set_cursor(None)
-            task_window.destroy()
-
-
-    def _get_client_options(self) -> dict:
-        client_options = dict()
-        client_options['aws_access_key_id'] = self.params.access_key
-        client_options['aws_secret_access_key'] = self.params.secret_key
-        return client_options
-
-    def _confirm_bucket_exists(self, client):
-        try:
-            logger.debug(f"Checking if bucket {self.params.bucket_name} exists")
-
-            client.head_bucket(Bucket=self.params.bucket_name)
-        except botocore.exceptions.ClientError as e:
-            # If a client error is thrown, then check that it was a 404 error.
-            # If it was a 404 error, then the bucket does not exist.
-            error_code = int(e.response['Error']['Code'])
-            if error_code == 403:
-                logger.info(f"Bucket {self.params.bucket_name} exists but is not accessible")
-                return False
-            elif error_code == 404:
-                logger.info(f"Bucket {self.params.bucket_name} does not exist")
-                return False
-            else:
-                logger.info(f"Accessing bucket {self.params.bucket_name} returned code {error_code}")
-                return False
-        return True
-    
-    def _kill_task_window(self, task_window: LongTaskWindow):
-        # destroy task window
-        task_window.get_window().set_cursor(None)
-        task_window.destroy()
-
-        self._running = True
-        self.notify('running')
-
-        return GLib.SOURCE_REMOVE
-
     def _cleanup(self):
         #pylint: disable=no-member
         logger.debug('Running cleanup!')
@@ -250,17 +175,12 @@ class AWSS3BucketEngine(Engine):
 
         return GLib.SOURCE_REMOVE
 
-class AWSS3BucketEngineThread(ExitableThread):
-    def __init__(self, engine: AWSS3BucketEngine, task_window: LongTaskWindow):
-        super().__init__()
-        self._engine : AWSS3BucketEngine = engine
-        self._task_window = task_window
-
+class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
     def run(self):
-        client_options = self._engine._get_client_options()
+        self._client_options = self._engine._get_client_options()
 
         # set up temporary s3 client
-        temp_s3_client = boto3.client('s3', **client_options)
+        temp_s3_client = boto3.client('s3', **self._client_options)
 
         # first confirm that the bucket exists and that we can read it
         try:
@@ -281,13 +201,13 @@ class AWSS3BucketEngineThread(ExitableThread):
             GLib.idle_add(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
             return
         
-        client_options['region_name'] = response['LocationConstraint'] if response['LocationConstraint'] else 'us-east-1'
+        self._client_options['region_name'] = response['LocationConstraint'] if response['LocationConstraint'] else 'us-east-1'
 
         # set up proper s3 client
-        self._engine.s3_client = boto3.client('s3', **client_options)
+        self._engine.s3_client = boto3.client('s3', **self._client_options)
 
         # set up sqs client
-        self._engine.sqs_client = boto3.client('sqs', **client_options)
+        self._engine.sqs_client = boto3.client('sqs', **self._client_options)
 
         # create queue
         self._engine.queue_name = 'rfi-file-monitor-s3-bucket-engine-' + ''.join(random.choice(string.ascii_lowercase) for i in range(6))
@@ -409,57 +329,12 @@ class AWSS3BucketEngineThread(ExitableThread):
             return
 
         # prepare patterns
-        included_patterns = get_patterns_from_string(self._engine.params.allowed_patterns)
-        excluded_patterns = get_patterns_from_string(self._engine.params.ignore_patterns, defaults=[])
+        self._included_patterns = get_patterns_from_string(self._engine.params.allowed_patterns)
+        self._excluded_patterns = get_patterns_from_string(self._engine.params.ignore_patterns, defaults=[])
 
         # if required, add existing files to queue
-        if self._engine.params.process_existing_files:
-            try:
-                paginator = self._engine.s3_client.get_paginator('list_objects_v2')
-                page_iterator = paginator.paginate(Bucket=self._engine.params.bucket_name)
-
-                existing_files = []
-
-                for page in page_iterator:
-                    logger.debug(f"{page}")
-                    if page['KeyCount'] == 0:
-                        continue
-                    for _object in page['Contents']:
-                        key = _object['Key']
-
-                        if not match_path(PurePosixPath(key),
-                            included_patterns=included_patterns,
-                            excluded_patterns=excluded_patterns,
-                            case_sensitive=False):
-                            continue
-
-                        last_modified = _object['LastModified']
-                        size = _object['Size']
-                        etag = _object['ETag'][1:-1] # get rid of those weird quotes
-                        quoted_key = urllib.parse.quote_plus(key)
-
-                        full_path = f"https://{self._engine.params.bucket_name}.s3.{client_options['region_name']}.amazonaws.com/{quoted_key}"
-                        relative_path = PurePosixPath(key)
-                        created = last_modified.timestamp()
-
-                        _file = AWSS3Object(
-                            full_path,
-                            relative_path,
-                            created,
-                            FileStatus.SAVED,
-                            self._engine.params.bucket_name,
-                            etag,
-                            size,
-                            client_options['region_name'])
-                    
-                        existing_files.append(_file)
-                if existing_files:
-                    GLib.idle_add(self._engine._appwindow._queue_manager.add, existing_files, priority=GLib.PRIORITY_HIGH)
-            except Exception as e:
-                self._engine._cleanup()
-                GLib.idle_add(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
-                return
-
+        if self._engine.params.process_existing_files and not self.process_existing_files():
+            return
 
         # if we get here, things should be working.
         # close task_window
@@ -512,8 +387,8 @@ class AWSS3BucketEngineThread(ExitableThread):
                     size = object_info['size']
 
                     if not match_path( PurePosixPath(key),
-                        included_patterns=included_patterns,
-                        excluded_patterns=excluded_patterns,
+                        included_patterns=self._included_patterns,
+                        excluded_patterns=self._excluded_patterns,
                         case_sensitive=False):
                         continue
 
@@ -535,13 +410,13 @@ class AWSS3BucketEngineThread(ExitableThread):
                         # this is a testfile -> ignore!
                         continue
 
-                    full_path = f"https://{self._engine.params.bucket_name}.s3.{client_options['region_name']}.amazonaws.com/{object_info['key']}"
+                    full_path = f"https://{self._engine.params.bucket_name}.s3.{self._client_options['region_name']}.amazonaws.com/{object_info['key']}"
                     relative_path = PurePosixPath(key)
                     created = response['LastModified'].timestamp()
 
                     if self._engine.props.running and \
                         self._engine._appwindow._queue_manager.props.running:
-                        _file = AWSS3Object(
+                        _file = S3Object(
                             full_path,
                             relative_path,
                             created,
@@ -549,7 +424,7 @@ class AWSS3BucketEngineThread(ExitableThread):
                             self._engine.params.bucket_name,
                             etag,
                             size,
-                            client_options['region_name'],
+                            self._client_options['region_name'],
                             )
                         GLib.idle_add(self._engine._appwindow._queue_manager.add, _file, priority=GLib.PRIORITY_HIGH)
 

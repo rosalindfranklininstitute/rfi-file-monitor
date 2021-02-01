@@ -57,7 +57,7 @@ these types, any other file written to the directory will be processed.
 
 <span size="x-large">Exported File Format</span>
 
-<b>AWSS3Object</b>
+<b>S3Object</b>
 
 <span size="x-large">Author</span>
 

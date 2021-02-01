@@ -1,0 +1,19 @@
+<span size="xx-large">Directory Compressor</span>
+
+<span size="x-large">Purpose</span>
+
+Compress a directory recursively into a tar, tar.gz, tar.bz2, tar.xz or zip file.
+The name of the created archive will be the directory basename, appended with the suffix appropriate for the selected compression type.
+
+<span size="x-large">Options</span>
+
+* <b>Destination</b>: Location where to create the archives.
+* <b>Compression Type</b>: A list of supported compression/archiving types.
+
+<span size="x-large">Supported File Formats</span>
+
+<b>Directory</b>
+
+<span size="x-large">Author</span>
+
+Tom Schoonjans

@@ -16,7 +16,7 @@ import json
 from .base_s3_bucket_engine import BaseS3BucketEngine, BaseS3BucketEngineThread
 from .ceph_s3_bucket_engine_advanced_settings import CephS3BucketEngineAdvancedSettings
 from ..file import S3Object
-from ..utils.decorators import exported_filetype, with_advanced_settings
+from ..utils.decorators import exported_filetype, with_advanced_settings, with_pango_docs
 from ..utils import get_random_string
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ ABORT_MESSAGE = "Ensure you are using valid credentials and bucket name, and tha
 
 @exported_filetype(filetype=S3Object)
 @with_advanced_settings(engine_advanced_settings=CephS3BucketEngineAdvancedSettings)
-#@with_pango_docs(filename='ceph_s3_bucket_engine.pango')
+@with_pango_docs(filename='ceph_s3_bucket_engine.pango')
 class CephS3BucketEngine(BaseS3BucketEngine):
 
     NAME = 'Ceph S3 Bucket Monitor'

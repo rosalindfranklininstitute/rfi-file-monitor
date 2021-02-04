@@ -88,7 +88,7 @@ class CephS3BucketEngineAdvancedSettings(EngineAdvancedSettings):
         rabbitmq_radiobutton = engine.register_widget(Gtk.RadioButton(
             halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
             hexpand=False, vexpand=False,
-            active=True, label='RabbitMQ push-endpoint'
+            active=True, label='AMQP 0.9.1'
         ), 'use_rabbitmq')
 
         rabbitmq_frame = Gtk.Frame(

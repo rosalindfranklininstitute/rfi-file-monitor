@@ -102,7 +102,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
 
         # add the notebook with the engines
         self._engines_notebook = Gtk.Notebook(
-            **EXPAND_AND_FILL,)
+            **EXPAND_AND_FILL, scrollable=True, )
         controls_grid_basic.attach(self._engines_notebook, 1, 0, 6, 2)
 
         self._engines : List[Engine] = list()

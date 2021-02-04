@@ -37,7 +37,7 @@ class AWSS3BucketEngineAdvancedSettings(EngineAdvancedSettings):
 
         self._add_horizontal_separator()
 
-        # Specify allowed file patterns
+        # Specify ignored file patterns
         ignore_patterns_grid = Gtk.Grid(
             halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
             hexpand=True, vexpand=False,

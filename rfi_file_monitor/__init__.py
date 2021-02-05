@@ -1,11 +1,14 @@
 import logging
 import sys
-
-from .application import Application
+import os
+from pathlib import PurePath
 
 import bugsnag
 from bugsnag.handlers import BugsnagHandler
 from .version import __version__
+
+# set AWS_DATA_PATH to allow using Ceph specific boto3 API
+os.environ['AWS_DATA_PATH'] = str(PurePath(__file__).parent.joinpath('data', 'models'))
 
 BUGSNAG_API_KEY = 'b19e59eb84b9eb30d31d57a97e03406a'
 
@@ -21,6 +24,8 @@ bugsnag.configure(
 
 # main entrypoint
 def main():
+    from .application import Application
+
     # set up logging
     monitor_logger = logging.getLogger('rfi_file_monitor')
     monitor_logger.setLevel(logging.DEBUG)

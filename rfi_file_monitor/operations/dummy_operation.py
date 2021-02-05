@@ -1,3 +1,4 @@
+from rfi_file_monitor.utils import ExitableThread
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
@@ -10,12 +11,12 @@ from random import random
 from ..operation import Operation
 from ..utils.exceptions import SkippedOperation
 from ..utils.decorators import with_pango_docs, supported_filetypes, add_directory_support
-from ..file import File, RegularFile, AWSS3Object, URL, Directory
+from ..file import File, RegularFile, S3Object, URL, Directory
 
 logger = logging.getLogger(__name__)
 
 @with_pango_docs(filename='dummy_operation.pango')
-@supported_filetypes(filetypes=[RegularFile, AWSS3Object, URL, Directory])
+@supported_filetypes(filetypes=[RegularFile, S3Object, URL, Directory])
 class DummyOperation(Operation):
 
     NAME = "Dummy Operation"
@@ -145,7 +146,7 @@ class DummyOperation(Operation):
         logger.debug(f'Processing {file.filename}')
         thread = current_thread()
         for i in range(10):
-            if thread.should_exit:
+            if isinstance(thread, ExitableThread) and thread.should_exit:
                 logger.info(f"Killing thread {thread.name}")
                 return str('Thread killed')
             time.sleep(1.0)

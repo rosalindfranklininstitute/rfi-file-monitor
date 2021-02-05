@@ -35,7 +35,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         Gtk.ApplicationWindow.__init__(self, *args, **kwargs)
 
         self._preflight_check_metadata : Final[Dict[int, Dict[str, Any]]] = dict() 
-        self._yaml_file: Final[str] = None
+        self._yaml_file: str = None
 
         self.set_default_size(1000, 1000)
 
@@ -102,7 +102,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
 
         # add the notebook with the engines
         self._engines_notebook = Gtk.Notebook(
-            **EXPAND_AND_FILL,)
+            **EXPAND_AND_FILL, scrollable=True, )
         controls_grid_basic.attach(self._engines_notebook, 1, 0, 6, 2)
 
         self._engines : List[Engine] = list()
@@ -238,7 +238,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         
         self._files_tree_model = Gtk.TreeStore(
             str, # filename, relative to monitored directory
-            int, # epoch time
+            float, # epoch time
             int, # status as code
             str, # operation name
             float, # operation progress
@@ -673,17 +673,19 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         operations = yaml_dict['operations']
         engines = yaml_dict['engines']
 
-        self._queue_manager.update_from_dict(queue_manager)
-
         for engine in engines:
             # find corresponding engine in appwindow
             engine_match = next(e for e in self._engines if e.NAME == engine['name'])
             engine_match.update_from_dict(engine['params'])
             if active_engine == engine_match.NAME:
                 active_engine_index = self._engines.index(engine_match)
+                break
+        else:
+            logger.error(f'Active engine {active_engine} not found in list of engines')
+            return
         
-        logger.debug(f'{active_engine_index=}')
-        
+        self._queue_manager.update_from_dict(queue_manager)
+
         # add the operations
         if isinstance(operations, collections.abc.Sequence):
             for op in operations:
@@ -696,7 +698,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                         new_operation.show_all()
                         break
                 else:
-                    logger.debug(f"load_from_yaml_dict: no match found for operation {op['name']}")
+                    logger.error(f"load_from_yaml_dict: no match found for operation {op['name']}")
 
         self._engines_notebook.set_current_page(active_engine_index)
         self._update_monitor_switch_sensitivity()

@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 class GoogleAnalyticsConsumer(ExitableThread):
     def __init__(self, context):
         super().__init__()
+        self.daemon = True
         self._context = context
         self._session = requests.Session()
 
@@ -47,7 +48,7 @@ class GoogleAnalyticsContext:
         self._application_version = application_version
         self._config_file = config_file
 
-        self._queue = Queue(maxsize=10000)
+        self._queue : Queue = Queue(maxsize=10000)
 
         if self._config_file.exists() and self._config_file.is_file():
             _uuid = self._config_file.read_text().strip()

@@ -9,7 +9,7 @@ import importlib.resources
 import platform
 import webbrowser
 import logging
-from typing import Any, Final, Dict, Type, Union, List
+from typing import Any, Dict, Type, Union, List
 import importlib.metadata
 from pathlib import Path
 
@@ -124,7 +124,7 @@ class Application(Gtk.Application):
             self.set_accels_for_action(accel[0], accel[1])
         
         # populate dict with preferences found in entry points
-        self._prefs: Final[Dict[Preference, Any]] = dict()
+        self._prefs: Dict[Preference, Any] = dict()
         if 'rfi_file_monitor.preferences' in importlib.metadata.entry_points():
             for e in importlib.metadata.entry_points()['rfi_file_monitor.preferences']:
                 _pref = e.load()
@@ -138,8 +138,8 @@ class Application(Gtk.Application):
             pass
         else:
             logger.debug(f'Reading preferences from {str(PREFERENCES_CONFIG_FILE)}')
-            for _pref in self._prefs:
-                for _key, _value in stored_prefs.items():
+            for _key, _value in stored_prefs.items():
+                for _pref in self._prefs:
                     if _pref.key == _key:
                         self._prefs[_pref] = _value
                         break
@@ -149,13 +149,13 @@ class Application(Gtk.Application):
         logger.debug(f'{self._prefs=}')
 
 
-        self._engines_advanced_settings_map : Final[Dict[Type[Engine], Type[EngineAdvancedSettings]]] = dict()
+        self._engines_advanced_settings_map : Dict[Type[Engine], Type[EngineAdvancedSettings]] = dict()
 
-        self._engines_exported_filetype_map : Final[Dict[Type[Engine], Type[File]]] = dict()
+        self._engines_exported_filetype_map : Dict[Type[Engine], Type[File]] = dict()
 
-        self._filetypes_supported_operations_map : Final[Dict[Type[File], List[Type[Operation]]]] = dict()
+        self._filetypes_supported_operations_map : Dict[Type[File], List[Type[Operation]]] = dict()
 
-        self._pango_docs_map : Final[Dict[Type[Union[Engine, QueueManager, Operation]], str]] = dict()
+        self._pango_docs_map : Dict[Type[Union[Engine, QueueManager, Operation]], str] = dict()
 
         # add queue manager docs manually
         try:

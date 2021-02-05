@@ -5,7 +5,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib, GObject
 
 from typing import OrderedDict as OrderedDictType
-from typing import Final, List, Union, Sequence
+from typing import Final, List, Union, Sequence, Optional
 from collections import OrderedDict
 from threading import RLock
 import logging
@@ -31,7 +31,7 @@ class QueueManager(WidgetParams, Gtk.Grid):
         self._files_dict_lock = RLock()
         self._files_dict: OrderedDictType[str, File] = OrderedDict()
         self._jobs_list: Final[List[Job]] = list()
-        self._njobs_running: Final[int] = 0
+        self._njobs_running: int = 0
 
         kwargs = dict(
             halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
@@ -165,7 +165,7 @@ class QueueManager(WidgetParams, Gtk.Grid):
         if isinstance(file_or_files, File):
             file_paths = [file_or_files]
         else:
-            file_paths = file_or_files
+            file_paths = list(file_or_files)
         
         with self._files_dict_lock:
             for _file in file_paths:
@@ -219,7 +219,7 @@ class QueueManager(WidgetParams, Gtk.Grid):
         if isinstance(file_path, str):
             file_paths = [file_path]
         else:
-            file_paths = file_path
+            file_paths = list(file_path)
 
         with self._files_dict_lock:
             for file_path in file_paths:
@@ -328,6 +328,7 @@ class QueueManager(WidgetParams, Gtk.Grid):
                     _file.requeue = False
                     _file.status = FileStatus.SAVED
                     _file.saved = time()
+                    _file.operation_metadata.clear()
                     path = _file.row_reference.get_path()
                     iter = self._appwindow._files_tree_model.get_iter(path)
                     self._appwindow._files_tree_model[iter][2] = int(FileStatus.SAVED)
@@ -357,10 +358,10 @@ class QueueManager(WidgetParams, Gtk.Grid):
 @dataclass
 class OutputRow:
     relative_filename: str
-    creation_timestamp: int
+    creation_timestamp: float
     status: int
     operation_name: str
     operation_progress: float = 0.0
     operation_progress_str: str = "0.0 %"
-    background_color: str = None
+    background_color: Optional[str] = None
     error_message: str = ""

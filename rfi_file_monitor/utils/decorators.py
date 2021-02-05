@@ -34,7 +34,10 @@ def with_pango_docs(filename: str):
             logger.error(f'with_pango_cos can only be used to decorate classes that extend Engine, Operation or QueueManager')
             return cls
         try:
-            contents = Path(inspect.getmodule(cls).__file__).parent.joinpath('docs', filename).read_text()
+            module = inspect.getmodule(cls)
+            if not module:
+                raise Exception(f'module for class {cls.NAME} not found')
+            contents = Path(module.__file__).parent.joinpath('docs', filename).read_text()
         except Exception:
             logger.exception(f'with_pango_docs: could not open {filename} for reading')
         else:
@@ -102,7 +105,7 @@ def supported_filetypes(filetypes: Union[Type[File], Sequence[Type[File]]]):
 def add_directory_support(run: Callable[[Operation, File], Optional[str]]):
     @functools.wraps(run)
     def wrapper(self: Operation, file: File):
-        current_thread : ExitableThread = threading.current_thread()
+        current_thread = threading.current_thread()
 
         if isinstance(file, RegularFile):
             return run(self, file)
@@ -116,7 +119,7 @@ def add_directory_support(run: Callable[[Operation, File], Optional[str]]):
             file.operation_metadata[self.index] ={}
             for file_index, (filename, size) in enumerate(file):
                 # abort if job has been cancelled
-                if current_thread.should_exit:
+                if isinstance(current_thread, ExitableThread) and current_thread.should_exit:
                     return str('Thread killed')
 
                 if total_size == 0:

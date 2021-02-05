@@ -35,6 +35,7 @@ requirements:
     - dropbox
     - tenacity
     - requests
+    - pika
 
 test:
   imports:
@@ -46,6 +47,9 @@ test:
     - rfi_file_monitor.engines
     - rfi_file_monitor.engines.aws_s3_bucket_engine
     - rfi_file_monitor.engines.aws_s3_bucket_engine_advanced_settings
+    - rfi_file_monitor.engines.base_s3_bucket_engine
+    - rfi_file_monitor.engines.ceph_s3_bucket_engine
+    - rfi_file_monitor.engines.ceph_s3_bucket_engine_advanced_settings
     - rfi_file_monitor.engines.directory_watchdog_engine
     - rfi_file_monitor.engines.directory_watchdog_engine_advanced_settings
     - rfi_file_monitor.engines.file_watchdog_engine_advanced_settings

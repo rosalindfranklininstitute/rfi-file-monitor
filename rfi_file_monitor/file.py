@@ -34,17 +34,17 @@ class File(ABC):
     def __init__(self, \
         filename: str, \
         relative_filename: PurePath, \
-        created: int, \
+        created: float, \
         status: FileStatus):
 
         self._filename = filename
         self._relative_filename = relative_filename
-        self._created = created
+        self._created : Final[float] = created
         self._status = status
         self._row_reference : Gtk.TreeRowReference = None
         self._operation_metadata : Final[Dict[int, Dict[str, Any]]] = dict()
         self._cancellable = Gio.Cancellable()
-        self._saved : int = 0
+        self._saved : float = 0
         self._requeue : bool = False
 
     @property
@@ -64,11 +64,11 @@ class File(ABC):
         return self._relative_filename
 
     @property
-    def created(self) -> int:
+    def created(self) -> float:
         return self._created
 
     @property
-    def saved(self) -> int:
+    def saved(self) -> float:
         return self._saved
 
     @saved.setter
@@ -298,6 +298,7 @@ class S3Object(File):
         bucket_name: str,
         etag: str,
         size: int,
+        region_name: str = '',
         ):
 
         super().__init__(
@@ -308,6 +309,7 @@ class S3Object(File):
         self._etag = etag
         self._size = size
         self._key = str(PurePosixPath(*self._relative_filename.parts))
+        self._region_name = region_name
 
     @property
     def bucket_name(self):
@@ -324,24 +326,6 @@ class S3Object(File):
     @property
     def size(self):
         return self._size
-
-class AWSS3Object(S3Object):
-    def __init__(self,
-        filename: str,
-        relative_filename: PurePath,
-        created: int,
-        status: FileStatus,
-        bucket_name: str,
-        etag: str,
-        size: int,
-        region_name: str,
-        ):
-
-        super().__init__(
-            filename, relative_filename, created,
-            status, bucket_name, etag, size
-        )
-        self._region_name = region_name
 
     @property
     def region_name(self):

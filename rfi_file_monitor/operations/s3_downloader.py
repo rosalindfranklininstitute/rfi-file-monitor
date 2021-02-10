@@ -3,11 +3,13 @@ from __future__ import annotations
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
+from tenacity import retry, stop_after_attempt, wait_exponential, \
+    before_log, after_log, before_sleep_log
 
 from ..file import S3Object
 from ..operation import Operation
 from ..utils.decorators import supported_filetypes, with_pango_docs
-from ..utils import get_random_string
+from ..utils import get_random_string, monitor_retry_condition
 from ..utils.exceptions import SkippedOperation
 from ..utils.s3 import calculate_etag, TransferConfig, S3ProgressPercentage
 
@@ -61,7 +63,15 @@ class S3DownloaderOperation(Operation):
         temp_filename.write_text('delete me')
         temp_filename.unlink()
 
-    def run(self, file: S3Object):
+    @retry(retry=monitor_retry_condition(),
+        reraise=True,
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(),
+        before=before_log(logger, logging.DEBUG),
+        after=after_log(logger, logging.DEBUG),
+        before_sleep=before_sleep_log(logger, logging.DEBUG),
+    )
+    def run(self, file: S3Object): # type: ignore[override]
         
         s3_client = self.appwindow.active_engine.s3_client
         bucket_name = self.appwindow.active_engine.params.bucket_name

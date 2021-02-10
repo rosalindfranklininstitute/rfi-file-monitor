@@ -6,11 +6,13 @@ from gi.repository import Gtk
 import boto3
 import botocore
 from munch import Munch
+from tenacity import retry, stop_after_attempt, wait_exponential, \
+    before_log, after_log, before_sleep_log
 
 from ..operation import Operation
 from ..utils.exceptions import SkippedOperation
 from ..file import File, RegularFile, Directory
-from ..utils import query_metadata
+from ..utils import query_metadata, monitor_retry_condition
 from ..utils.decorators import with_pango_docs, supported_filetypes, add_directory_support
 from ..utils.s3 import S3ProgressPercentage, TransferConfig, calculate_etag
 
@@ -19,7 +21,7 @@ import logging
 import tempfile
 from pathlib import PurePosixPath, Path
 import urllib
-from typing import Sequence, Dict, Any
+from typing import Sequence, Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +135,7 @@ class S3UploaderOperation(Operation):
         self._grid.attach(widget, 2, 3, 1, 1)
 
     @classmethod
-    def _get_dict_tagset(cls, preflight_check_metadata: Dict[int, Dict[str, Any]], tagtype: str) -> dict:
+    def _get_dict_tagset(cls, preflight_check_metadata: Dict[int, Dict[str, Any]], tagtype: str) -> Optional[dict]:
         tags = query_metadata(preflight_check_metadata, tagtype)
         if tags is None:
             return None
@@ -141,7 +143,7 @@ class S3UploaderOperation(Operation):
         return dict(TagSet=tagset)
 
     @classmethod
-    def _get_dict_acl_options(cls, preflight_check_metadata: Dict[int, Dict[str, Any]], resource: str, allow_list: Sequence[str]) -> dict:
+    def _get_dict_acl_options(cls, preflight_check_metadata: Dict[int, Dict[str, Any]], resource: str, allow_list: Sequence[str]) -> Optional[dict]:
         options = query_metadata(preflight_check_metadata, resource)
         if options is None:
             return None
@@ -261,6 +263,14 @@ class S3UploaderOperation(Operation):
         logger.debug(f"{file.operation_metadata[operation_index]=}")
 
     @classmethod
+    @retry(retry=monitor_retry_condition(),
+        reraise=True,
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(),
+        before=before_log(logger, logging.DEBUG),
+        after=after_log(logger, logging.DEBUG),
+        before_sleep=before_sleep_log(logger, logging.DEBUG),
+    )
     def _run(cls, file: File, preflight_check_metadata: Dict[int, Dict[str, Any]], params: Munch, operation_index:int):
         client_options = cls._get_client_options(params)
         s3_client = boto3.client('s3', **client_options)

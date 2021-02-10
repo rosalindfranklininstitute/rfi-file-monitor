@@ -4,13 +4,13 @@ from ..file import File
 
 import os
 import hashlib
-from typing import Optional
+from typing import Optional, Union
 
 KB = 1024
 MB = KB * KB
 TransferConfig = boto3.s3.transfer.TransferConfig(max_concurrency=1, multipart_chunksize=8*MB, multipart_threshold=8*MB)
 
-def calculate_etag(file: str):
+def calculate_etag(file: Union[str, os.PathLike]):
     # taken from https://stackoverflow.com/a/52300584
     with open(file, 'rb') as f:
         md5hash = hashlib.md5()
@@ -27,17 +27,17 @@ def calculate_etag(file: str):
     if filesize > TransferConfig.multipart_threshold:
         md5hash = hashlib.md5()
         md5hash.update(md5string)
-        md5hash = md5hash.hexdigest() + "-" + str(block_count)
+        md5hash_digested = md5hash.hexdigest() + "-" + str(block_count)
     else:
-        md5hash = md5hash.hexdigest()
+        md5hash_digested = md5hash.hexdigest()
 
-    return md5hash
+    return md5hash_digested
 
 
 # taken from https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-uploading-files.html
 class S3ProgressPercentage(object):
 
-    def __init__(self, file: File, filename: str, operation_index: int, size: Optional[float] = None):
+    def __init__(self, file: File, filename: Union[str, os.PathLike], operation_index: int, size: Optional[float] = None):
         self._file = file
         if size:
             self._size = size

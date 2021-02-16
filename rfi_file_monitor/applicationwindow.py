@@ -22,6 +22,7 @@ from .file import FileStatus, File
 from .queue_manager import QueueManager
 from .engine import Engine
 from .operation import Operation
+from .preferences import Preferences
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +31,12 @@ class ApplicationWindow(Gtk.ApplicationWindow):
 
     ENGINE_ADVANCED_SETTINGS_WINDOW_ATTR = 'advanced settings window'
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, force_all=False, **kwargs):
         logger.debug('Calling ApplicationWindow __init__')
-        Gtk.ApplicationWindow.__init__(self, *args, **kwargs)
+        Gtk.ApplicationWindow.__init__(self, **kwargs)
 
+        self._prefs: Preferences = self.get_property('application').get_preferences()
+    
         self._preflight_check_metadata : Final[Dict[int, Dict[str, Any]]] = dict() 
         self._yaml_file: str = None
 
@@ -108,6 +111,8 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         self._engines : List[Engine] = list()
 
         for engine_cls in self.get_property('application').known_engines.values():
+            if not (self._prefs.engines[engine_cls] or force_all):
+                continue
             engine = engine_cls(appwindow=self)
             engine_grid = Gtk.Grid(**EXPAND_AND_FILL, row_spacing=5, border_width=5)
             engine_grid.attach(engine, 0, 0, 1, 1)
@@ -412,7 +417,9 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         for _cls in filetype_cls.__mro__:
             if _cls is File:
                 break
-            operation_cls_list.extend(self.get_property('application').filetypes_supported_operations_map[_cls])
+            for _op in self.get_property('application').filetypes_supported_operations_map[_cls]:
+                if self._prefs.operations[_op]:
+                    operation_cls_list.append(_op)
 
         operation_cls_list.sort(key=lambda operation: operation.NAME)
 
@@ -422,6 +429,11 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         
         if len(self._controls_operations_model):
             self._controls_operations_combo.props.active = 0
+            self.lookup_action('add-operation').set_enabled(True)
+            self._controls_operations_combo.set_sensitive(True)
+        else:
+            self.lookup_action('add-operation').set_enabled(False)
+            self._controls_operations_combo.set_sensitive(False)
 
     def _update_monitor_switch_sensitivity(self):
         logger.debug('_update_monitor_switch_sensitivity')

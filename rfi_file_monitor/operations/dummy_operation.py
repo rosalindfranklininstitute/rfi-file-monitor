@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 class DummyOperation(Operation):
 
     NAME = "Dummy Operation"
+    DEBUG = True
 
     def __init__(self, *args, **kwargs):
         Operation.__init__(self, *args, **kwargs)

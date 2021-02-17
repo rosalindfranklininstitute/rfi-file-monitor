@@ -28,6 +28,7 @@ SIZE_UNITS = {
 class TemporaryFileEngine(Engine):
 
     NAME = 'Temporary File Generator'
+    DEBUG = 1
 
     def __init__(self, appwindow):
         super().__init__(appwindow)

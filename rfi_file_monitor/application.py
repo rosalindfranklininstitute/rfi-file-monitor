@@ -4,18 +4,19 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gio, Gtk, GdkPixbuf
 import yaml
+from munch import Munch
 
 import importlib.resources
 import platform
 import webbrowser
 import logging
-from typing import Any, Dict, Type, Union, List
+from typing import Dict, Type, Union, List
 import importlib.metadata
 from pathlib import Path
 
 from .version import __version__
 from .utils import add_action_entries, PREFERENCES_CONFIG_FILE, MONITOR_YAML_VERSION 
-from .preferences import Preference
+from .preferences import Preferences
 from .preferenceswindow import PreferencesWindow
 from .file import RegularFile, File
 from .utils.helpwindow import HelpWindow
@@ -61,7 +62,7 @@ class Application(Gtk.Application):
         return self._engines_exported_filetype_map
 
     @property
-    def filetypes_supported_operations_map(self):
+    def filetypes_supported_operations_map(self) -> Dict[Type[File], List[Type[Operation]]]:
         return self._filetypes_supported_operations_map
 
     @property
@@ -123,32 +124,6 @@ class Application(Gtk.Application):
         for accel in accelerators:
             self.set_accels_for_action(accel[0], accel[1])
         
-        # populate dict with preferences found in entry points
-        self._prefs: Dict[Preference, Any] = dict()
-        if 'rfi_file_monitor.preferences' in importlib.metadata.entry_points():
-            for e in importlib.metadata.entry_points()['rfi_file_monitor.preferences']:
-                _pref = e.load()
-                self._prefs[_pref] = _pref.default
-
-        # now, open preferences file and update the prefs dictionary
-        try:
-            with PREFERENCES_CONFIG_FILE.open('r') as f:
-                stored_prefs = yaml.safe_load(f)
-        except FileNotFoundError:
-            pass
-        else:
-            logger.debug(f'Reading preferences from {str(PREFERENCES_CONFIG_FILE)}')
-            for _key, _value in stored_prefs.items():
-                for _pref in self._prefs:
-                    if _pref.key == _key:
-                        self._prefs[_pref] = _value
-                        break
-                else:
-                    logger.warning(f'Could not find a corresponding Preference class for key {_key} from preferences file')
-
-        logger.debug(f'{self._prefs=}')
-
-
         self._engines_advanced_settings_map : Dict[Type[Engine], Type[EngineAdvancedSettings]] = dict()
 
         self._engines_exported_filetype_map : Dict[Type[Engine], Type[File]] = dict()
@@ -185,6 +160,68 @@ class Application(Gtk.Application):
         # add our help window, which will be shared by all appwindows
         self._help_window = HelpWindow(self._pango_docs_map)
 
+        # populate dict with preferences found in entry points
+        self._prefs = Preferences(Munch(), Munch(), Munch())
+        if 'rfi_file_monitor.preferences' in importlib.metadata.entry_points():
+            for e in importlib.metadata.entry_points()['rfi_file_monitor.preferences']:
+                _pref = e.load()
+                self._prefs.settings[_pref] = _pref.default
+
+        for _op in self._known_operations.values():
+            self._prefs.operations[_op] = not bool(getattr(_op, 'DEBUG', False))
+
+        for _engine in self._known_engines.values():
+            self._prefs.engines[_engine] = not bool(getattr(_engine, 'DEBUG', False))
+
+        # now, open preferences file and update the prefs dictionary
+        try:
+            with PREFERENCES_CONFIG_FILE.open('r') as f:
+                stored_prefs = yaml.safe_load(f)
+        except FileNotFoundError:
+            pass
+        else:
+            logger.debug(f'Reading preferences from {str(PREFERENCES_CONFIG_FILE)}')
+
+            if stored_prefs and isinstance(stored_prefs, dict):
+            # to maintain compatibility with older versions, first look for settings dict
+                if 'settings' in stored_prefs and stored_prefs['settings'] is not None and isinstance(stored_prefs['settings'], dict):
+                    for _key, _value in stored_prefs['settings'].items():
+                        for _pref in self._prefs.settings:
+                            if _pref.key == _key:
+                                self._prefs.settings[_pref] = _value
+                                break
+                        else:
+                            logger.warning(f'Could not find a corresponding Preference class for key {_key} from preferences file')
+                else:
+                    for _key, _value in stored_prefs.items():
+                        for _pref in self._prefs.settings:
+                            if _pref.key == _key:
+                                self._prefs.settings[_pref] = _value
+                                break
+                        else:
+                            logger.warning(f'Could not find a corresponding Preference class for key {_key} from preferences file')
+
+                if 'operations' in stored_prefs and stored_prefs['operations'] is not None and isinstance(stored_prefs['operations'], dict):
+                    for _key, _value in stored_prefs['operations'].items():
+                        for _pref in self._prefs.operations:
+                            if _pref.NAME == _key:
+                                self._prefs.operations[_pref] = _value
+                                break
+                        else:
+                            logger.warning(f'Could not find a corresponding Operation class for key {_key} from preferences file')
+
+                if 'engines' in stored_prefs and stored_prefs['engines'] is not None and isinstance(stored_prefs['engines'], dict):
+                    for _key, _value in stored_prefs['engines'].items():
+                        for _pref in self._prefs.engines:
+                            if _pref.NAME == _key:
+                                self._prefs.engines[_pref] = _value
+                                break
+                        else:
+                            logger.warning(f'Could not find a corresponding Engine class for key {_key} from preferences file')
+
+        logger.debug(f'{self._prefs=}')
+
+
         # acquire google analytics context
         self._google_analytics_context = GoogleAnalyticsContext(
             endpoint="https://www.google-analytics.com/collect",
@@ -217,7 +254,7 @@ class Application(Gtk.Application):
             operations.sort(key=lambda operation: operation.NAME)
 
 
-    def get_preferences(self) -> Dict[Preference, Any]:
+    def get_preferences(self) -> Preferences:
         return self._prefs
 
     def on_open(self, action, param):
@@ -252,7 +289,7 @@ class Application(Gtk.Application):
                 dialog.run()
                 dialog.destroy()
             else:
-                window = ApplicationWindow(application=self, type=Gtk.WindowType.TOPLEVEL)
+                window = ApplicationWindow(application=self, type=Gtk.WindowType.TOPLEVEL, force_all=True)
                 window.show_all()
                 window.load_from_yaml_dict(yaml_dict)
         else:

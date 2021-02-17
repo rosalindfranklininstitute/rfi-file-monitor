@@ -1,8 +1,14 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Any, Sequence, Dict, Optional
+from typing import Any, Sequence, Dict, Optional, NamedTuple, Type
 import importlib.resources
 
 import yaml
+from munch import Munch
+
+from .operation import Operation
+from .engine import Engine
 
 class Preference(ABC):
 
@@ -115,3 +121,8 @@ TestStringPreference2 = StringPreference(
     key = 'String Pref2',
     default = 'String Pref2 default value',
 )
+
+class Preferences(NamedTuple):
+    settings: Munch[Preference, Any]
+    operations: Munch[Type[Operation], bool]
+    engines: Munch[Type[Engine], bool]

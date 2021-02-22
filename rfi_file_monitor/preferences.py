@@ -122,6 +122,17 @@ TestStringPreference2 = StringPreference(
     default = 'String Pref2 default value',
 )
 
+AllowedFilePatternsPreference = StringPreference(
+    key = 'Allowed File Patterns',
+    description = 'These comma separated file patterns will be added automatically to the allowed patterns of all operations and engines that support them. Use cautiously!!'
+)
+
+IgnoredFilePatternsPreference = StringPreference(
+    key = 'Ignored File Patterns',
+    description = 'These comma separated file patterns will be added automatically to the ignored patterns of all operations and engines that support them.',
+    default = '*.swp,*.swx,*.DS_Store'
+)
+
 class Preferences(NamedTuple):
     settings: Munch[Preference, Any]
     operations: Munch[Type[Operation], bool]

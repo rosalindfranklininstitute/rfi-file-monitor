@@ -9,14 +9,14 @@ from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
 from ..engine import Engine
-from ..utils import LongTaskWindow, get_patterns_from_string, get_file_creation_timestamp, DEFAULT_IGNORE_PATTERNS
+from ..utils import LongTaskWindow, get_file_creation_timestamp
 from ..file import FileStatus, RegularFile
 from ..utils.exceptions import AlreadyRunning, NotYetRunning
 from ..utils.decorators import exported_filetype, with_advanced_settings, with_pango_docs
 from .file_watchdog_engine_advanced_settings import FileWatchdogEngineAdvancedSettings
 
 from threading import Thread
-from typing import List, Final
+from typing import List
 from pathlib import Path, PurePath
 import logging
 import os
@@ -49,7 +49,7 @@ class FileWatchdogEngine(Engine):
         self.attach(self._directory_chooser_button, 1, 0, 1, 1)
         self._directory_chooser_button.connect("selection-changed", self._directory_chooser_button_cb)
 
-        self._monitor : Final[Observer] = None
+        self._monitor : Observer = None
 
     def _directory_chooser_button_cb(self, button):
         if self.params.monitored_directory is None or \
@@ -119,8 +119,9 @@ class ProcessExistingFilesThread(Thread):
         super().__init__()
         self._engine = engine
         self._task_window = task_window
-        self._included_patterns = get_patterns_from_string(self._engine.params.allowed_patterns)
-        self._excluded_patterns = get_patterns_from_string(self._engine.params.ignore_patterns, defaults=DEFAULT_IGNORE_PATTERNS)
+        app = engine.appwindow.props.application
+        self._included_patterns = app.get_allowed_file_patterns(self._engine.params.allowed_patterns)
+        self._excluded_patterns = app.get_ignored_file_patterns(self._engine.params.ignore_patterns)
 
     def _search_for_existing_files(self, directory: Path) -> List[RegularFile]:
         rv: List[RegularFile] = list()
@@ -149,8 +150,9 @@ class ProcessExistingFilesThread(Thread):
 class EventHandler(PatternMatchingEventHandler):
     def __init__(self, engine: FileWatchdogEngine):
         self._engine = engine 
-        included_patterns = get_patterns_from_string(self._engine.params.allowed_patterns)
-        ignore_patterns =  get_patterns_from_string(self._engine.params.ignore_patterns, defaults=DEFAULT_IGNORE_PATTERNS)
+        app = engine.appwindow.props.application
+        included_patterns = app.get_allowed_file_patterns(self._engine.params.allowed_patterns)
+        ignore_patterns = app.get_ignored_file_patterns(self._engine.params.ignore_patterns)
         super().__init__(patterns=included_patterns, ignore_patterns=ignore_patterns, ignore_directories=True)
         
     def on_created(self, event):

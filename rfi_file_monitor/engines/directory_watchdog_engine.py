@@ -11,7 +11,7 @@ from watchdog.events import FileSystemEventHandler, DirCreatedEvent, FileCreated
 from .directory_watchdog_engine_advanced_settings import DirectoryWatchdogEngineAdvancedSettings
 from ..engine import Engine
 from ..file import Directory, FileStatus
-from ..utils import get_file_creation_timestamp, LongTaskWindow, get_patterns_from_string, DEFAULT_IGNORE_PATTERNS
+from ..utils import get_file_creation_timestamp, LongTaskWindow, get_patterns_from_string
 from ..utils.decorators import exported_filetype, with_advanced_settings, with_pango_docs
 from ..utils.exceptions import AlreadyRunning, NotYetRunning
 
@@ -114,8 +114,9 @@ class ProcessExistingDirectoriesThread(Thread):
         super().__init__()
         self._engine = engine
         self._task_window = task_window
-        self._included_file_patterns = get_patterns_from_string(self._engine.params.allowed_file_patterns)
-        self._excluded_file_patterns = get_patterns_from_string(self._engine.params.ignore_file_patterns, defaults=DEFAULT_IGNORE_PATTERNS)
+        app = engine.appwindow.props.application
+        self._included_file_patterns = app.get_allowed_file_patterns(self._engine.params.allowed_file_patterns)
+        self._excluded_file_patterns = app.get_ignored_file_patterns(self._engine.params.ignore_file_patterns)
         self._included_directory_patterns = get_patterns_from_string(self._engine.params.allowed_directory_patterns)
         self._excluded_directory_patterns = get_patterns_from_string(self._engine.params.ignore_directory_patterns, defaults=[])
 
@@ -167,8 +168,9 @@ class ProcessExistingDirectoriesThread(Thread):
 class EventHandler(FileSystemEventHandler):
     def __init__(self, engine: DirectoryWatchdogEngine):
         self._engine = engine 
-        self._included_file_patterns = get_patterns_from_string(self._engine.params.allowed_file_patterns)
-        self._excluded_file_patterns = get_patterns_from_string(self._engine.params.ignore_file_patterns, defaults=DEFAULT_IGNORE_PATTERNS)
+        app = engine.appwindow.props.application
+        self._included_file_patterns = app.get_allowed_file_patterns(self._engine.params.allowed_file_patterns)
+        self._excluded_file_patterns = app.get_ignored_file_patterns(self._engine.params.ignore_file_patterns)
         self._included_directory_patterns = get_patterns_from_string(self._engine.params.allowed_directory_patterns)
         self._excluded_directory_patterns = get_patterns_from_string(self._engine.params.ignore_directory_patterns, defaults=[])
         super().__init__()

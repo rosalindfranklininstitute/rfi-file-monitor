@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod, ABCMeta
 import gi
 gi.require_version("Gtk", "3.0")
@@ -49,3 +51,7 @@ class Engine(ABC, WidgetParams, Gtk.Grid, metaclass=EngineMeta):
     @GObject.Property(type=bool, default=False)
     def valid(self):
         return self._valid
+
+    @property
+    def appwindow(self):
+        return self._appwindow

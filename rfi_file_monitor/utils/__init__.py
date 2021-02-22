@@ -30,8 +30,6 @@ PATTERN_PLACEHOLDER_TEXT = 'e.g *.txt, *.csv or *temp* or *log*'
 
 DEFAULT_TIMEOUT = 5 # seconds
 
-DEFAULT_IGNORE_PATTERNS = ('*.swp', '*.swx',)
-
 logger = logging.getLogger(__name__)
 
 class TimeoutHTTPAdapter(HTTPAdapter):
@@ -108,12 +106,12 @@ def class_in_object_iterable(iterable: Iterable, klass) -> bool:
 
 def get_patterns_from_string(input: str, defaults: Optional[Iterable[str]]=None) -> List[str]:
     if defaults is None:
-        if input or input.strip():
+        if input and input.strip():
             return list(map(lambda x: x.strip(), input.split(',')))
         else:
             return ['*']
     else:
-        if input or input.strip():
+        if input and input.strip():
             rv = list(map(lambda x: x.strip(), input.split(',')))
             rv.extend(defaults)
             return rv

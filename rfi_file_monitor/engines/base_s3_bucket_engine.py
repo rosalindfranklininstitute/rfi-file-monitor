@@ -10,7 +10,7 @@ import botocore
 from ..engine import Engine
 from ..file import S3Object, FileStatus
 from ..operations.s3_uploader import AWS_S3_ENGINE_IGNORE_ME
-from ..utils import ExitableThread, LongTaskWindow, match_path, get_patterns_from_string
+from ..utils import ExitableThread, LongTaskWindow, match_path
 from ..utils.exceptions import AlreadyRunning, NotYetRunning
 
 from typing import Optional, Type
@@ -35,8 +35,9 @@ class BaseS3BucketEngineThread(ExitableThread):
         self._client_options: dict = {}
 
         # prepare patterns
-        self._included_patterns = get_patterns_from_string(self._engine.params.allowed_patterns)
-        self._excluded_patterns = get_patterns_from_string(self._engine.params.ignore_patterns, defaults=[])
+        app = engine.appwindow.props.application
+        self._included_patterns = app.get_allowed_file_patterns(self._engine.params.allowed_patterns)
+        self._excluded_patterns = app.get_ignored_file_patterns(self._engine.params.ignore_patterns)
 
     def get_full_name(self, key) -> str:
         raise NotImplementedError

@@ -2,26 +2,25 @@ from __future__ import annotations
 
 import gi
 gi.require_version("Gtk", "3.0")
-gi.require_version("Gdk", "3.0")
-from gi.repository import Gtk, Gdk, GLib
+from gi.repository import Gtk, GLib
 from ..utils import match_path
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
-from ..engine import Engine
-from ..utils import LongTaskWindow, get_file_creation_timestamp
+from ..engine import Engine, EngineThread
+from ..utils import LongTaskWindow, get_file_creation_timestamp, _get_common_patterns
 from ..file import FileStatus, RegularFile
-from ..utils.exceptions import AlreadyRunning, NotYetRunning
 from ..utils.decorators import exported_filetype, with_advanced_settings, with_pango_docs
 from .file_watchdog_engine_advanced_settings import FileWatchdogEngineAdvancedSettings
 
-from threading import Thread
 from typing import List
 from pathlib import Path, PurePath
 import logging
 import os
 
 logger = logging.getLogger(__name__)
+
+ERROR_MSG = 'Ensure that the selected directory is readable and that any provided patterns do not conflict'
 
 @with_pango_docs(filename='file_watchdog_engine.pango')
 @with_advanced_settings(engine_advanced_settings=FileWatchdogEngineAdvancedSettings)
@@ -31,7 +30,7 @@ class FileWatchdogEngine(Engine):
     NAME = 'Files Monitor'
 
     def __init__(self, appwindow):
-        super().__init__(appwindow)
+        super().__init__(appwindow, FileWatchdogEngineThread, ERROR_MSG)
 
         label = Gtk.Label(
             label='Monitored Directory',
@@ -64,64 +63,31 @@ class FileWatchdogEngine(Engine):
         logger.debug(f'_directory_chooser_button_cb: {self._valid}')
         self.notify('valid')
 
-    def _start_watchdog(self):
-        self._monitor = Observer()
-        self._monitor.schedule(EventHandler(self), self.params.monitored_directory, recursive=self.params.monitor_recursively)
-        self._monitor.start()
-
-        self._running = True
-        self.notify('running')
-
-    def start(self):
-        # start the engine
-        # this assumes that the preflight check has been completed successfully!
-        # start by looking for existing files, if requested.
-
-        if self._running:
-            raise AlreadyRunning('The engine is already running. It needs to be stopped before it may be restarted')
-
-        if self.params.process_existing_files:
-            # pop up a long task window
-            # spawn a thread for this to avoid GUI freezes
-            task_window = LongTaskWindow(self._appwindow)
-            task_window.set_text("<b>Checking for existing files</b>")
-            task_window.show()
-            watch_cursor = Gdk.Cursor.new_for_display(Gdk.Display.get_default(), Gdk.CursorType.WATCH)
-            task_window.get_window().set_cursor(watch_cursor)
-
-            ProcessExistingFilesThread(self, task_window).start()
-        else:
-            self._start_watchdog()
-
-    def stop(self):
-        if not self._running:
-            raise NotYetRunning('The engine needs to be started before it can be stopped.')
-
-        self._monitor.stop()
-        self._monitor = None
-        self._running = False
-        self.notify('running')
-
-
-    def _process_existing_files_thread_cb(self, task_window: LongTaskWindow, existing_files: List[RegularFile]):
-        self._appwindow._queue_manager.add(existing_files)
-
-        # destroy task window
-        task_window.get_window().set_cursor(None)
-        task_window.destroy()
-
-        self._start_watchdog()
-
-        return GLib.SOURCE_REMOVE
-
-class ProcessExistingFilesThread(Thread):
+# add our ExitableThread methods to Watchdog's Observer class to ensure it can be used as an EngineThread
+class FileWatchdogEngineThread(Observer):
     def __init__(self, engine: FileWatchdogEngine, task_window: LongTaskWindow):
         super().__init__()
-        self._engine = engine
+        self._should_exit: bool = False
+        self._engine : Engine = engine
         self._task_window = task_window
         app = engine.appwindow.props.application
         self._included_patterns = app.get_allowed_file_patterns(self._engine.params.allowed_patterns)
         self._excluded_patterns = app.get_ignored_file_patterns(self._engine.params.ignore_patterns)
+
+        self.schedule(
+            event_handler=EventHandler(engine),
+            path=engine.params.monitored_directory,
+            recursive=engine.params.monitor_recursively)
+
+    @property
+    def should_exit(self):
+        return self._should_exit
+    
+    @should_exit.setter
+    def should_exit(self, value: bool):
+        self._should_exit = value
+        if self._should_exit:
+            self.stop()
 
     def _search_for_existing_files(self, directory: Path) -> List[RegularFile]:
         rv: List[RegularFile] = list()
@@ -141,11 +107,37 @@ class ProcessExistingFilesThread(Thread):
             elif self._engine.params.monitor_recursively and child.is_dir() and not child.is_symlink():
                 rv.extend(self._search_for_existing_files(directory.joinpath(child)))
         return rv
-    
-    def run(self):
-        existing_files = self._search_for_existing_files(Path(self._engine.params.monitored_directory))
-        GLib.idle_add(self._engine._process_existing_files_thread_cb, self._task_window, existing_files, priority=GLib.PRIORITY_DEFAULT_IDLE)
 
+    def run(self):
+        # confirm patterns are valid
+        if bool(common_patterns := _get_common_patterns(self._included_patterns, self._excluded_patterns, False)):
+            self._engine.cleanup()
+            GLib.idle_add(self._engine.abort, self._task_window, f'Common patterns {common_patterns} detected!', priority=GLib.PRIORITY_HIGH)
+            return
+
+        # check for existing files if necessary
+        if self._engine.params.process_existing_files:
+            GLib.idle_add(self._task_window.set_text, '<b>Processing existing files...</b>')
+            try:
+                existing_files = self._search_for_existing_files(Path(self._engine.params.monitored_directory))
+                GLib.idle_add(self._engine._appwindow._queue_manager.add, existing_files, priority=GLib.PRIORITY_DEFAULT_IDLE)
+            except Exception as e:
+                self._engine.cleanup()
+                GLib.idle_add(self._engine.abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+                return
+
+        # if we get here, things should be working.
+        # close task_window
+        GLib.idle_add(self._engine.kill_task_window, self._task_window, priority=GLib.PRIORITY_HIGH)
+
+        # kick off watchdog's run method
+        super().run()
+
+    def on_thread_stop(self):
+        super().on_thread_stop()
+        self._engine.cleanup()
+
+EngineThread.register(FileWatchdogEngineThread)
 
 class EventHandler(PatternMatchingEventHandler):
     def __init__(self, engine: FileWatchdogEngine):

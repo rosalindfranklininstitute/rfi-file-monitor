@@ -104,7 +104,7 @@ class AWSS3BucketEngine(BaseS3BucketEngine):
 
         self.notify('valid')
 
-    def _cleanup(self):
+    def cleanup(self):
         #pylint: disable=no-member
         logger.debug('Running cleanup!')
 
@@ -128,7 +128,6 @@ class AWSS3BucketEngine(BaseS3BucketEngine):
                 logger.debug(f'Successfully deleted SQS queue {self.queue_url}')
             except Exception as e:
                 logger.debug(f'Could not delete SQS queue {self.queue_url}: {str(e)}')
-                GLib.idle_add(self._abort, None, e)
     
         # delete SQS DLQ
         if hasattr(self, 'dlq_url'):
@@ -137,14 +136,9 @@ class AWSS3BucketEngine(BaseS3BucketEngine):
                 logger.debug(f'Successfully deleted SQS queue {self.dlq_url}')
             except Exception as e:
                 logger.debug(f'Could not delete SQS queue {self.dlq_url}: {str(e)}')
+        
+        super().cleanup()
 
-        GLib.idle_add(self._stop_running)
-
-    def _stop_running(self):
-        self._running = False
-        self.notify('running')
-
-        return GLib.SOURCE_REMOVE
 
 class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
 
@@ -165,11 +159,12 @@ class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
 
         # create queue
         self._engine.queue_name = 'rfi-file-monitor-s3-bucket-engine-' + ''.join(random.choice(string.ascii_lowercase) for i in range(6))
+        GLib.idle_add(self._task_window.set_text, '<b>Creating SQS queues...</b>')
         try:
             self._engine.queue_url = self._engine.sqs_client.create_queue(QueueName=self._engine.queue_name)['QueueUrl']
         except Exception as e:
-            self._engine._cleanup()
-            GLib.idle_add(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+            self._engine.cleanup()
+            GLib.idle_add(self._engine.abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
             return
 
         # create dead-letter-queue
@@ -177,8 +172,8 @@ class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
         try:
             self._engine.dlq_url = self._engine.sqs_client.create_queue(QueueName=self._engine.dlq_name)['QueueUrl']
         except Exception as e:
-            self._engine._cleanup()
-            GLib.idle_add(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+            self._engine.cleanup()
+            GLib.idle_add(self._engine.abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
             return
 
         # sleep 1 second to make sure the queue is available
@@ -191,8 +186,8 @@ class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
             # get dlq ARN
             self._engine.dlq_arn = self._engine.sqs_client.get_queue_attributes(QueueUrl=self._engine.dlq_url, AttributeNames=['QueueArn'])['Attributes']['QueueArn']
         except Exception as e:
-            self._engine._cleanup()
-            GLib.idle_add(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+            self._engine.cleanup()
+            GLib.idle_add(self._engine.abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
             return
 
         # set queue policy
@@ -227,8 +222,8 @@ class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
                 }
             )
         except Exception as e:
-            self._engine._cleanup()
-            GLib.idle_add(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+            self._engine.cleanup()
+            GLib.idle_add(self._engine.abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
             return
 
         # set dlq policy
@@ -245,10 +240,11 @@ class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
                 }
             )
         except Exception as e:
-            self._engine._cleanup()
-            GLib.idle_add(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+            self._engine.cleanup()
+            GLib.idle_add(self._engine.abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
             return
 
+        GLib.idle_add(self._task_window.set_text, '<b>Configuring bucket notifications...</b>')
         try:
             # get current bucket notifications
             response = self._engine.s3_client.get_bucket_notification_configuration(
@@ -278,8 +274,8 @@ class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
                 NotificationConfiguration=new_bucket_notification_config
             )
         except Exception as e:
-            self._engine._cleanup()
-            GLib.idle_add(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+            self._engine.cleanup()
+            GLib.idle_add(self._engine.abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
             return
 
         # if required, add existing files to queue
@@ -288,7 +284,7 @@ class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
 
         # if we get here, things should be working.
         # close task_window
-        GLib.idle_add(self._engine._kill_task_window, self._task_window, priority=GLib.PRIORITY_HIGH)
+        GLib.idle_add(self._engine.kill_task_window, self._task_window, priority=GLib.PRIORITY_HIGH)
 
         # start the big while loop and start consuming incoming messages
         while True:
@@ -296,7 +292,7 @@ class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
             if self._should_exit:
                 logger.info('Killing S3BucketEngineThread')
 
-                self._engine._cleanup()
+                self._engine.cleanup()
                 return
 
             try:
@@ -307,8 +303,8 @@ class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
                     WaitTimeSeconds=10,
                 )
             except Exception as e:
-                self._engine._cleanup()
-                GLib.idle_add(self._engine._abort, None, e, priority=GLib.PRIORITY_HIGH)
+                self._engine.cleanup()
+                GLib.idle_add(self._engine.abort, None, e, priority=GLib.PRIORITY_HIGH)
                 return
 
             if 'Messages' not in resp:
@@ -345,8 +341,8 @@ class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
                     QueueUrl=self._engine.queue_url, Entries=entries
                 )
             except Exception as e:
-                self._engine._cleanup()
-                GLib.idle_add(self._engine._abort, None, e, priority=GLib.PRIORITY_HIGH)
+                self._engine.cleanup()
+                GLib.idle_add(self._engine.abort, None, e, priority=GLib.PRIORITY_HIGH)
                 return
 
             if len(resp['Successful']) != len(entries):

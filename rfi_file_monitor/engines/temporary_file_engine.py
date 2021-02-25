@@ -1,12 +1,12 @@
+from __future__ import annotations
+
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib
 
-from ..engine import Engine
+from ..engine import Engine, EngineThread
 from ..file import RegularFile, FileStatus
-from ..utils.exceptions import AlreadyRunning, NotYetRunning
 from ..utils.decorators import exported_filetype, with_pango_docs
-from ..utils import ExitableThread
 
 import logging
 from tempfile import TemporaryDirectory
@@ -31,7 +31,7 @@ class TemporaryFileEngine(Engine):
     DEBUG = 1
 
     def __init__(self, appwindow):
-        super().__init__(appwindow)
+        super().__init__(appwindow, FileGeneratorThread, '')
 
         # Set filesize
         filesize_grid = Gtk.Grid(
@@ -173,53 +173,34 @@ class TemporaryFileEngine(Engine):
 
         self.notify('valid')
 
-    def start(self):
-        if self._running:
-            raise AlreadyRunning('The engine is already running. It needs to be stopped before it may be restarted')
-
-        self._tempdir = TemporaryDirectory()
-        self._thread = FileGeneratorThread(self)
-        self._thread.start()
-        self._running = True
-        self.notify('running')
-
-    def stop(self):
-        if not self._running:
-            raise NotYetRunning('The engine needs to be started before it can be stopped.')
-
-        # if the thread is sleeping, it will be killed at the next iteration
-        self._thread.should_exit = True
-
-        self._tempdir.cleanup()
-
-        self._running = False
-        self.notify('running')
-
-
-class FileGeneratorThread(ExitableThread):
+class FileGeneratorThread(EngineThread):
 
     SUFFIX = '.dat'
 
-    def __init__(self, engine: TemporaryFileEngine):
-        super().__init__()
-        self._engine = engine
-
     def run(self):
+        # sleep for 1 sec to not have the task window flash
+        sleep(1)
+
+        # close task_window
+        GLib.idle_add(self._engine.kill_task_window, self._task_window, priority=GLib.PRIORITY_HIGH)
+
         index = int(self._engine.params.start_index)
-        while 1:
-            if self.should_exit:
-                logger.info('Killing FileGeneratorThread')
-                return
-            basename = f"{self._engine.params.file_prefix}{index}{self.SUFFIX}"
-            path = Path(self._engine._tempdir.name, basename)
-            path.write_bytes(os.urandom(int(self._engine.params.filesize_number * SIZE_UNITS[self._engine.params.filesize_unit])))
-            logger.debug(f'Writing {str(path)}')
-            index = index + 1
-            if self._engine.props.running and \
-                self._engine._appwindow._queue_manager.props.running:
-                _file = RegularFile(str(path), PurePath(basename), time(), FileStatus.CREATED)
-                GLib.idle_add(self._engine._appwindow._queue_manager.add, _file, priority=GLib.PRIORITY_HIGH)
-            sleep(self._engine.params.creation_delay)
+        with TemporaryDirectory() as tempdir:
+            while 1:
+                if self.should_exit:
+                    logger.info('Killing FileGeneratorThread')
+                    self._engine.cleanup()
+                    return
+                basename = f"{self._engine.params.file_prefix}{index}{self.SUFFIX}"
+                path = Path(tempdir, basename)
+                path.write_bytes(os.urandom(int(self._engine.params.filesize_number * SIZE_UNITS[self._engine.params.filesize_unit])))
+                logger.debug(f'Writing {str(path)}')
+                index = index + 1
+                if self._engine.props.running and \
+                    self._engine._appwindow._queue_manager.props.running:
+                    _file = RegularFile(str(path), PurePath(basename), time(), FileStatus.CREATED)
+                    GLib.idle_add(self._engine._appwindow._queue_manager.add, _file, priority=GLib.PRIORITY_HIGH)
+                sleep(self._engine.params.creation_delay)
             
             
 

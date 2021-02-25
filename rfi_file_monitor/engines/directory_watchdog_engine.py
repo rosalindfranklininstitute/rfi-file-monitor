@@ -2,26 +2,25 @@ from __future__ import annotations
 
 import gi
 gi.require_version("Gtk", "3.0")
-gi.require_version("Gdk", "3.0")
-from gi.repository import Gtk, GLib, Gdk
-from ..utils import match_path
+from gi.repository import Gtk, GLib
+from ..utils import match_path, _get_common_patterns
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, DirCreatedEvent, FileCreatedEvent, FileModifiedEvent
 
 from .directory_watchdog_engine_advanced_settings import DirectoryWatchdogEngineAdvancedSettings
-from ..engine import Engine
+from ..engine import Engine, EngineThread
 from ..file import Directory, FileStatus
-from ..utils import get_file_creation_timestamp, LongTaskWindow, get_patterns_from_string, DEFAULT_IGNORE_PATTERNS
+from ..utils import get_file_creation_timestamp, LongTaskWindow, get_patterns_from_string
 from ..utils.decorators import exported_filetype, with_advanced_settings, with_pango_docs
-from ..utils.exceptions import AlreadyRunning, NotYetRunning
 
 import logging
 from typing import List
 from pathlib import Path, PurePath
 import os
-from threading import Thread
 
 logger = logging.getLogger(__name__)
+
+ERROR_MSG = 'Ensure that the selected directory is readable and that any provided patterns do not conflict'
 
 @with_pango_docs(filename='directory_watchdog_engine.pango')
 @with_advanced_settings(engine_advanced_settings=DirectoryWatchdogEngineAdvancedSettings)
@@ -31,7 +30,7 @@ class DirectoryWatchdogEngine(Engine):
     NAME = 'Directories Monitor'
 
     def __init__(self, appwindow):
-        super().__init__(appwindow)
+        super().__init__(appwindow, DirectoryWatchdogEngineThread, ERROR_MSG)
 
         label = Gtk.Label(
             label='Monitored Directory',
@@ -64,60 +63,32 @@ class DirectoryWatchdogEngine(Engine):
         logger.debug(f'_directory_chooser_button_cb: {self._valid}')
         self.notify('valid')
 
-    def _start_watchdog(self):
-        self._monitor = Observer()
-        self._monitor.schedule(EventHandler(self), self.params.monitored_directory, recursive=True)
-        self._monitor.start()
-
-        self._running = True
-        self.notify('running')
-
-    def start(self):
-        if self._running:
-            raise AlreadyRunning('The engine is already running. It needs to be stopped before it may be restarted')
-
-        if self.params.process_existing_directories:
-            # pop up a long task window
-            # spawn a thread for this to avoid GUI freezes
-            task_window = LongTaskWindow(self._appwindow)
-            task_window.set_text("<b>Checking for existing directories</b>")
-            task_window.show()
-            watch_cursor = Gdk.Cursor.new_for_display(Gdk.Display.get_default(), Gdk.CursorType.WATCH)
-            task_window.get_window().set_cursor(watch_cursor)
-
-            ProcessExistingDirectoriesThread(self, task_window).start()
-        else:
-            self._start_watchdog()
-
-    def stop(self):
-        if not self._running:
-            raise NotYetRunning('The engine needs to be started before it can be stopped.')
-
-        self._monitor.stop()
-        self._monitor = None
-        self._running = False
-        self.notify('running')
-
-    def _process_existing_directories_thread_cb(self, task_window: LongTaskWindow, existing_directories: List[Directory]):
-        self._appwindow._queue_manager.add(existing_directories)
-
-        # destroy task window
-        task_window.get_window().set_cursor(None)
-        task_window.destroy()
-
-        self._start_watchdog()
-
-        return GLib.SOURCE_REMOVE
-
-class ProcessExistingDirectoriesThread(Thread):
+# add our ExitableThread methods to Watchdog's Observer class to ensure it can be used as an EngineThread
+class DirectoryWatchdogEngineThread(Observer):
     def __init__(self, engine: DirectoryWatchdogEngine, task_window: LongTaskWindow):
         super().__init__()
         self._engine = engine
         self._task_window = task_window
-        self._included_file_patterns = get_patterns_from_string(self._engine.params.allowed_file_patterns)
-        self._excluded_file_patterns = get_patterns_from_string(self._engine.params.ignore_file_patterns, defaults=DEFAULT_IGNORE_PATTERNS)
+        app = engine.appwindow.props.application
+        self._included_file_patterns = app.get_allowed_file_patterns(self._engine.params.allowed_file_patterns)
+        self._excluded_file_patterns = app.get_ignored_file_patterns(self._engine.params.ignore_file_patterns)
         self._included_directory_patterns = get_patterns_from_string(self._engine.params.allowed_directory_patterns)
         self._excluded_directory_patterns = get_patterns_from_string(self._engine.params.ignore_directory_patterns, defaults=[])
+
+        self.schedule(
+            event_handler=EventHandler(engine),
+            path=engine.params.monitored_directory,
+            recursive=True)
+
+    @property
+    def should_exit(self):
+        return self._should_exit
+    
+    @should_exit.setter
+    def should_exit(self, value: bool):
+        self._should_exit = value
+        if self._should_exit:
+            self.stop()
 
     def _search_for_existing_files(self, directory: Path) -> int:
         rv: int = 0
@@ -160,15 +131,46 @@ class ProcessExistingDirectoriesThread(Thread):
         return rv
 
     def run(self):
-        existing_directories = self._search_for_existing_directories(Path(self._engine.params.monitored_directory))
-        GLib.idle_add(self._engine._process_existing_directories_thread_cb, self._task_window, existing_directories, priority=GLib.PRIORITY_DEFAULT_IDLE)
+        # confirm patterns are valid
+        if bool(common_file_patterns := _get_common_patterns(self._included_file_patterns, self._excluded_file_patterns, False)):
+            self._engine.cleanup()
+            GLib.idle_add(self._engine.abort, self._task_window, f'Common file patterns {common_file_patterns} detected!', priority=GLib.PRIORITY_HIGH)
+            return
 
+        if bool(common_directory_patterns := _get_common_patterns(self._included_directory_patterns, self._excluded_directory_patterns, False)):
+            self._engine.cleanup()
+            GLib.idle_add(self._engine.abort, self._task_window, f'Common directory patterns {common_directory_patterns} detected!', priority=GLib.PRIORITY_HIGH)
+            return
+
+        if self._engine.params.process_existing_directories:
+            GLib.idle_add(self._task_window.set_text, '<b>Processing existing directories...</b>')
+            try:
+                existing_directories = self._search_for_existing_directories(Path(self._engine.params.monitored_directory))
+                GLib.idle_add(self._engine._appwindow._queue_manager.add, existing_directories, priority=GLib.PRIORITY_DEFAULT_IDLE)
+            except Exception as e:
+                self._engine.cleanup()
+                GLib.idle_add(self._engine.abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+                return
+
+        # if we get here, things should be working.
+        # close task_window
+        GLib.idle_add(self._engine.kill_task_window, self._task_window, priority=GLib.PRIORITY_HIGH)
+
+        # kick off watchdog's run method
+        super().run()
+
+    def on_thread_stop(self):
+        super().on_thread_stop()
+        self._engine.cleanup()
+
+EngineThread.register(DirectoryWatchdogEngineThread)
 
 class EventHandler(FileSystemEventHandler):
     def __init__(self, engine: DirectoryWatchdogEngine):
         self._engine = engine 
-        self._included_file_patterns = get_patterns_from_string(self._engine.params.allowed_file_patterns)
-        self._excluded_file_patterns = get_patterns_from_string(self._engine.params.ignore_file_patterns, defaults=DEFAULT_IGNORE_PATTERNS)
+        app = engine.appwindow.props.application
+        self._included_file_patterns = app.get_allowed_file_patterns(self._engine.params.allowed_file_patterns)
+        self._excluded_file_patterns = app.get_ignored_file_patterns(self._engine.params.ignore_file_patterns)
         self._included_directory_patterns = get_patterns_from_string(self._engine.params.allowed_directory_patterns)
         self._excluded_directory_patterns = get_patterns_from_string(self._engine.params.ignore_directory_patterns, defaults=[])
         super().__init__()

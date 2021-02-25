@@ -10,13 +10,13 @@ import importlib.resources
 import platform
 import webbrowser
 import logging
-from typing import Dict, Type, Union, List
+from typing import Dict, Type, Union, List, Optional
 import importlib.metadata
 from pathlib import Path
 
 from .version import __version__
 from .utils import add_action_entries, PREFERENCES_CONFIG_FILE, MONITOR_YAML_VERSION 
-from .preferences import Preferences
+from .preferences import Preferences, AllowedFilePatternsPreference, IgnoredFilePatternsPreference
 from .preferenceswindow import PreferencesWindow
 from .file import RegularFile, File
 from .utils.helpwindow import HelpWindow
@@ -256,6 +256,28 @@ class Application(Gtk.Application):
 
     def get_preferences(self) -> Preferences:
         return self._prefs
+
+    @classmethod
+    def _split_patterns(cls, patterns: Optional[str]) -> List[str]:
+        if patterns and patterns.split():
+            return list(map(lambda x: x.strip(), patterns.split(',')))
+        return []
+
+    def get_allowed_file_patterns(self, extra_patterns: Optional[str] = None)  -> List[str]:
+        global_allowed_patterns : str = self._prefs.settings[AllowedFilePatternsPreference]
+        patterns = self._split_patterns(global_allowed_patterns)
+        patterns.extend(self._split_patterns(extra_patterns))
+
+        # if no patterns were found, match everything!
+        if not patterns:
+            return ['*']
+        return patterns
+
+    def get_ignored_file_patterns(self, extra_patterns: Optional[str] = None)  -> List[str]:
+        global_ignored_patterns : str = self._prefs.settings[IgnoredFilePatternsPreference]
+        patterns = self._split_patterns(global_ignored_patterns)
+        patterns.extend(self._split_patterns(extra_patterns))
+        return patterns
 
     def on_open(self, action, param):
         # fire up file chooser dialog

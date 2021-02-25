@@ -121,7 +121,7 @@ class CephS3BucketEngine(BaseS3BucketEngine):
         rv['endpoint_url'] = self.params.ceph_endpoint
         return rv
 
-    def _cleanup(self):
+    def cleanup(self):
         logger.debug('Running cleanup!')
 
         # delete notification config
@@ -141,14 +141,7 @@ class CephS3BucketEngine(BaseS3BucketEngine):
             except Exception as e:
                 logger.debug(f'Could not remove topic {self.topic_arn}: {str(e)}')
 
-        GLib.idle_add(self._stop_running)
-
-    def _stop_running(self):
-        self._running = False
-        self.notify('running')
-
-        return GLib.SOURCE_REMOVE
-                
+        super().cleanup()
 
 
 class CephS3BucketEngineThread(BaseS3BucketEngineThread):
@@ -176,6 +169,7 @@ class CephS3BucketEngineThread(BaseS3BucketEngineThread):
             #self._engine.old_bucket_notification_config = {configs: response.get(configs, []) for configs in AVAILABLE_CONFIGURATIONS}
 
             #logger.debug(f'{self._engine.old_bucket_notification_config=}')
+            GLib.idle_add(self._task_window.set_text, '<b>Configuring bucket notifications...</b>')
             self._engine.s3_client.delete_bucket_notification_configuration(
                 Bucket=self._engine.params.bucket_name,
             )
@@ -208,6 +202,7 @@ class CephS3BucketEngineThread(BaseS3BucketEngineThread):
                 NotificationConfiguration={'TopicConfigurations': topic_conf_list})
 
             # test connection to rabbitmq
+            GLib.idle_add(self._task_window.set_text, '<b>Testing AMQP server...</b>')
             if self._engine.params.rabbitmq_consumer_use_ssl:
                 ssl_context = ssl.create_default_context()
                 if self._engine.params.rabbitmq_ca_certificate and (ca_cert := Path(self._engine.params.rabbitmq_ca_certificate)).exists():
@@ -230,8 +225,8 @@ class CephS3BucketEngineThread(BaseS3BucketEngineThread):
                         exchange_type='topic',
                         durable=True)
         except Exception as e:
-            self._engine._cleanup()
-            GLib.idle_add(self._engine._abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
+            self._engine.cleanup()
+            GLib.idle_add(self._engine.abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
             return
 
         # sleep 1 second
@@ -243,7 +238,7 @@ class CephS3BucketEngineThread(BaseS3BucketEngineThread):
 
         # if we get here, things should be working.
         # close task_window
-        GLib.idle_add(self._engine._kill_task_window, self._task_window, priority=GLib.PRIORITY_HIGH)
+        GLib.idle_add(self._engine.kill_task_window, self._task_window, priority=GLib.PRIORITY_HIGH)
 
         # start the big while loop and start consuming incoming messages
         try:
@@ -258,11 +253,9 @@ class CephS3BucketEngineThread(BaseS3BucketEngineThread):
                     channel.queue_bind(exchange=self._engine.params.rabbitmq_exchange, queue=queue_name, routing_key=topic_name)
 
                     while True:
-
                         if self._should_exit:
                             logger.info('Killing CephBucketEngineThread')
-
-                            self._engine._cleanup()
+                            self._engine.cleanup()
                             return
 
                         method_frame, _, _body = channel.basic_get(queue_name)
@@ -286,6 +279,6 @@ class CephS3BucketEngineThread(BaseS3BucketEngineThread):
                             logger.debug('No messages found in queue')
                             time.sleep(1)
         except Exception as e:
-            self._engine._cleanup()
-            GLib.idle_add(self._engine._abort, None, e, priority=GLib.PRIORITY_HIGH)
+            self._engine.cleanup()
+            GLib.idle_add(self._engine.abort, None, e, priority=GLib.PRIORITY_HIGH)
             return

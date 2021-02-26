@@ -1,5 +1,0 @@
-{
-    "python.pythonPath": "/usr/local/Caskroom/miniconda/base/envs/rfi-file-monitor/bin/python",
-    "python.linting.enabled": true,
-    "python.linting.mypyEnabled": true
-}

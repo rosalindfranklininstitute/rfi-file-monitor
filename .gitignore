@@ -9,3 +9,4 @@ build
 rfi-infrastructure.yml
 ldap_connect.json
 rfi-instruments-dev*.yml
+.vscode

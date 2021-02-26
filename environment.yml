@@ -18,3 +18,5 @@ dependencies:
   - dropbox
   - keyring
   - tenacity
+  - requests
+  - pika

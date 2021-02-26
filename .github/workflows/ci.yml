@@ -30,4 +30,7 @@ jobs:
       - name: Run conda-build
         timeout-minutes: 30
         run: conda build --quiet -c conda-forge --python ${{ matrix.python-version }} conda-build
+      - name: Run docs updater
+        if: matrix.os == 'ubuntu-latest'
+        run: python docs/update_docs.py
 

@@ -12,10 +12,12 @@ SIZES = {
     'medium': '####',
 }
 
+DOCS_DIR = Path(__file__).resolve(strict=True).parent
+
 SOURCES = (
-    ('_engines', Path(__file__).resolve(strict=True).parent.parent.joinpath('rfi_file_monitor', 'engines', 'docs')),
-    ('_operations', Path(__file__).resolve(strict=True).parent.parent.joinpath('rfi_file_monitor', 'operations', 'docs')),
-    ('_misc', Path(__file__).resolve(strict=True).parent.parent.joinpath('rfi_file_monitor', 'docs')),
+    ('_engines', DOCS_DIR.parent.joinpath('rfi_file_monitor', 'engines', 'docs')),
+    ('_operations', DOCS_DIR.parent.joinpath('rfi_file_monitor', 'operations', 'docs')),
+    ('_misc', DOCS_DIR.parent.joinpath('rfi_file_monitor', 'docs')),
 )
 
 for _dest, _source in SOURCES:
@@ -26,7 +28,7 @@ for _dest, _source in SOURCES:
         if _src.name.startswith('template'):
             continue
 
-        dest = Path(_dest, _src.name).with_suffix('.md')
+        dest = DOCS_DIR.joinpath(_dest, _src.name).with_suffix('.md')
         old_contents = _src.read_text().splitlines()
 
         # process first line

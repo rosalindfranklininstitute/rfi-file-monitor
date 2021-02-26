@@ -7,6 +7,3 @@ collections:
     output: true
   engines:
     output: true
-
-plugins:
-  - file_exists

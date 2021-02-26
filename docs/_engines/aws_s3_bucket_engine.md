@@ -1,0 +1,70 @@
+---
+layout: default
+title: AWS S3 Bucket Monitor
+exported: S3Object
+---
+
+# AWS S3 Bucket Monitor
+
+## Purpose
+
+Use this engine to monitor the contents of an S3 bucket for new files. The bucket must be hosted on Amazon Web Services (AWS), as this engine relies extensively on its Simple Queue Service for handling the bucket events.
+
+To make successful use of these engine, you will need IAM credentials for a user that has the following minimal policy attached:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetBucketLocation",
+                "s3:GetObject",
+                "s3:PutBucketNotification",
+                "s3:ListBucket",
+                "s3:GetBucketNotification",
+                "sqs:DeleteMessage",
+                "sqs:DeleteMessageBatch",
+                "sqs:ReceiveMessage",
+                "sqs:DeleteQueue",
+                "sqs:GetQueueAttributes",
+                "sqs:CreateQueue",
+                "sqs:SetQueueAttributes"
+            ],
+            "Resource": [
+                "arn:aws:sqs:*:*:rfi-file-monitor-s3-bucket-engine-*",
+                "arn:aws:s3:::<i>your-bucket-name</i>/*",
+                "arn:aws:s3:::<i>your-bucket-name</i>"
+            ]
+        }
+    ]
+}
+```
+
+When copy-pasting this policy into the AWS editor, do not forget to replace <i>your-bucket-name</i>, with the name of the bucket you plan on monitoring!
+
+This engine marks all files as <i>Saved</i> when passing them to the Queue manager.
+
+## Options
+
+* <b>Bucket Name</b>: the name of the bucket that will be monitored for changes.
+* <b>Process existing files in bucket</b>: turn this option on to add existing objects to the queue manager before starting the bucket monitor.
+* <b>Access Key</b>: the access key belonging to the IAM user that will be used by the engine.
+* <b>Secret Key</b>: the secret key that is associated with the access key.
+
+The following options are availabled when clicking the Advanced Settings button:
+
+* <b>Allowed filename patterns</b>: enter a file extension e.g. *.txt, *.csv (always include the asterisk) to only process files of
+that type, any other file written to the directory will be ignored.
+* <b>Ignored filename patterns</b>: enter a file extension e.g. *.txt, *.csv (always include the asterisk) to exclude files of
+these types, any other file written to the directory will be processed.
+
+## Exported File Format
+
+<b>S3Object</b>
+
+## Author
+
+Tom Schoonjans

@@ -2,6 +2,8 @@ theme: jekyll-theme-architect
 title: RFI-File-Monitor
 description: The Official Manual
 
+baseurl: /rfi-file-monitor
+
 collections:
   operations:
     output: true

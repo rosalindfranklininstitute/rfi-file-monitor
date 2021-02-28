@@ -1,0 +1,32 @@
+name: Update docs
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  update-docs:
+    name: Update Github-Pages docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Run the updater script
+        id: updater
+        run: |
+          python docs/update_docs.py
+          git add .
+          echo "::set-output name=git_diff::$(git diff --staged | wc -l)"
+      - name: Commit if required
+        if: steps.updater.outputs.git_diff > 0
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git commit -m "Update github-pages"
+          git push
+
+

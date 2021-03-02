@@ -17,7 +17,7 @@ DOCS_DIR = Path(__file__).resolve(strict=True).parent
 SOURCES = (
     ('_engines', DOCS_DIR.parent.joinpath('rfi_file_monitor', 'engines', 'docs')),
     ('_operations', DOCS_DIR.parent.joinpath('rfi_file_monitor', 'operations', 'docs')),
-    ('_misc', DOCS_DIR.parent.joinpath('rfi_file_monitor', 'docs')),
+    ('misc', DOCS_DIR.parent.joinpath('rfi_file_monitor', 'docs')),
 )
 
 for _dest, _source in SOURCES:
@@ -105,7 +105,7 @@ for _dest, _source in SOURCES:
                 '---',
                 '',
             ]
-        elif _dest == '_misc':
+        elif _dest == 'misc':
             preface = [
                 '---',
                 'layout: default',

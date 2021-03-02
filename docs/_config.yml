@@ -3,6 +3,8 @@ title: RFI-File-Monitor
 description: The Official Manual
 
 baseurl: /rfi-file-monitor
+permalink: /:categories/:year/:month/:day/:title
+
 
 collections:
   operations:

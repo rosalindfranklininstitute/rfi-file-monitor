@@ -141,20 +141,18 @@ def add_directory_support(run: Callable[[Operation, File], Optional[str]]):
                 # reuse the row_reference to ensure the progress bars are updated
                 _file.row_reference = file.row_reference
 
+
                 # run the wrapped method, and do the usual exception and return value handling
                 try:
                     rv = run(self, _file)
+                    if rv:
+                        return rv
                 except SkippedOperation:
-                    continue
-                # other exceptions should propagate
+                    pass
+
                 if self.index in _file.operation_metadata:
                     file.operation_metadata[self.index][_file.filename] = _file.operation_metadata[self.index]
-
-                if rv:
-                    return rv
             return None
         else:
             raise NotImplementedError(f'{type(file)} is currently unsupported')
     return wrapper
-
-    

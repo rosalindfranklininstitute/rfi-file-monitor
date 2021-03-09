@@ -235,8 +235,8 @@ class QueueManager(WidgetParams, Gtk.Grid):
                 file_path = _file.filename
 
                 if file_path in self._files_dict:
-                    # FIXME: send to saved instead??
-                    logger.warning(f"{file_path} has been recreated! Ignoring...")
+                    logger.info(f"{file_path} has been recreated! Calling saved...")
+                    self.saved(file_path)
                     continue
 
                 if _file.status == FileStatus.CREATED:

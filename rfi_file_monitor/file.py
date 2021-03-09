@@ -21,8 +21,8 @@ class FileStatus(IntEnum):
     RUNNING = auto()
     SUCCESS = auto()
     FAILURE = auto()
-    SKIPPED = auto()
     REMOVED_FROM_LIST = auto()
+    SKIPPED = auto()
 
     def __str__(self):
         #pylint: disable=no-member
@@ -46,6 +46,7 @@ class File(ABC):
         self._cancellable = Gio.Cancellable()
         self._saved : float = 0
         self._requeue : bool = False
+        self._succeeded : float = 0
 
     @property
     def cancellable(self) -> Gio.Cancellable:
@@ -74,6 +75,14 @@ class File(ABC):
     @saved.setter
     def saved(self, value: int):
         self._saved = value
+
+    @property
+    def succeeded(self) -> float:
+        return self._succeeded
+
+    @succeeded.setter
+    def succeeded(self, value: int):
+        self._succeeded = value
 
     @property
     def status(self) -> FileStatus:

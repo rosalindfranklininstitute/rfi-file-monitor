@@ -36,7 +36,7 @@ class QueueManager(WidgetParams, Gtk.Grid):
         kwargs = dict(
             halign=Gtk.Align.FILL, valign=Gtk.Align.FILL,
             hexpand=True, vexpand=True,
-            border_width=5,
+            border_width=5, row_spacing=5,
         )
         Gtk.Grid.__init__(self, **kwargs)
         WidgetParams.__init__(self)
@@ -142,6 +142,43 @@ class QueueManager(WidgetParams, Gtk.Grid):
             hexpand=False, vexpand=False), 'max_threads', desensitized=True)
         max_threads_grid.attach(max_threads_spinbutton, 1, 0, 1, 1)
 
+        self._add_horizontal_separator()
+        
+        # Remove from list after n minutes
+        remove_from_list_status_promotion_grid = Gtk.Grid(
+            halign=Gtk.Align.FILL, valign=Gtk.Align.CENTER,
+            hexpand=True, vexpand=False,
+            column_spacing=5
+        )
+
+        self.attach(remove_from_list_status_promotion_grid, 0, self.options_child_row_counter, 1, 1)
+        self.options_child_row_counter += 1
+        remove_from_list_status_promotion_checkbutton = self.register_widget(Gtk.CheckButton(
+            label='Remove from table after', active=True,
+            halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False), 'remove_from_list_status_promotion_active', desensitized=True)
+        remove_from_list_status_promotion_grid.attach(
+            remove_from_list_status_promotion_checkbutton,
+            0, 0, 1, 1
+        )
+        remove_from_list_status_promotion_spinbutton = self.register_widget(Gtk.SpinButton(
+            adjustment=Gtk.Adjustment(
+                lower=1,
+                upper=60*24*7,
+                value=60,
+                page_size=0,
+                step_increment=1),
+            value=60,
+            update_policy=Gtk.SpinButtonUpdatePolicy.IF_VALID,
+            numeric=True,
+            climb_rate=5,
+            halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
+            hexpand=False, vexpand=False), 'remove_from_list_status_promotion_delay', desensitized=True)
+        remove_from_list_status_promotion_grid.attach(remove_from_list_status_promotion_spinbutton, 1, 0, 1, 1)
+        remove_from_list_status_promotion_grid.attach(Gtk.Label(label='minutes'), 2, 0, 1, 1)
+
+
+
     def _add_horizontal_separator(self):
         self.attach(Gtk.Separator(
                 orientation=Gtk.Orientation.HORIZONTAL,
@@ -155,6 +192,29 @@ class QueueManager(WidgetParams, Gtk.Grid):
     @GObject.Property(type=bool, default=False)
     def running(self):
         return self._running
+
+    def _add_to_model(self, file: File):
+        # add new entry to model
+        outputrow = OutputRow(
+            relative_filename=str(file.relative_filename),
+            creation_timestamp=file.created,
+            status=int(file.status),
+            operation_name="All",
+        )
+        iter = self._appwindow._files_tree_model.append(parent=None, row=dc_astuple(outputrow))
+        _row_reference = Gtk.TreeRowReference.new(self._appwindow._files_tree_model, self._appwindow._files_tree_model.get_path(iter))
+
+        # create its children, one for each operation
+        for _operation in self._appwindow._operations_box:
+            outputrow = OutputRow(
+                relative_filename="",
+                creation_timestamp=0,
+                status=int(FileStatus.QUEUED),
+                operation_name=_operation.NAME,
+            )
+            self._appwindow._files_tree_model.append(parent=iter, row=dc_astuple(outputrow))
+                
+        file.row_reference = _row_reference
 
     def add(self, file_or_files: Union[File, Sequence[File]]):
         """Add one or more new files to the queue. Call from the GUI thread!"""
@@ -187,27 +247,8 @@ class QueueManager(WidgetParams, Gtk.Grid):
                 else:
                     raise NotImplementedError('Newly created files must have CREATED or SAVED as status!')
 
-                # add new entry to model
-                outputrow = OutputRow(
-                    relative_filename=str(_file.relative_filename),
-                    creation_timestamp=_file.created,
-                    status=int(_file.status),
-                    operation_name="All",
-                )
-                iter = self._appwindow._files_tree_model.append(parent=None, row=dc_astuple(outputrow))
-                _row_reference = Gtk.TreeRowReference.new(self._appwindow._files_tree_model, self._appwindow._files_tree_model.get_path(iter))
+                self._add_to_model(_file)
 
-                # create its children, one for each operation
-                for _operation in self._appwindow._operations_box:
-                    outputrow = OutputRow(
-                        relative_filename="",
-                        creation_timestamp=0,
-                        status=int(FileStatus.QUEUED),
-                        operation_name=_operation.NAME,
-                    )
-                    self._appwindow._files_tree_model.append(parent=iter, row=dc_astuple(outputrow))
-                
-                _file.row_reference = _row_reference
                 self._files_dict[file_path] = _file
 
     def saved(self, file_path: Union[str, Sequence[str]]):
@@ -250,6 +291,11 @@ class QueueManager(WidgetParams, Gtk.Grid):
                     # file is currently being processed or has been processed -> mark it for being requeued
                     logger.debug(f"File {file_path} has been saved again while {str(file.status)}")
                     file.requeue = True
+                elif file.status is FileStatus.REMOVED_FROM_LIST:
+                    # file has already been removed from the list!!
+                    logger.debug(f'File {file_path} was removed from list but is now back!')
+                    file.requeue = True
+                    self._add_to_model(file)
                 else:
                     logger.warning(f"File {file_path} has been saved again after it was queued for processing!!")
 
@@ -291,6 +337,7 @@ class QueueManager(WidgetParams, Gtk.Grid):
                 FileStatus.RUNNING: 0,
                 FileStatus.SUCCESS: 0,
                 FileStatus.FAILURE: 0,
+                FileStatus.REMOVED_FROM_LIST: 0,
             }
             for _filename, _file in self._files_dict.items():
                 #logger.debug(f"timeout_cb: {_filename} found as {str(_file.status)}")
@@ -323,11 +370,12 @@ class QueueManager(WidgetParams, Gtk.Grid):
                         job.start()
                         self._njobs_running += 1
                         
-                elif _file.requeue and _file.status in (FileStatus.SUCCESS, FileStatus.FAILURE):
+                elif _file.requeue and _file.status in (FileStatus.SUCCESS, FileStatus.FAILURE, FileStatus.REMOVED_FROM_LIST):
                     # demote to saved so it gets requeued
                     _file.requeue = False
                     _file.status = FileStatus.SAVED
                     _file.saved = time()
+                    _file.succeeded = 0
                     _file.operation_metadata.clear()
                     path = _file.row_reference.get_path()
                     iter = self._appwindow._files_tree_model.get_iter(path)
@@ -346,12 +394,23 @@ class QueueManager(WidgetParams, Gtk.Grid):
 
                     logger.debug(f"files_dict_timeout_cb: requeuing {_filename}")
                 
+                elif _file.status == FileStatus.SUCCESS:
+                    if self.params.remove_from_list_status_promotion_active and \
+                        ((time() - _file.succeeded) > (60 * self.params.remove_from_list_status_promotion_delay)):
+                
+                        path = _file.row_reference.get_path()
+
+                        # update status
+                        _file.status = FileStatus.REMOVED_FROM_LIST
+                        # remove from table
+                        del self._appwindow._files_tree_model[path]
+
                 status_counters[_file.status] += 1
 
             # update status bar
             self._appwindow._status_grid.get_child_at(0, 0).props.label = f'Total: {len(self._files_dict)}'
             for _status, _counter in status_counters.items():
-                self._appwindow._status_grid.get_child_at(int(_status), 0).props.label = f'{_status.name.lower().capitalize()}: {_counter}'
+                self._appwindow._status_grid.get_child_at(int(_status), 0).props.label = f'{str(_status)}: {_counter}'
 
         return GLib.SOURCE_CONTINUE
         

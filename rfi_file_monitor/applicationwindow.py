@@ -348,7 +348,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             hexpand=True, vexpand=False,
             column_homogeneous=True, column_spacing=5)
         output_grid.attach(self._status_grid, 0, 2, 1, 1)
-        statuses = ('Total', 'Created', 'Saved', 'Queued', 'Running', 'Success', 'Failure')
+        statuses = ('Total', 'Created', 'Saved', 'Queued', 'Running', 'Success', 'Failure', 'Removed from list')
         for _index, _status in enumerate(statuses):
             self._status_grid.attach(Gtk.Label(label=f'{_status}: 0'), _index, 0, 1, 1)
 
@@ -452,6 +452,10 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             return True
 
         status = FileStatus(model[iter][2])
+
+        if status not in (FileStatus.CREATED, FileStatus.SAVED, FileStatus.QUEUED, FileStatus.RUNNING, FileStatus.SUCCESS, FileStatus.FAILURE):
+            return False
+
         try:
             status_filter = self.get_action_state(f'status-filter-{status.name.lower()}').get_boolean()
         except AttributeError:

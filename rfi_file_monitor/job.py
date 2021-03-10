@@ -1,4 +1,5 @@
 import logging
+from time import time
 
 from .file import File, FileStatus
 from .utils.exceptions import SkippedOperation
@@ -73,6 +74,7 @@ class Job(ExitableThread):
         if global_rv is None:
             # update job status to success
             self._file.update_status(-1, FileStatus.SUCCESS)
+            self._file.succeeded = time()
         else:
             # update job status to failed
             self._file.update_status(-1, FileStatus.FAILURE, global_rv)

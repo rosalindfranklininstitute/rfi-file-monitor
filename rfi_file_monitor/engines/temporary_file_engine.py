@@ -178,11 +178,11 @@ class FileGeneratorThread(EngineThread):
     SUFFIX = '.dat'
 
     def run(self):
-        # sleep for 1 sec to not have the task window flash
-        sleep(1)
-
         # close task_window
         GLib.idle_add(self._engine.kill_task_window, self._task_window, priority=GLib.PRIORITY_HIGH)
+
+        # sleep for 1 sec to not have the task window flash
+        sleep(1)
 
         index = int(self._engine.params.start_index)
         with TemporaryDirectory() as tempdir:
@@ -200,7 +200,14 @@ class FileGeneratorThread(EngineThread):
                     self._engine._appwindow._queue_manager.props.running:
                     _file = RegularFile(str(path), PurePath(basename), time(), FileStatus.CREATED)
                     GLib.idle_add(self._engine._appwindow._queue_manager.add, _file, priority=GLib.PRIORITY_HIGH)
-                sleep(self._engine.params.creation_delay)
+                # ensure we dont need no to wait too long when stopping the engine
+                for _ in range(int(self._engine.params.creation_delay)):
+                    sleep(1)
+                    if self.should_exit:
+                        logger.info('Killing FileGeneratorThread')
+                        self._engine.cleanup()
+                        return
+
             
             
 

@@ -12,7 +12,7 @@ from pathlib import Path, PurePath
 import hashlib
 import os
 import platform
-from threading import Thread
+from threading import Thread, current_thread
 import time
 import string
 import random
@@ -51,15 +51,26 @@ class TimeoutHTTPAdapter(HTTPAdapter):
 # 2. retry if a value was returned that is not None
 # see https://github.com/jd/tenacity/issues/255
 class monitor_retry_condition(retry_base):
-    def __init__(self):
-        self._value_predicate = lambda value: value is not None
-        self._exception_predicate = lambda e: not isinstance(e, SkippedOperation)
-
     def __call__(self, retry_state):
         if retry_state.outcome.failed:
             return self._exception_predicate(retry_state.outcome.exception())
         else:
             return self._value_predicate(retry_state.outcome.result())
+
+    # the following two methods will first check if the thread they are running in has been marked for exiting
+    @staticmethod
+    def _value_predicate(value):
+        if isinstance(current_thread(), ExitableThread) and current_thread().should_exit is True:
+            logger.debug('not retrying: thread is exiting')
+            return False
+        return value is not None
+
+    @staticmethod
+    def _exception_predicate(e):
+        if isinstance(current_thread(), ExitableThread) and current_thread().should_exit is True:
+            logger.debug('not retrying: thread is exiting')
+            return False
+        return not isinstance(e, SkippedOperation)
 
 def query_metadata(metadata: Dict[int, Dict[str, Any]], key: str, full_dict=False) -> Any:
     '''

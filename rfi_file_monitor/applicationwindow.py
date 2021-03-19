@@ -444,6 +444,8 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             self._engines_notebook.props.show_tabs = False
             if self._active_engine.props.valid:
                 self.lookup_action('play').set_enabled(True)
+            else:
+                self.lookup_action('play').set_enabled(False)
 
 
     def _files_tree_model_visible_func(self, model, iter, data):
@@ -621,6 +623,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             self._queue_manager.stop()
 
     def _engine_valid_changed_cb(self, engine, param):
+        logger.debug(f'calling _engine_valid_changed_cb')
         self._update_monitor_switch_sensitivity()
 
     def _write_to_yaml(self):

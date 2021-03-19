@@ -22,7 +22,7 @@ class S3CopierOperation(S3UploaderOperation):
     def run(self, file: S3Object):
         # prepare our clients
         s3_origin_client = self.appwindow.active_engine.s3_client
-        bucket_origin_name = self.appwindow.active_engine.params.bucket_name
+        bucket_origin_name = self.appwindow.active_engine._get_params().bucket_name
 
         client_destination_options = self._get_client_options(self.params)
         s3_destination_client = boto3.client('s3', **client_destination_options)

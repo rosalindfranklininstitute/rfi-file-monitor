@@ -62,14 +62,14 @@ class URLsEngineThread(EngineThread):
     def run(self):
         # open file
         try:
-            with open(self._engine.params.file_with_urls, 'r') as f:
+            with open(self.params.file_with_urls, 'r') as f:
                 lines = f.readlines()
 
             # strip lines and ensure they are usable
             lines = list(filter(lambda line: not (len(line) == 0 or line.startswith('#')) , map(lambda line: line.strip(), lines)))
             
             if len(lines) == 0:
-                raise Exception(f'{self._engine.params.file_with_urls} contains no usable URLs')
+                raise Exception(f'{self.params.file_with_urls} contains no usable URLs')
 
             # parse URLs
             msg = []
@@ -90,7 +90,7 @@ class URLsEngineThread(EngineThread):
 
             if msg:
                 msgs = '\n'.join(msg)
-                raise Exception(f"{self._engine.params.file_with_urls} contains invalid URLs: {msgs}")
+                raise Exception(f"{self.params.file_with_urls} contains invalid URLs: {msgs}")
 
             # if we get here, things should be working.
             # close task_window and send files to the queue manager

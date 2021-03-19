@@ -74,7 +74,7 @@ class S3DownloaderOperation(Operation):
     def run(self, file: S3Object): # type: ignore[override]
         
         s3_client = self.appwindow.active_engine.s3_client
-        bucket_name = self.appwindow.active_engine.params.bucket_name
+        bucket_name = self.appwindow.active_engine._get_params().bucket_name
 
         # Check if file already exists in the destination folder
         destination = Path(self.params.download_destination, *file.relative_filename.parts)

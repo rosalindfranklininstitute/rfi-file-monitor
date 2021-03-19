@@ -143,7 +143,7 @@ class AWSS3BucketEngine(BaseS3BucketEngine):
 class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
 
     def get_full_name(self, key):
-        return f"https://{self._engine.params.bucket_name}.s3.{self._client_options['region_name']}.amazonaws.com/{key}"
+        return f"https://{self.params.bucket_name}.s3.{self._client_options['region_name']}.amazonaws.com/{key}"
 
     def run(self):
         self._client_options = self._engine._get_client_options()
@@ -207,7 +207,7 @@ class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
                     "Resource": self._engine.queue_arn,
                     "Condition": {
                         "ArnLike": {
-                            "aws:SourceArn": f"arn:aws:s3:*:*:{self._engine.params.bucket_name}"
+                            "aws:SourceArn": f"arn:aws:s3:*:*:{self.params.bucket_name}"
                         },
                     }
                 }
@@ -248,7 +248,7 @@ class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
         try:
             # get current bucket notifications
             response = self._engine.s3_client.get_bucket_notification_configuration(
-                Bucket=self._engine.params.bucket_name,
+                Bucket=self.params.bucket_name,
             )
 
             self._engine.old_bucket_notification_config = {configs: response.get(configs, []) for configs in AVAILABLE_CONFIGURATIONS}
@@ -270,7 +270,7 @@ class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
 
             # set bucket notifications
             self._engine.s3_client.put_bucket_notification_configuration(
-                Bucket=self._engine.params.bucket_name,
+                Bucket=self.params.bucket_name,
                 NotificationConfiguration=new_bucket_notification_config
             )
         except Exception as e:
@@ -279,7 +279,7 @@ class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
             return
 
         # if required, add existing files to queue
-        if self._engine.params.process_existing_files and not self.process_existing_files():
+        if self.params.process_existing_files and not self.process_existing_files():
             return
 
         # if we get here, things should be working.

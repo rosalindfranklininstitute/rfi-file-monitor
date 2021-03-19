@@ -70,10 +70,10 @@ class DirectoryWatchdogEngineThread(Observer):
         self._engine = engine
         self._task_window = task_window
         app = engine.appwindow.props.application
-        self._included_file_patterns = app.get_allowed_file_patterns(self._engine.params.allowed_file_patterns)
-        self._excluded_file_patterns = app.get_ignored_file_patterns(self._engine.params.ignore_file_patterns)
-        self._included_directory_patterns = get_patterns_from_string(self._engine.params.allowed_directory_patterns)
-        self._excluded_directory_patterns = get_patterns_from_string(self._engine.params.ignore_directory_patterns, defaults=[])
+        self._included_file_patterns = app.get_allowed_file_patterns(self.params.allowed_file_patterns)
+        self._excluded_file_patterns = app.get_ignored_file_patterns(self.params.ignore_file_patterns)
+        self._included_directory_patterns = get_patterns_from_string(self.params.allowed_directory_patterns)
+        self._excluded_directory_patterns = get_patterns_from_string(self.params.ignore_directory_patterns, defaults=[])
 
         self.schedule(
             event_handler=EventHandler(engine),
@@ -142,10 +142,10 @@ class DirectoryWatchdogEngineThread(Observer):
             GLib.idle_add(self._engine.abort, self._task_window, f'Common directory patterns {common_directory_patterns} detected!', priority=GLib.PRIORITY_HIGH)
             return
 
-        if self._engine.params.process_existing_directories:
+        if self.params.process_existing_directories:
             GLib.idle_add(self._task_window.set_text, '<b>Processing existing directories...</b>')
             try:
-                existing_directories = self._search_for_existing_directories(Path(self._engine.params.monitored_directory))
+                existing_directories = self._search_for_existing_directories(Path(self.params.monitored_directory))
                 GLib.idle_add(self._engine._appwindow._queue_manager.add, existing_directories, priority=GLib.PRIORITY_DEFAULT_IDLE)
             except Exception as e:
                 self._engine.cleanup()
@@ -169,10 +169,10 @@ class EventHandler(FileSystemEventHandler):
     def __init__(self, engine: DirectoryWatchdogEngine):
         self._engine = engine 
         app = engine.appwindow.props.application
-        self._included_file_patterns = app.get_allowed_file_patterns(self._engine.params.allowed_file_patterns)
-        self._excluded_file_patterns = app.get_ignored_file_patterns(self._engine.params.ignore_file_patterns)
-        self._included_directory_patterns = get_patterns_from_string(self._engine.params.allowed_directory_patterns)
-        self._excluded_directory_patterns = get_patterns_from_string(self._engine.params.ignore_directory_patterns, defaults=[])
+        self._included_file_patterns = app.get_allowed_file_patterns(self.params.allowed_file_patterns)
+        self._excluded_file_patterns = app.get_ignored_file_patterns(self.params.ignore_file_patterns)
+        self._included_directory_patterns = get_patterns_from_string(self.params.allowed_directory_patterns)
+        self._excluded_directory_patterns = get_patterns_from_string(self.params.ignore_directory_patterns, defaults=[])
         super().__init__()
 
         self._empty_directories : List[Directory] = []
@@ -203,7 +203,7 @@ class EventHandler(FileSystemEventHandler):
         path = event.src_path
         logger.debug(f"Monitor found {path} for event type CREATED")
         path_object : PurePath = PurePath(path)
-        rel_path = path_object.relative_to(self._engine.params.monitored_directory)
+        rel_path = path_object.relative_to(self.params.monitored_directory)
 
         if isinstance(event, DirCreatedEvent):
             # if this happens directly within the monitored directory,
@@ -232,7 +232,7 @@ class EventHandler(FileSystemEventHandler):
 
             if rel_path.parts[0] in self._empty_directories:
                 self._empty_directories.remove(rel_path.parts[0])
-                new_path = os.path.join(self._engine.params.monitored_directory, rel_path.parts[0])
+                new_path = os.path.join(self.params.monitored_directory, rel_path.parts[0])
                 creation_timestamp = get_file_creation_timestamp(new_path)
                 if creation_timestamp:
                     _dir = Directory(
@@ -250,7 +250,7 @@ class EventHandler(FileSystemEventHandler):
             elif self._engine.props.running and \
                 self._engine._appwindow._queue_manager.props.running:
 
-                new_path = os.path.join(self._engine.params.monitored_directory, rel_path.parts[0])
+                new_path = os.path.join(self.params.monitored_directory, rel_path.parts[0])
                 GLib.idle_add(self._engine._appwindow._queue_manager.saved, new_path, priority=GLib.PRIORITY_HIGH)
 
         else:
@@ -260,7 +260,7 @@ class EventHandler(FileSystemEventHandler):
         path = event.src_path
         logger.debug(f"Monitor found {path} for event type MODIFIED")
         path_object : PurePath = PurePath(path)
-        rel_path = path_object.relative_to(self._engine.params.monitored_directory)
+        rel_path = path_object.relative_to(self.params.monitored_directory)
 
         if isinstance(event, FileModifiedEvent):
             # this should trigger a saved change of the corresponding Directory instance.
@@ -271,5 +271,5 @@ class EventHandler(FileSystemEventHandler):
 
             elif self._engine.props.running and \
                 self._engine._appwindow._queue_manager.props.running:
-                new_path = os.path.join(self._engine.params.monitored_directory, rel_path.parts[0])
+                new_path = os.path.join(self.params.monitored_directory, rel_path.parts[0])
                 GLib.idle_add(self._engine._appwindow._queue_manager.saved, new_path, priority=GLib.PRIORITY_HIGH)

@@ -184,16 +184,16 @@ class FileGeneratorThread(EngineThread):
         # sleep for 1 sec to not have the task window flash
         sleep(1)
 
-        index = int(self._engine.params.start_index)
+        index = int(self.params.start_index)
         with TemporaryDirectory() as tempdir:
             while 1:
                 if self.should_exit:
                     logger.info('Killing FileGeneratorThread')
                     self._engine.cleanup()
                     return
-                basename = f"{self._engine.params.file_prefix}{index}{self.SUFFIX}"
+                basename = f"{self.params.file_prefix}{index}{self.SUFFIX}"
                 path = Path(tempdir, basename)
-                path.write_bytes(os.urandom(int(self._engine.params.filesize_number * SIZE_UNITS[self._engine.params.filesize_unit])))
+                path.write_bytes(os.urandom(int(self.params.filesize_number * SIZE_UNITS[self.params.filesize_unit])))
                 logger.debug(f'Writing {str(path)}')
                 index = index + 1
                 if self._engine.props.running and \

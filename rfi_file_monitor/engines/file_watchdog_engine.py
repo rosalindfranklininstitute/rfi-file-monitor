@@ -71,8 +71,8 @@ class FileWatchdogEngineThread(Observer):
         self._engine : Engine = engine
         self._task_window = task_window
         app = engine.appwindow.props.application
-        self._included_patterns = app.get_allowed_file_patterns(self._engine.params.allowed_patterns)
-        self._excluded_patterns = app.get_ignored_file_patterns(self._engine.params.ignore_patterns)
+        self._included_patterns = app.get_allowed_file_patterns(self.params.allowed_patterns)
+        self._excluded_patterns = app.get_ignored_file_patterns(self.params.ignore_patterns)
 
         self.schedule(
             event_handler=EventHandler(engine),
@@ -101,10 +101,10 @@ class FileWatchdogEngineThread(Observer):
                     case_sensitive=False):
                 
                 file_path = directory.joinpath(child)
-                relative_file_path = file_path.relative_to(self._engine.params.monitored_directory)
+                relative_file_path = file_path.relative_to(self.params.monitored_directory)
                 _file = RegularFile(str(file_path), relative_file_path, get_file_creation_timestamp(file_path), FileStatus.SAVED)
                 rv.append(_file)
-            elif self._engine.params.monitor_recursively and child.is_dir() and not child.is_symlink():
+            elif self.params.monitor_recursively and child.is_dir() and not child.is_symlink():
                 rv.extend(self._search_for_existing_files(directory.joinpath(child)))
         return rv
 
@@ -116,10 +116,10 @@ class FileWatchdogEngineThread(Observer):
             return
 
         # check for existing files if necessary
-        if self._engine.params.process_existing_files:
+        if self.params.process_existing_files:
             GLib.idle_add(self._task_window.set_text, '<b>Processing existing files...</b>')
             try:
-                existing_files = self._search_for_existing_files(Path(self._engine.params.monitored_directory))
+                existing_files = self._search_for_existing_files(Path(self.params.monitored_directory))
                 GLib.idle_add(self._engine._appwindow._queue_manager.add, existing_files, priority=GLib.PRIORITY_DEFAULT_IDLE)
             except Exception as e:
                 self._engine.cleanup()
@@ -143,14 +143,14 @@ class EventHandler(PatternMatchingEventHandler):
     def __init__(self, engine: FileWatchdogEngine):
         self._engine = engine 
         app = engine.appwindow.props.application
-        included_patterns = app.get_allowed_file_patterns(self._engine.params.allowed_patterns)
-        ignore_patterns = app.get_ignored_file_patterns(self._engine.params.ignore_patterns)
+        included_patterns = app.get_allowed_file_patterns(self.params.allowed_patterns)
+        ignore_patterns = app.get_ignored_file_patterns(self.params.ignore_patterns)
         super().__init__(patterns=included_patterns, ignore_patterns=ignore_patterns, ignore_directories=True)
         
     def on_created(self, event):
         file_path = event.src_path
         logger.debug(f"Monitor found {file_path} for event type CREATED")
-        relative_file_path = PurePath(os.path.relpath(file_path, self._engine.params.monitored_directory))
+        relative_file_path = PurePath(os.path.relpath(file_path, self.params.monitored_directory))
         if self._engine.props.running and \
             self._engine._appwindow._queue_manager.props.running:
             creation_timestamp = get_file_creation_timestamp(file_path)

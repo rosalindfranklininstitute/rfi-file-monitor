@@ -4,6 +4,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import Gtk, GObject, Gdk, GLib
+from munch import Munch
 
 from abc import ABC, abstractmethod, ABCMeta
 from typing import Optional, Type, Union
@@ -22,6 +23,7 @@ class EngineThread(ABC, ExitableThread):
         super().__init__()
         self._engine : Engine = engine
         self._task_window = task_window
+        self.params = engine._get_params()
 
 
 class EngineMeta(ABCMeta, Gtk.Grid.__class__):
@@ -143,3 +145,6 @@ class Engine(ABC, WidgetParams, Gtk.Grid, metaclass=EngineMeta):
         self.notify('running')
 
         return GLib.SOURCE_REMOVE
+
+    def _get_params(self) -> Munch:
+        return self.params.copy()

@@ -118,7 +118,7 @@ class CephS3BucketEngine(BaseS3BucketEngine):
 
     def _get_client_options(self) -> dict:
         rv = super()._get_client_options()
-        rv['endpoint_url'] = self.params.ceph_endpoint
+        rv['endpoint_url'] = self._get_params().ceph_endpoint
         return rv
 
     def cleanup(self):
@@ -127,7 +127,7 @@ class CephS3BucketEngine(BaseS3BucketEngine):
         # delete notification config
         try:
             self.s3_client.delete_bucket_notification_configuration(
-                Bucket=self.params.bucket_name
+                Bucket=self._get_params().bucket_name
             )
             logger.debug(f'Successfully deleted bucket notification config')
         except Exception as e:
@@ -146,7 +146,7 @@ class CephS3BucketEngine(BaseS3BucketEngine):
 
 class CephS3BucketEngineThread(BaseS3BucketEngineThread):
     def get_full_name(self, key):
-        return f"{self._engine.params.ceph_endpoint}/{self._engine.params.bucket_name}/{key}"
+        return f"{self.params.ceph_endpoint}/{self.params.bucket_name}/{key}"
 
     def run(self):
         self._client_options = self._engine._get_client_options()
@@ -163,7 +163,7 @@ class CephS3BucketEngineThread(BaseS3BucketEngineThread):
         try:
             # get current bucket notifications
             #response = self._engine.s3_client.get_bucket_notification_configuration(
-            #    Bucket=self._engine.params.bucket_name,
+            #    Bucket=self.params.bucket_name,
             #)
 
             #self._engine.old_bucket_notification_config = {configs: response.get(configs, []) for configs in AVAILABLE_CONFIGURATIONS}
@@ -171,17 +171,17 @@ class CephS3BucketEngineThread(BaseS3BucketEngineThread):
             #logger.debug(f'{self._engine.old_bucket_notification_config=}')
             GLib.idle_add(self._task_window.set_text, '<b>Configuring bucket notifications...</b>')
             self._engine.s3_client.delete_bucket_notification_configuration(
-                Bucket=self._engine.params.bucket_name,
+                Bucket=self.params.bucket_name,
             )
 
-            if not self._engine.params.rabbitmq_vhost.startswith('/'):
+            if not self.params.rabbitmq_vhost.startswith('/'):
                 raise ValueError('RabbitMQ vhost must start with a /')
-            elif self._engine.params.rabbitmq_vhost == '/':
+            elif self.params.rabbitmq_vhost == '/':
                 vhost = ''
             else:
-                vhost = self._engine.params.rabbitmq_vhost
+                vhost = self.params.rabbitmq_vhost
 
-            endpoint_args = f'push-endpoint=amqp://{self._engine.params.rabbitmq_username}:{self._engine.params.rabbitmq_password}@{self._engine.params.rabbitmq_hostname}:{int(self._engine.params.rabbitmq_producer_port)}{vhost}&amqp-exchange={self._engine.params.rabbitmq_exchange}&amqp-ack-level=broker'
+            endpoint_args = f'push-endpoint=amqp://{self.params.rabbitmq_username}:{self.params.rabbitmq_password}@{self.params.rabbitmq_hostname}:{int(self.params.rabbitmq_producer_port)}{vhost}&amqp-exchange={self.params.rabbitmq_exchange}&amqp-ack-level=broker'
             attributes = {nvp[0] : nvp[1] for nvp in urllib.parse.parse_qsl(endpoint_args, keep_blank_values=True)}
 
             topic_name = f'rfi-file-monitor-ceph.{get_random_string(8)}'
@@ -198,30 +198,30 @@ class CephS3BucketEngineThread(BaseS3BucketEngineThread):
             ]
 
             self._engine.s3_client.put_bucket_notification_configuration(
-                Bucket=self._engine.params.bucket_name,
+                Bucket=self.params.bucket_name,
                 NotificationConfiguration={'TopicConfigurations': topic_conf_list})
 
             # test connection to rabbitmq
             GLib.idle_add(self._task_window.set_text, '<b>Testing AMQP server...</b>')
-            if self._engine.params.rabbitmq_consumer_use_ssl:
+            if self.params.rabbitmq_consumer_use_ssl:
                 ssl_context = ssl.create_default_context()
-                if self._engine.params.rabbitmq_ca_certificate and (ca_cert := Path(self._engine.params.rabbitmq_ca_certificate)).exists():
+                if self.params.rabbitmq_ca_certificate and (ca_cert := Path(self.params.rabbitmq_ca_certificate)).exists():
                     ssl_context.load_verify_locations(cafile=ca_cert)
                 ssl_options = pika.SSLOptions(ssl_context)
             else:
                 ssl_options = None
-            credentials = pika.credentials.PlainCredentials(self._engine.params.rabbitmq_username, self._engine.params.rabbitmq_password)
+            credentials = pika.credentials.PlainCredentials(self.params.rabbitmq_username, self.params.rabbitmq_password)
             connection_params = pika.ConnectionParameters(
-                host=self._engine.params.rabbitmq_hostname,
-                port=int(self._engine.params.rabbitmq_consumer_port),
-                virtual_host=self._engine.params.rabbitmq_vhost,
+                host=self.params.rabbitmq_hostname,
+                port=int(self.params.rabbitmq_consumer_port),
+                virtual_host=self.params.rabbitmq_vhost,
                 credentials=credentials,
                 ssl_options=ssl_options)
 
             with pika.BlockingConnection(connection_params) as connection:
                 with connection.channel() as channel:
                     channel.exchange_declare(
-                        exchange=self._engine.params.rabbitmq_exchange,
+                        exchange=self.params.rabbitmq_exchange,
                         exchange_type='topic',
                         durable=True)
         except Exception as e:
@@ -233,7 +233,7 @@ class CephS3BucketEngineThread(BaseS3BucketEngineThread):
         time.sleep(1)
 
         # if required, add existing files to queue
-        if self._engine.params.process_existing_files and not self.process_existing_files():
+        if self.params.process_existing_files and not self.process_existing_files():
             return
 
         # if we get here, things should be working.
@@ -245,12 +245,12 @@ class CephS3BucketEngineThread(BaseS3BucketEngineThread):
             with pika.BlockingConnection(connection_params) as connection:
                 with connection.channel() as channel:
                     channel.exchange_declare(
-                        exchange=self._engine.params.rabbitmq_exchange,
+                        exchange=self.params.rabbitmq_exchange,
                         exchange_type='topic',
                         durable=True)
                     result = channel.queue_declare('', exclusive=True)
                     queue_name = result.method.queue
-                    channel.queue_bind(exchange=self._engine.params.rabbitmq_exchange, queue=queue_name, routing_key=topic_name)
+                    channel.queue_bind(exchange=self.params.rabbitmq_exchange, queue=queue_name, routing_key=topic_name)
 
                     while True:
                         if self._should_exit:

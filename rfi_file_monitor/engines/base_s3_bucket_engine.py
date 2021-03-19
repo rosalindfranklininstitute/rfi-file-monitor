@@ -28,8 +28,8 @@ class BaseS3BucketEngineThread(EngineThread):
 
         # prepare patterns
         app = engine.appwindow.props.application
-        self._included_patterns = app.get_allowed_file_patterns(self._engine.params.allowed_patterns)
-        self._excluded_patterns = app.get_ignored_file_patterns(self._engine.params.ignore_patterns)
+        self._included_patterns = app.get_allowed_file_patterns(self.params.allowed_patterns)
+        self._excluded_patterns = app.get_ignored_file_patterns(self.params.ignore_patterns)
 
     def get_full_name(self, key) -> str:
         raise NotImplementedError
@@ -40,8 +40,8 @@ class BaseS3BucketEngineThread(EngineThread):
 
         # first confirm that the bucket exists and that we can read it
         try:
-            logger.debug(f"Checking if bucket {self._engine.params.bucket_name} exists")
-            temp_s3_client.head_bucket(Bucket=self._engine.params.bucket_name)
+            logger.debug(f"Checking if bucket {self.params.bucket_name} exists")
+            temp_s3_client.head_bucket(Bucket=self.params.bucket_name)
         except Exception as e:
             self._engine.cleanup()
             GLib.idle_add(self._engine.abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
@@ -50,8 +50,8 @@ class BaseS3BucketEngineThread(EngineThread):
         # next try to get the region the bucket is located in
         # see https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html#S3.Client.get_bucket_location
         try:
-            logger.debug(f'Getting {self._engine.params.bucket_name} location')
-            response = temp_s3_client.get_bucket_location(Bucket=self._engine.params.bucket_name)
+            logger.debug(f'Getting {self.params.bucket_name} location')
+            response = temp_s3_client.get_bucket_location(Bucket=self.params.bucket_name)
         except Exception as e:
             self._engine.cleanup()
             GLib.idle_add(self._engine.abort, self._task_window, e, priority=GLib.PRIORITY_HIGH)
@@ -82,15 +82,15 @@ class BaseS3BucketEngineThread(EngineThread):
         # ensure that this is not an S3Uploader testfile!
         try:
             response = self._engine.s3_client.head_object(
-                Bucket=self._engine.params.bucket_name,
+                Bucket=self.params.bucket_name,
                 Key=key,
             )
         except botocore.exceptions.ClientError as e:
             error_code = int(e.response['Error']['Code'])
             if error_code == 404:
-                logger.debug(f"{key} does not exist in {self._engine.params.bucket_name}")
+                logger.debug(f"{key} does not exist in {self.params.bucket_name}")
             else:
-                logger.exception(f'head_object failure for {key} in {self._engine.params.bucket_name}')
+                logger.exception(f'head_object failure for {key} in {self.params.bucket_name}')
             return False
 
         if 'Metadata' in response and AWS_S3_ENGINE_IGNORE_ME in response['Metadata']:
@@ -108,7 +108,7 @@ class BaseS3BucketEngineThread(EngineThread):
                 relative_path,
                 created,
                 FileStatus.SAVED,
-                self._engine.params.bucket_name,
+                self.params.bucket_name,
                 etag,
                 size,
                 self._client_options['region_name'],
@@ -120,7 +120,7 @@ class BaseS3BucketEngineThread(EngineThread):
         GLib.idle_add(self._task_window.set_text, '<b>Processing existing objects...</b>')
         try:
             paginator = self._engine.s3_client.get_paginator('list_objects_v2')
-            page_iterator = paginator.paginate(Bucket=self._engine.params.bucket_name)
+            page_iterator = paginator.paginate(Bucket=self.params.bucket_name)
 
             existing_files = []
 
@@ -151,7 +151,7 @@ class BaseS3BucketEngineThread(EngineThread):
                         relative_path,
                         created,
                         FileStatus.SAVED,
-                        self._engine.params.bucket_name,
+                        self.params.bucket_name,
                         etag,
                         size,
                         self._client_options['region_name'])
@@ -169,7 +169,7 @@ class BaseS3BucketEngineThread(EngineThread):
 class BaseS3BucketEngine(Engine):
     def _get_client_options(self) -> dict:
         client_options = dict()
-        client_options['aws_access_key_id'] = self.params.access_key
-        client_options['aws_secret_access_key'] = self.params.secret_key
+        client_options['aws_access_key_id'] = self._get_params().access_key
+        client_options['aws_secret_access_key'] = self._get_params().secret_key
         return client_options
 

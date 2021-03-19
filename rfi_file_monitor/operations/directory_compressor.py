@@ -107,7 +107,7 @@ class DirectoryCompressorOperation(Operation):
         if not isinstance(self.appwindow.active_engine, DirectoryWatchdogEngine):
             raise ValueError('DirectoryCompressor currently only works with DirectoryWatchdog engines!')
 
-        self._monitored_directory = self.appwindow.active_engine.params.monitored_directory
+        self._monitored_directory = self.appwindow.active_engine._get_params().monitored_directory
 
         if Path(self.params.destination_directory).samefile(self._monitored_directory):
             raise ValueError('Destination folder cannot be the same as the monitored directory')

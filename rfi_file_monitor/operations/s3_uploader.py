@@ -4,6 +4,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 import boto3
+import boto3.s3.transfer
 import botocore
 from munch import Munch
 from tenacity import retry, stop_after_attempt, wait_exponential, \
@@ -274,6 +275,7 @@ class S3UploaderOperation(Operation):
     def _run(cls, file: File, preflight_check_metadata: Dict[int, Dict[str, Any]], params: Munch, operation_index:int):
         client_options = cls._get_client_options(params)
         s3_client = boto3.client('s3', **client_options)
+        transfer_manager = boto3.s3.transfer.create_transfer_manager(client=s3_client, config=TransferConfig)
 
         # object creation options
         object_acl_options = cls._get_dict_acl_options(preflight_check_metadata, 'object_acl_options', ALLOWED_OBJECT_ACL_OPTIONS)
@@ -303,12 +305,12 @@ class S3UploaderOperation(Operation):
                     raise SkippedOperation('File has been uploaded already')
 
         try:
-            s3_client.upload_file(
-                Filename=file.filename,
-                Bucket=params.bucket_name,
-                Key=key,
-                Config=TransferConfig,
-                Callback=S3ProgressPercentage(file, file.filename, operation_index),
+            with boto3.s3.transfer.S3Transfer(manager=transfer_manager) as s3_transfer:
+                s3_transfer.upload_file(
+                    filename=file.filename,
+                    bucket=params.bucket_name,
+                    key=key,
+                    callback=S3ProgressPercentage(file, file.filename, operation_index, manager=transfer_manager),
                 )
             if object_tags:
                 s3_client.put_object_tagging(
@@ -323,7 +325,7 @@ class S3UploaderOperation(Operation):
                     **object_acl_options,
                 )
         except Exception as e:
-            logger.exception(f'S3UploaderOperation.run exception')
+            logger.debug(f'S3UploaderOperation.run exception: {e}')
             del s3_client
             del client_options
             return str(e)

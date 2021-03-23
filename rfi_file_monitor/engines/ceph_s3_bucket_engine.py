@@ -264,7 +264,13 @@ class CephS3BucketEngineThread(BaseS3BucketEngineThread):
             else:
                 vhost = self.params.rabbitmq_vhost
 
-            endpoint_args = f"push-endpoint=amqp://{self.params.rabbitmq_username}:{self.params.rabbitmq_password}@{self.params.rabbitmq_hostname}:{int(self.params.rabbitmq_producer_port)}{vhost}&amqp-exchange={self.params.rabbitmq_exchange}&amqp-ack-level=broker"
+            endpoint_args = (
+                f"push-endpoint=amqp://{self.params.rabbitmq_username}:"
+                + f"{self.params.rabbitmq_password}@{self.params.rabbitmq_hostname}:"
+                + f"{int(self.params.rabbitmq_producer_port)}{vhost}&"
+                + f"amqp-exchange={self.params.rabbitmq_exchange}&"
+                + f"amqp-ack-level=broker"
+            )
             attributes = {
                 nvp[0]: nvp[1]
                 for nvp in urllib.parse.parse_qsl(

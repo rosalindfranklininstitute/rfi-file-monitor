@@ -8,9 +8,11 @@ from bugsnag.handlers import BugsnagHandler
 from .version import __version__
 
 # set AWS_DATA_PATH to allow using Ceph specific boto3 API
-os.environ['AWS_DATA_PATH'] = str(PurePath(__file__).parent.joinpath('data', 'models'))
+os.environ["AWS_DATA_PATH"] = str(
+    PurePath(__file__).parent.joinpath("data", "models")
+)
 
-BUGSNAG_API_KEY = 'b19e59eb84b9eb30d31d57a97e03406a'
+BUGSNAG_API_KEY = "b19e59eb84b9eb30d31d57a97e03406a"
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +29,12 @@ def main():
     from .application import Application
 
     # set up logging
-    monitor_logger = logging.getLogger('rfi_file_monitor')
+    monitor_logger = logging.getLogger("rfi_file_monitor")
     monitor_logger.setLevel(logging.DEBUG)
 
     log_fmt_long = logging.Formatter(
-        fmt='%(asctime)s %(name)s %(levelname)s: %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        fmt="%(asctime)s %(name)s %(levelname)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     # log to stdout
@@ -46,8 +48,8 @@ def main():
     log_handler_bugsnag.setLevel(logging.WARNING)
     monitor_logger.addHandler(log_handler_bugsnag)
 
-    logger.info('Started')
+    logger.info("Started")
     app = Application()
     rv = app.run(sys.argv)
-    logger.info('Finished')
+    logger.info("Finished")
     sys.exit(rv)

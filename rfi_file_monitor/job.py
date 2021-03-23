@@ -9,6 +9,7 @@ from tenacity import RetryError
 
 logger = logging.getLogger(__name__)
 
+
 class Job(ExitableThread):
 
     SKIPPED_MESSAGE = "A preceding operation has been skipped"
@@ -16,7 +17,7 @@ class Job(ExitableThread):
 
     def __init__(self, queue_manager, file: File):
         super().__init__()
-        self._queue_manager = queue_manager 
+        self._queue_manager = queue_manager
         self._file = file
 
     def run(self):
@@ -24,20 +25,24 @@ class Job(ExitableThread):
         self._file.update_status(-1, FileStatus.RUNNING)
 
         # If operation.run() returns None, then it was considered a success.
-        #Otherwise a string is returned with an error message
+        # Otherwise a string is returned with an error message
         rv = None
         # this will contain the first error message we run into,
         # and will be used as tooltip for the parent row
         global_rv = None
 
-        for index, operation in enumerate(self._queue_manager._appwindow._operations_box):
+        for index, operation in enumerate(
+            self._queue_manager._appwindow._operations_box
+        ):
             self._file.update_status(index, FileStatus.RUNNING)
 
             if self._should_exit:
                 rv = "Monitoring aborted"
             elif rv is None:
                 try:
-                    self._queue_manager._appwindow.props.application.google_analytics_context.send_event('RUN-OPERATION', operation.NAME)
+                    self._queue_manager._appwindow.props.application.google_analytics_context.send_event(
+                        "RUN-OPERATION", operation.NAME
+                    )
                     rv = operation.run(self._file)
                 except SkippedOperation as e:
                     rv = e
@@ -86,4 +91,3 @@ class Job(ExitableThread):
             self._queue_manager._njobs_running -= 1
 
         return
-

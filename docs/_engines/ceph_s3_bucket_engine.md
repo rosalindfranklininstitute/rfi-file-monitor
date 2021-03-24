@@ -21,7 +21,7 @@ This engine marks all files as <i>Saved</i> when passing them to the Queue manag
 * <b>Access Key</b>: the access key belonging to the RadosGW user that will be used by the engine.
 * <b>Secret Key</b>: the secret key that is associated with the access key.
 
-The following options are availabled when clicking the Advanced Settings button:
+The following options are available when clicking the Advanced Settings button:
 
 * <b>Process existing files in bucket</b>: turn this option on to add existing objects to the queue manager before starting the bucket monitor.
 * <b>Allowed filename patterns</b>: enter a file extension e.g. *.txt, *.csv (always include the asterisk) to only process files of

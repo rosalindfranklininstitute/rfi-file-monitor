@@ -1,4 +1,5 @@
 import gi
+
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib, Gio
 from .utils import match_path
@@ -13,6 +14,7 @@ from time import time
 
 logger = logging.getLogger(__name__)
 
+
 @unique
 class FileStatus(IntEnum):
     CREATED = auto()
@@ -25,28 +27,30 @@ class FileStatus(IntEnum):
     SKIPPED = auto()
 
     def __str__(self):
-        #pylint: disable=no-member
-        return self.name.lower().capitalize().replace('_', ' ')
+        # pylint: disable=no-member
+        return self.name.lower().capitalize().replace("_", " ")
+
 
 class File(ABC):
-
     @abstractmethod
-    def __init__(self, \
-        filename: str, \
-        relative_filename: PurePath, \
-        created: float, \
-        status: FileStatus):
+    def __init__(
+        self,
+        filename: str,
+        relative_filename: PurePath,
+        created: float,
+        status: FileStatus,
+    ):
 
         self._filename = filename
         self._relative_filename = relative_filename
-        self._created : Final[float] = created
+        self._created: Final[float] = created
         self._status = status
-        self._row_reference : Gtk.TreeRowReference = None
-        self._operation_metadata : Final[Dict[int, Dict[str, Any]]] = dict()
+        self._row_reference: Gtk.TreeRowReference = None
+        self._operation_metadata: Final[Dict[int, Dict[str, Any]]] = dict()
         self._cancellable = Gio.Cancellable()
-        self._saved : float = 0
-        self._requeue : bool = False
-        self._succeeded : float = 0
+        self._saved: float = 0
+        self._requeue: bool = False
+        self._succeeded: float = 0
 
     @property
     def cancellable(self) -> Gio.Cancellable:
@@ -109,12 +113,14 @@ class File(ABC):
         self._row_reference = value
 
     def __str__(self):
-        return f'{type(self).__name__}: {self._filename} -> {str(self._status)}'
+        return f"{type(self).__name__}: {self._filename} -> {str(self._status)}"
 
     def _update_progressbar_worker_cb(self, index: int, value: float):
-        #logger.debug(f"_update_progressbar_worker_cb: {index=} {value=}")
+        # logger.debug(f"_update_progressbar_worker_cb: {index=} {value=}")
         if not self.row_reference.valid():
-            logger.warning(f"_update_progressbar_worker_cb: {self.filename} is invalid!")
+            logger.warning(
+                f"_update_progressbar_worker_cb: {self.filename} is invalid!"
+            )
             return GLib.SOURCE_REMOVE
 
         model = self.row_reference.get_model()
@@ -129,26 +135,28 @@ class File(ABC):
         child_iter = model.iter_nth_child(parent_iter, index)
         model[child_iter][4] = value
         model[child_iter][5] = f"{value:.1f} %"
-        
+
         return GLib.SOURCE_REMOVE
 
     def _update_status_worker_cb(self, index: int, status: FileStatus, message):
         if not self.row_reference.valid():
-            logger.warning(f"_update_status_worker_cb: {self.filename} is invalid!")
+            logger.warning(
+                f"_update_status_worker_cb: {self.filename} is invalid!"
+            )
             return GLib.SOURCE_REMOVE
 
         model = self.row_reference.get_model()
         path = self.row_reference.get_path()
         iter = model.get_iter(path)
 
-        if index == -1: # parent
+        if index == -1:  # parent
             self.status = status
             iter = model.get_iter(path)
         else:
             iter = model.iter_nth_child(iter, index)
 
         model[iter][2] = int(status)
-        
+
         # When the operation succeeds, ensure that the progressbars go
         # to 100 %, which is necessary when the operation doesnt
         # do any progress updated (which would be unfortunate!)
@@ -164,7 +172,9 @@ class File(ABC):
 
         return GLib.SOURCE_REMOVE
 
-    def update_status(self, index: int, status: FileStatus, message: Optional[str] = None):
+    def update_status(
+        self, index: int, status: FileStatus, message: Optional[str] = None
+    ):
         """
         When an operation has finished, update the status of the corresponding
         entry in the treemodel.
@@ -183,32 +193,40 @@ class File(ABC):
         """
         GLib.idle_add(self._update_progressbar_worker_cb, index, value)
 
+
 class RegularFile(File):
-    def __init__(self,
-        filename: str,
-        relative_filename: PurePath,
-        created: int,
-        status: FileStatus
-        ):
-
-        super().__init__(
-            filename, relative_filename,
-            created, status,
-        )
-
-class WeightedRegularFile(RegularFile):
-    def __init__(self,
+    def __init__(
+        self,
         filename: str,
         relative_filename: PurePath,
         created: int,
         status: FileStatus,
-        offset: float, # fractional
-        weight: float, # fractional
-        ):
+    ):
 
         super().__init__(
-            filename, relative_filename,
-            created, status,
+            filename,
+            relative_filename,
+            created,
+            status,
+        )
+
+
+class WeightedRegularFile(RegularFile):
+    def __init__(
+        self,
+        filename: str,
+        relative_filename: PurePath,
+        created: int,
+        status: FileStatus,
+        offset: float,  # fractional
+        weight: float,  # fractional
+    ):
+
+        super().__init__(
+            filename,
+            relative_filename,
+            created,
+            status,
         )
 
         self._offset = offset
@@ -218,27 +236,31 @@ class WeightedRegularFile(RegularFile):
         new_value = 100.0 * self._offset + value * self._weight
         GLib.idle_add(self._update_progressbar_worker_cb, index, new_value)
 
+
 class Directory(File):
-    def __init__(self,
+    def __init__(
+        self,
         filename: str,
         relative_filename: PurePath,
         created: int,
         status: FileStatus,
         included_patterns: List[str],
         excluded_patterns: List[str],
-        ):
+    ):
 
         super().__init__(
-            filename, relative_filename,
-            created, status,
+            filename,
+            relative_filename,
+            created,
+            status,
         )
 
         self._included_patterns = included_patterns
         self._excluded_patterns = excluded_patterns
 
-        self._filelist : List[Tuple[str, int]] = []
-        self._filelist_timestamp : int = 0
-        self._total_size : int = 0
+        self._filelist: List[Tuple[str, int]] = []
+        self._filelist_timestamp: int = 0
+        self._total_size: int = 0
 
     @property
     def included_patterns(self):
@@ -255,12 +277,18 @@ class Directory(File):
                 entry,
                 included_patterns=self._included_patterns,
                 excluded_patterns=self._excluded_patterns,
-                case_sensitive=False):
+                case_sensitive=False,
+            ):
                 continue
             if entry.is_file() and not entry.is_symlink():
                 size = entry.stat().st_size
                 self._total_size += size
-                rv.append((str(entry), size, ))
+                rv.append(
+                    (
+                        str(entry),
+                        size,
+                    )
+                )
             elif entry.is_dir() and not entry.is_symlink():
                 rv.extend(self._get_filelist(entry))
         return rv
@@ -286,20 +314,25 @@ class Directory(File):
 
 
 class URL(File):
-    def __init__(self,
+    def __init__(
+        self,
         filename: str,
         relative_filename: PurePath,
         created: int,
-        status: FileStatus
-        ):
+        status: FileStatus,
+    ):
 
         super().__init__(
-            filename, relative_filename,
-            created, status,
+            filename,
+            relative_filename,
+            created,
+            status,
         )
 
+
 class S3Object(File):
-    def __init__(self,
+    def __init__(
+        self,
         filename: str,
         relative_filename: PurePath,
         created: int,
@@ -307,12 +340,14 @@ class S3Object(File):
         bucket_name: str,
         etag: str,
         size: int,
-        region_name: str = '',
-        ):
+        region_name: str = "",
+    ):
 
         super().__init__(
-            filename, relative_filename,
-            created, status,
+            filename,
+            relative_filename,
+            created,
+            status,
         )
         self._bucket_name = bucket_name
         self._etag = etag

@@ -1,5 +1,6 @@
 import requests
-#pylint: disable=import-error
+
+# pylint: disable=import-error
 from requests.packages.urllib3.util.retry import Retry
 
 from ..file import URL
@@ -22,34 +23,47 @@ adapter = TimeoutHTTPAdapter(
     max_retries=Retry(
         backoff_factor=1,
         status_forcelist=[429, 500, 502, 503, 504],
-        method_whitelist=["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE", "POST"],
-        total=5),
-    pool_maxsize=QueueManager.MAX_JOBS)
+        method_whitelist=[
+            "HEAD",
+            "GET",
+            "PUT",
+            "DELETE",
+            "OPTIONS",
+            "TRACE",
+            "POST",
+        ],
+        total=5,
+    ),
+    pool_maxsize=QueueManager.MAX_JOBS,
+)
 SESSION.mount("https://", adapter)
 SESSION.mount("http://", adapter)
 
+
 @supported_filetypes(filetypes=URL)
-@with_pango_docs(filename='url_downloader.pango')
+@with_pango_docs(filename="url_downloader.pango")
 class UrlDownloaderOperation(S3DownloaderOperation):
 
-    NAME = 'URL Downloader'
+    NAME = "URL Downloader"
     CHUNK_SIZE = 1024 * 50
 
     def run(self, file: URL):
 
         # Check if file already exists in the destination folder
-        destination = Path(self.params.download_destination, *file.relative_filename.parts)
+        destination = Path(
+            self.params.download_destination, *file.relative_filename.parts
+        )
 
         # try a get request to get the response header only
         response = SESSION.get(file.filename, allow_redirects=True, stream=True)
         try:
-            logger.debug(f'{response.status_code=}')
+            logger.debug(f"{response.status_code=}")
             response.raise_for_status()
         except Exception as e:
             return str(e)
 
         try:
-            url_size = int(response.headers['Content-Length'])
+            url_size = int(response.headers["Content-Length"])
         except Exception:
             url_size = None
 
@@ -58,10 +72,16 @@ class UrlDownloaderOperation(S3DownloaderOperation):
             try:
                 file_size = destination.stat().st_size
                 if url_size == file_size:
-                    url_time = parsedate(response.headers['Last-Modified']).astimezone()
-                    file_time = datetime.datetime.fromtimestamp(get_file_creation_timestamp(destination)).astimezone()
+                    url_time = parsedate(
+                        response.headers["Last-Modified"]
+                    ).astimezone()
+                    file_time = datetime.datetime.fromtimestamp(
+                        get_file_creation_timestamp(destination)
+                    ).astimezone()
                     if url_time < file_time:
-                        raise SkippedOperation('File has been downloaded already')
+                        raise SkippedOperation(
+                            "File has been downloaded already"
+                        )
             except SkippedOperation:
                 raise
             except Exception:
@@ -69,12 +89,12 @@ class UrlDownloaderOperation(S3DownloaderOperation):
         else:
             destination.parent.mkdir(parents=True, exist_ok=True)
 
-        with destination.open('wb') as f:
+        with destination.open("wb") as f:
             downloaded_bytes = 0
             last_percentage = 0
 
             for chunk in response.iter_content(chunk_size=self.CHUNK_SIZE):
-                if chunk: # filter out keep-alive new chunks
+                if chunk:  # filter out keep-alive new chunks
                     f.write(chunk)
 
                     if url_size:

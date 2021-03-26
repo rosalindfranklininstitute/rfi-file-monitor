@@ -11,7 +11,7 @@ from typing import Final, Dict, Any, List, Optional
 import logging
 from fnmatch import fnmatch
 from time import ctime
-from threading import Thread, current_thread
+from threading import Thread
 import inspect
 import collections.abc
 import traceback

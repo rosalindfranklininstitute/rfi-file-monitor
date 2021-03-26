@@ -629,7 +629,7 @@ class DropboxUploaderOperation(Operation):
                 "Validate the email address and link the Dropbox account"
             )
 
-        echo_user = self._dropbox.check_user("test-user")
+        self._dropbox.check_user("test-user")
 
         # create folder and upload test file
         self._base_folder = f"/{self.params.destination_folder}"

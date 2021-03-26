@@ -86,7 +86,7 @@ class FileWatchdogEngine(Engine):
                 self._valid = True
             except Exception:
                 self._valid = False
-        logger.debug(f"_directory_chooser_button_cb: {self._valid}")
+
         self.notify("valid")
 
 
@@ -234,7 +234,7 @@ class EventHandler(PatternMatchingEventHandler):
 
     def on_created(self, event):
         file_path = event.src_path
-        logger.debug(f"Monitor found {file_path} for event type CREATED")
+        logger.info(f"Monitor found {file_path} for event type CREATED")
         relative_file_path = PurePath(
             os.path.relpath(file_path, self.params.monitored_directory)
         )
@@ -251,7 +251,7 @@ class EventHandler(PatternMatchingEventHandler):
                     FileStatus.CREATED,
                 )
             else:
-                logger.debug(f"File Not found, {file_path} has been skipped")
+                logger.info(f"File Not found, {file_path} has been skipped")
                 return None
             GLib.idle_add(
                 self._engine._appwindow._queue_manager.add,
@@ -261,7 +261,7 @@ class EventHandler(PatternMatchingEventHandler):
 
     def on_modified(self, event):
         file_path = event.src_path
-        logger.debug(f"Monitor found {file_path} for event type MODIFIED")
+        logger.info(f"Monitor found {file_path} for event type MODIFIED")
         if (
             self._engine.props.running
             and self._engine._appwindow._queue_manager.props.running

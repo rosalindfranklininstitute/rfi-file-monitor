@@ -196,11 +196,10 @@ class DummyOperation(Operation):
         file.operation_metadata[operation_index] = {"number": random()}
 
     def _run(self, file: File):
-        logger.debug(f"Processing {file.filename}")
+        logger.info(f"Processing {file.filename}")
         thread = current_thread()
         for i in range(10):
             if isinstance(thread, ExitableThread) and thread.should_exit:
-                logger.info(f"Killing thread {thread.name}")
                 return str("Thread killed")
             time.sleep(1.0)
 

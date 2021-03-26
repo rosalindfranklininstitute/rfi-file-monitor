@@ -343,9 +343,9 @@ class QueueManager(WidgetParams, Gtk.Grid):
                     continue
 
                 if _file.status == FileStatus.CREATED:
-                    logger.debug(f"New file {file_path} created")
+                    logger.info(f"New file {file_path} created")
                 elif _file.status == FileStatus.SAVED:
-                    logger.debug(f"Adding existing file {file_path}")
+                    logger.info(f"Adding existing file {file_path}")
                     _file.saved = time()
                 else:
                     raise NotImplementedError(
@@ -382,10 +382,10 @@ class QueueManager(WidgetParams, Gtk.Grid):
                 if file.status == FileStatus.SAVED:
                     # looks like this file has been saved again!
                     # update saved timestamp
-                    logger.debug(f"File {file_path} has been saved again")
+                    logger.info(f"File {file_path} has been saved again")
                     file.saved = time()
                 elif file.status == FileStatus.CREATED:
-                    logger.debug(f"File {file_path} has been saved")
+                    logger.info(f"File {file_path} has been saved")
                     file.status = FileStatus.SAVED
                     file.saved = time()
                     path = file.row_reference.get_path()
@@ -394,7 +394,7 @@ class QueueManager(WidgetParams, Gtk.Grid):
                     )
                 elif file.status == FileStatus.QUEUED:
                     # file hasn't been processed yet, so it's safe to demote it to SAVED
-                    logger.debug(
+                    logger.info(
                         f"File {file_path} has been saved again while queued"
                     )
                     file.status = FileStatus.SAVED
@@ -408,19 +408,19 @@ class QueueManager(WidgetParams, Gtk.Grid):
                     FileStatus.FAILURE,
                 ):
                     # file is currently being processed or has been processed -> mark it for being requeued
-                    logger.debug(
+                    logger.info(
                         f"File {file_path} has been saved again while {str(file.status)}"
                     )
                     file.requeue = True
                 elif file.status is FileStatus.REMOVED_FROM_LIST:
                     # file has already been removed from the list!!
-                    logger.debug(
+                    logger.info(
                         f"File {file_path} was removed from list but is now back!"
                     )
                     file.requeue = True
                     self._add_to_model(file)
                 else:
-                    logger.warning(
+                    logger.info(
                         f"File {file_path} has been saved again after it was queued for processing!!"
                     )
 
@@ -458,7 +458,6 @@ class QueueManager(WidgetParams, Gtk.Grid):
         This function runs every second, and will take action based on the status of all files in the dict
         It runs in the GUI thread, so GUI updates are allowed here.
         """
-        # logger.debug(f"files_dict_timeout_cb enter: {self._njobs_running=} {self.params.max_threads=}")
         with self._files_dict_lock:
             status_counters = {
                 FileStatus.CREATED: 0,
@@ -470,11 +469,7 @@ class QueueManager(WidgetParams, Gtk.Grid):
                 FileStatus.REMOVED_FROM_LIST: 0,
             }
             for _filename, _file in self._files_dict.items():
-                # logger.debug(f"timeout_cb: {_filename} found as {str(_file.status)}")
                 if _file.status == FileStatus.CREATED:
-                    logger.debug(
-                        f"files_dict_timeout_cb: {_filename} was CREATED"
-                    )
                     if (
                         self.params.created_status_promotion_active
                         and (time() - _file.created)
@@ -487,17 +482,15 @@ class QueueManager(WidgetParams, Gtk.Grid):
                         self._appwindow._files_tree_model[path][2] = int(
                             FileStatus.SAVED
                         )
-                        logger.debug(
-                            f"files_dict_timeout_cb: promoting {_filename} to SAVED"
-                        )
+                        logger.info(f"Promoting {_filename} to SAVED")
 
                 elif _file.status == FileStatus.SAVED:
                     if (
                         time() - _file.saved
                     ) > self.params.saved_status_promotion_delay:
                         # queue the job
-                        logger.debug(
-                            f"files_dict_timeout_cb: adding {_filename} to queue for future processing"
+                        logger.info(
+                            f"Adding {_filename} to queue for future processing"
                         )
                         _file.status = FileStatus.QUEUED
                         path = _file.row_reference.get_path()
@@ -506,12 +499,9 @@ class QueueManager(WidgetParams, Gtk.Grid):
                         )
 
                 elif _file.status == FileStatus.QUEUED:
-                    # logger.debug(f"files_dict_timeout_cb QUEUED: {self._njobs_running=} {self.params.max_threads=}")
                     if self._njobs_running < self.params.max_threads:
                         # try and launch a new job
-                        logger.debug(
-                            f"files_dict_timeout_cb: launching queued job for {_filename}"
-                        )
+                        logger.info(f"Launching queued job for {_filename}")
                         job = Job(self, _file)
                         self._jobs_list.append(job)
                         job.start()
@@ -547,9 +537,7 @@ class QueueManager(WidgetParams, Gtk.Grid):
                         child[6] = None
                         child[7] = ""
 
-                    logger.debug(
-                        f"files_dict_timeout_cb: requeuing {_filename}"
-                    )
+                    logger.info(f"Requeuing {_filename}")
 
                 elif _file.status == FileStatus.SUCCESS:
                     if (

@@ -38,7 +38,6 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     ENGINE_ADVANCED_SETTINGS_WINDOW_ATTR = "advanced settings window"
 
     def __init__(self, force_all=False, **kwargs):
-        logger.debug("Calling ApplicationWindow __init__")
         Gtk.ApplicationWindow.__init__(self, **kwargs)
 
         self._prefs: Preferences = self.get_property(
@@ -551,8 +550,6 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             self.destroy()
 
     def _delete_event_cb(self, window, event):
-        logger.debug(f"Enterng _delete_event_cb")
-
         # If nothing is running, just close it down
         if (
             not self._active_engine.props.running
@@ -595,7 +592,6 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             return False
 
     def _switch_page_cb(self, notebook, page, page_num):
-        logger.debug(f"_switch_page_cb: {page_num=}")
         self._active_engine.disconnect(self._active_engine_valid_handler_id)
         self._active_engine = self._engines[page_num]
         self._repopulate_available_operations()
@@ -635,7 +631,6 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             self._controls_operations_combo.set_sensitive(False)
 
     def _update_monitor_switch_sensitivity(self):
-        logger.debug("_update_monitor_switch_sensitivity")
         if len(self._operations_box) == 0:
             self.lookup_action("play").set_enabled(False)
             self._engines_notebook.props.show_tabs = True
@@ -703,8 +698,6 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         dialog.present()
 
     def on_add_operation(self, action, param):
-        logger.debug("Clicked on_add_operation")
-
         _class = self._controls_operations_combo.get_model()[
             self._controls_operations_combo.get_active_iter()
         ][1]
@@ -761,7 +754,6 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         self.close()
 
     def on_status_filter(self, action, param, arg):
-        logger.debug(f"{action.get_state()=} for {str(arg)}")
         # invert state!
         action.set_state(
             GLib.Variant.new_boolean(not action.get_state().get_boolean())
@@ -828,9 +820,6 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         self._queue_manager.start()
 
     def _queue_manager_running_changed(self, queue_manager, param):
-        logger.debug(
-            f"Calling _queue_manager_running_changed from {current_thread()} with value {queue_manager.props.running}"
-        )
         if queue_manager.props.running:
             self._active_engine.start()
         else:
@@ -852,9 +841,6 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             self.lookup_action("play").set_enabled(True)
 
     def _active_engine_running_changed(self, active_engine, param):
-        logger.debug(
-            f"Calling _active_engine_running_changed from {current_thread()} with value {active_engine.props.running}"
-        )
         if active_engine.props.running:
             # at this point things should really be running.
             self.lookup_action("stop").set_enabled(True)
@@ -868,7 +854,6 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             self._queue_manager.stop()
 
     def _engine_valid_changed_cb(self, engine, param):
-        logger.debug(f"calling _engine_valid_changed_cb")
         self._update_monitor_switch_sensitivity()
 
     def _write_to_yaml(self):
@@ -885,7 +870,6 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                 for engine in self._engines
             ],
         )
-        logger.debug(f"{yaml.safe_dump(yaml_dict)=}")
         with open(self._yaml_file, "w") as f:
             yaml.safe_dump(yaml_dict, f)
 
@@ -894,7 +878,6 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             self.on_save_as(action, param)
         try:
             self._write_to_yaml()
-            logger.info(f"{self._yaml_file} has been updated")
         except Exception as e:
             dialog = Gtk.MessageDialog(
                 transient_for=self,
@@ -932,7 +915,6 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                 self._yaml_file += ".yml"
             try:
                 self._write_to_yaml()
-                logger.info(f"{self._yaml_file} has been written to")
             except Exception as e:
                 dialog = Gtk.MessageDialog(
                     transient_for=self,
@@ -1063,7 +1045,7 @@ class PreflightCheckThread(Thread):
             try:
                 operation.preflight_check()
             except Exception as e:
-                logger.debug(
+                logger.info(
                     f"Exception caught from {operation.NAME}: {traceback.format_exc()}"
                 )
                 exception_msgs.append(f"* {operation.NAME}: " + str(e))

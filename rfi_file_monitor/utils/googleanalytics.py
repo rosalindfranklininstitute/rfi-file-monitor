@@ -37,11 +37,8 @@ class GoogleAnalyticsConsumer(ExitableThread):
                 )
                 try:
                     response.raise_for_status()
-                    logger.debug(
-                        f"Event sent to Google Analytics!: {data} -> {response.status_code}"
-                    )
                 except Exception as e:
-                    logger.debug(f"post failure: {str(e)}")
+                    pass
 
             time.sleep(0.1)
 

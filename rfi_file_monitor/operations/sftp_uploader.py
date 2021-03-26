@@ -423,8 +423,6 @@ class SftpUploaderOperation(Operation):
         return chmod_grid
 
     def _chmod_grid_check_button_clicked_cb(self, button, chmod_grid):
-        logger.debug(f"Calling _chmod_grid_check_button_clicked_cb")
-
         # get entry value as int
         octal = int(chmod_grid._entry.props.text.strip(), base=8)
 
@@ -439,8 +437,6 @@ class SftpUploaderOperation(Operation):
 
     def _chmod_grid_entry_changed_cb(self, entry, chmod_grid):
         # this method will only be called when loading from yaml
-        logger.debug(f"Calling _chmod_grid_entry_changed_cb")
-
         # get entry value as int
         octal = int(chmod_grid._entry.props.text.strip(), base=8)
 
@@ -453,7 +449,6 @@ class SftpUploaderOperation(Operation):
     @classmethod
     def _preflight_check(cls, params: Munch):
         # try connecting to server and copy a simple file
-        logger.debug(f"Try opening an ssh connection to {params.hostname}")
         with paramiko.SSHClient() as client:
             client.load_system_host_keys()
             client.set_missing_host_key_policy(
@@ -465,7 +460,6 @@ class SftpUploaderOperation(Operation):
                 username=params.username,
                 password=params.password,
             )
-            logger.debug(f"Try opening an sftp connection to {params.hostname}")
             folder_created = False
             with client.open_sftp() as sftp_client:
                 try:
@@ -485,9 +479,6 @@ class SftpUploaderOperation(Operation):
                 sftp_client.chdir()
 
                 # try copying a file
-                logger.debug(
-                    f"Try uploading a test file to {params.destination}"
-                )
                 with tempfile.NamedTemporaryFile(delete=False) as f:
                     f.write(os.urandom(1024))  # 1 kB
                     tmpfile = f.name
@@ -535,7 +526,6 @@ class SftpUploaderOperation(Operation):
         file.operation_metadata[operation_index] = {
             "sftp url": f"sftp://{params.username}@{params.hostname}:{int(params.port)}{remote_filename_full}"
         }
-        logger.debug(f"{file.operation_metadata[operation_index]=}")
 
     @classmethod
     @retry(
@@ -567,9 +557,7 @@ class SftpUploaderOperation(Operation):
                     username=params.username,
                     password=params.password,
                 )
-                logger.debug(
-                    f"Try opening an sftp connection to {params.hostname}"
-                )
+
                 with client.open_sftp() as sftp_client:
                     sftp_client.chdir(params.destination)
                     rel_filename = str(
@@ -633,9 +621,6 @@ class SftpUploaderOperation(Operation):
                             rel_filename, int(params.file_chmod_octal, base=8)
                         )
                     remote_filename_full = sftp_client.normalize(rel_filename)
-                    logger.debug(
-                        f"File {remote_filename_full} has been written"
-                    )
         except SkippedOperation:
             raise
         except Exception as e:

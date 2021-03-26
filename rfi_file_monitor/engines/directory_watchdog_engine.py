@@ -91,7 +91,6 @@ class DirectoryWatchdogEngine(Engine):
                 self._valid = True
             except Exception:
                 self._valid = False
-        logger.debug(f"_directory_chooser_button_cb: {self._valid}")
         self.notify("valid")
 
 
@@ -312,7 +311,7 @@ class EventHandler(FileSystemEventHandler):
 
     def on_created(self, event):
         path = event.src_path
-        logger.debug(f"Monitor found {path} for event type CREATED")
+        logger.info(f"Monitor found {path} for event type CREATED")
         path_object: PurePath = PurePath(path)
         rel_path = path_object.relative_to(self.params.monitored_directory)
 
@@ -336,7 +335,7 @@ class EventHandler(FileSystemEventHandler):
                 )
 
             elif rel_path.parts[0] not in self._empty_directories:
-                logger.debug(f"New directory {rel_path.parts[0]} was created")
+                logger.info(f"New directory {rel_path.parts[0]} was created")
                 self._empty_directories.append(rel_path.parts[0])
 
         elif isinstance(event, FileCreatedEvent):
@@ -344,7 +343,7 @@ class EventHandler(FileSystemEventHandler):
             # else, this should trigger a saved change of the corresponding Directory instance.
             # ignore if this file is put directly in the monitored directory
             if len(rel_path.parts) == 1:
-                logger.debug(f"Ignoring file in monitored directory {path}")
+                logger.info(f"Ignoring file in monitored directory {path}")
                 return
 
             if rel_path.parts[0] in self._empty_directories:
@@ -363,7 +362,7 @@ class EventHandler(FileSystemEventHandler):
                         self._excluded_file_patterns,
                     )
                 else:
-                    logger.debug(f"File Not found, {path} has been skipped")
+                    logger.info(f"File Not found, {path} has been skipped")
                     return
                 GLib.idle_add(
                     self._engine._appwindow._queue_manager.add,
@@ -392,7 +391,7 @@ class EventHandler(FileSystemEventHandler):
 
     def on_modified(self, event):
         path = event.src_path
-        logger.debug(f"Monitor found {path} for event type MODIFIED")
+        logger.info(f"Monitor found {path} for event type MODIFIED")
         path_object: PurePath = PurePath(path)
         rel_path = path_object.relative_to(self.params.monitored_directory)
 
@@ -400,7 +399,7 @@ class EventHandler(FileSystemEventHandler):
             # this should trigger a saved change of the corresponding Directory instance.
             # ignore if this file is put directly in the monitored directory
             if len(rel_path.parts) == 1:
-                logger.debug(f"Ignoring file in monitored directory {path}")
+                logger.info(f"Ignoring file in monitored directory {path}")
                 return
 
             elif (

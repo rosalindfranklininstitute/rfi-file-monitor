@@ -98,10 +98,6 @@ class LocalCopierOperation(Operation):
         grid.attach(overwrite_checkbutton, 0, 2, 2, 1)
 
     def preflight_check(self):
-        logger.debug(
-            f"Try copying a test file to the destination folder {self.params.destination_directory}"
-        )
-
         # ensure destination is not None
         if self.params.destination_directory is None:
             raise ValueError("Destination folder cannot be empty")
@@ -166,7 +162,6 @@ class LocalCopierOperation(Operation):
         file.operation_metadata[self.index] = {
             "local copy path": destination_file
         }
-        logger.debug(f"{file.operation_metadata[self.index]=}")
 
     @add_directory_support
     def run(self, file: File):

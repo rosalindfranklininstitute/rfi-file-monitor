@@ -45,7 +45,6 @@ class BaseS3BucketEngineThread(EngineThread):
 
         # first confirm that the bucket exists and that we can read it
         try:
-            logger.debug(f"Checking if bucket {self.params.bucket_name} exists")
             temp_s3_client.head_bucket(Bucket=self.params.bucket_name)
         except Exception as e:
             self._engine.cleanup()
@@ -60,7 +59,6 @@ class BaseS3BucketEngineThread(EngineThread):
         # next try to get the region the bucket is located in
         # see https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html#S3.Client.get_bucket_location
         try:
-            logger.debug(f"Getting {self.params.bucket_name} location")
             response = temp_s3_client.get_bucket_location(
                 Bucket=self.params.bucket_name
             )
@@ -111,7 +109,7 @@ class BaseS3BucketEngineThread(EngineThread):
         except botocore.exceptions.ClientError as e:
             error_code = int(e.response["Error"]["Code"])
             if error_code == 404:
-                logger.debug(
+                logger.warning(
                     f"{key} does not exist in {self.params.bucket_name}"
                 )
             else:
@@ -163,7 +161,6 @@ class BaseS3BucketEngineThread(EngineThread):
             existing_files = []
 
             for page in page_iterator:
-                logger.debug(f"{page}")
                 if page["KeyCount"] == 0:
                     continue
                 for _object in page["Contents"]:

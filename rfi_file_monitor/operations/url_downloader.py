@@ -57,7 +57,6 @@ class UrlDownloaderOperation(S3DownloaderOperation):
         # try a get request to get the response header only
         response = SESSION.get(file.filename, allow_redirects=True, stream=True)
         try:
-            logger.debug(f"{response.status_code=}")
             response.raise_for_status()
         except Exception as e:
             return str(e)

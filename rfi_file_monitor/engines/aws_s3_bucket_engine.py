@@ -169,14 +169,10 @@ class AWSS3BucketEngine(BaseS3BucketEngine):
         else:
             self._valid = False
 
-        logger.debug(f"_s3_entry_changed_cb: {self._valid}")
-
         self.notify("valid")
 
     def cleanup(self):
         # pylint: disable=no-member
-        logger.debug("Running cleanup!")
-
         # we are going to do this 'ask for forgiveness, not permission'-style
 
         # restore old bucket notifications
@@ -186,11 +182,8 @@ class AWSS3BucketEngine(BaseS3BucketEngine):
                     Bucket=self.params.bucket_name,
                     NotificationConfiguration=self.old_bucket_notification_config,
                 )
-                logger.debug(
-                    f"Successfully restored bucket notification config"
-                )
             except Exception as e:
-                logger.debug(
+                logger.exception(
                     f"Could not restore bucket notification config: {str(e)}"
                 )
 
@@ -198,9 +191,8 @@ class AWSS3BucketEngine(BaseS3BucketEngine):
         if hasattr(self, "queue_url"):
             try:
                 self.sqs_client.delete_queue(QueueUrl=self.queue_url)
-                logger.debug(f"Successfully deleted SQS queue {self.queue_url}")
             except Exception as e:
-                logger.debug(
+                logger.exception(
                     f"Could not delete SQS queue {self.queue_url}: {str(e)}"
                 )
 
@@ -208,9 +200,8 @@ class AWSS3BucketEngine(BaseS3BucketEngine):
         if hasattr(self, "dlq_url"):
             try:
                 self.sqs_client.delete_queue(QueueUrl=self.dlq_url)
-                logger.debug(f"Successfully deleted SQS queue {self.dlq_url}")
             except Exception as e:
-                logger.debug(
+                logger.exception(
                     f"Could not delete SQS queue {self.dlq_url}: {str(e)}"
                 )
 
@@ -369,8 +360,6 @@ class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
                 for configs in AVAILABLE_CONFIGURATIONS
             }
 
-            logger.debug(f"{self._engine.old_bucket_notification_config=}")
-
             new_bucket_notification_config = deepcopy(
                 self._engine.old_bucket_notification_config
             )
@@ -422,8 +411,6 @@ class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
         while True:
 
             if self._should_exit:
-                logger.info("Killing S3BucketEngineThread")
-
                 self._engine.cleanup()
                 return
 
@@ -442,11 +429,7 @@ class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
                 return
 
             if "Messages" not in resp:
-                logger.debug("No messages found")
                 continue
-
-            # This is where we are supposed to start parsing, and add the files to the queue manager
-            logger.debug(f"{resp['Messages']=}")
 
             for message in resp["Messages"]:
                 body = json.loads(message["Body"])
@@ -455,7 +438,7 @@ class AWSS3BucketEngineThread(BaseS3BucketEngineThread):
                     record = body["Records"][0]
                     event_name = record["eventName"]
                 except Exception as e:
-                    logger.debug(f"Ignoring {message=} because of {str(e)}")
+                    logger.info(f"Ignoring {message=} because of {str(e)}")
                     continue
 
                 if event_name.startswith("ObjectCreated"):

@@ -241,7 +241,6 @@ class FileGeneratorThread(EngineThread):
         with TemporaryDirectory() as tempdir:
             while 1:
                 if self.should_exit:
-                    logger.info("Killing FileGeneratorThread")
                     self._engine.cleanup()
                     return
                 basename = f"{self.params.file_prefix}{index}{self.SUFFIX}"
@@ -254,7 +253,6 @@ class FileGeneratorThread(EngineThread):
                         )
                     )
                 )
-                logger.debug(f"Writing {str(path)}")
                 index = index + 1
                 if (
                     self._engine.props.running
@@ -275,6 +273,5 @@ class FileGeneratorThread(EngineThread):
                 for _ in range(int(self._engine.params.creation_delay)):
                     sleep(1)
                     if self.should_exit:
-                        logger.info("Killing FileGeneratorThread")
                         self._engine.cleanup()
                         return

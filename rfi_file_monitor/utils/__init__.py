@@ -81,7 +81,6 @@ class monitor_retry_condition(retry_base):
             isinstance(current_thread(), ExitableThread)
             and current_thread().should_exit is True
         ):
-            logger.debug("not retrying: thread is exiting")
             return False
         return value is not None
 
@@ -91,7 +90,6 @@ class monitor_retry_condition(retry_base):
             isinstance(current_thread(), ExitableThread)
             and current_thread().should_exit is True
         ):
-            logger.debug("not retrying: thread is exiting")
             return False
         return not isinstance(e, SkippedOperation)
 

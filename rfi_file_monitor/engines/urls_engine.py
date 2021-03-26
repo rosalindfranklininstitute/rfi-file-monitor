@@ -59,7 +59,7 @@ class URLsEngine(Engine):
                 self._valid = True
             except Exception:
                 self._valid = False
-        logger.debug(f"_file_chooser_button_cb: {self._valid}")
+
         self.notify("valid")
 
     # override parent method, as the thread will have died by the time stop is clicked

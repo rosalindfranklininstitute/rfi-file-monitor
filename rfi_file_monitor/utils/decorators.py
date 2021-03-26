@@ -29,7 +29,6 @@ def with_pango_docs(filename: str):
     called `docs`, which must be a subfolder within the folder containing the engine or operation"""
 
     def _with_pango_docs(cls: Type[Union[Operation, Engine]]):
-        logger.debug(f"with_pango_docs: {filename} -> {cls.__name__}")
         if _app is None:
             return cls
         if not issubclass(cls, Operation) and not issubclass(cls, Engine):
@@ -65,9 +64,6 @@ def with_advanced_settings(
     OPTIONAL."""
 
     def _with_advanced_settings(cls: Type[Engine]):
-        logger.debug(
-            f"with_advanced_settings: {engine_advanced_settings.__name__} -> {cls.__name__}"
-        )
         if _app is None:
             return cls
         if not issubclass(cls, Engine):
@@ -88,9 +84,6 @@ def exported_filetype(filetype: Type[File]):
     the engine cannot be tied to operations."""
 
     def _exported_filetype(cls: Type[Engine]):
-        logger.debug(
-            f"exported_filetype: {filetype.__name__} -> {cls.__name__}"
-        )
         if _app is None:
             return cls
         if not issubclass(cls, Engine):
@@ -110,7 +103,6 @@ def supported_filetypes(filetypes: Union[Type[File], Sequence[Type[File]]]):
     will be assumed to support regular files only!"""
 
     def _supported_filetypes(cls: Type[Operation]):
-        logger.debug(f"exported_filetype: {filetypes} -> {cls.__name__}")
         if _app is None:
             return cls
         if not issubclass(cls, Operation):

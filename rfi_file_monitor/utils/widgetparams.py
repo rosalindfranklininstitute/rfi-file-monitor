@@ -18,7 +18,6 @@ class WidgetParams:
 
     # pylint: disable=unsubscriptable-object
     def __init__(self, params: Optional[Munch] = None):
-        logger.debug("Calling WidgetParams __init__")
         if params:
             self._params = params
         else:
@@ -123,10 +122,6 @@ class WidgetParams:
 
         if desensitized:
             self._desensitized_widgets.append(widget)
-
-        logger.debug(
-            f"Registered {param_name} with value {self._params[param_name]} of type {type(self._params[param_name])}"
-        )
 
         return widget
 

@@ -85,7 +85,6 @@ class Application(Gtk.Application):
         return self._google_analytics_context
 
     def do_shutdown(self):
-        logger.debug("Calling do_shutdown")
         Gtk.Application.do_shutdown(self)
 
         self._google_analytics_context.consumer_thread.should_exit = True
@@ -181,18 +180,12 @@ class Application(Gtk.Application):
 
         self._update_supported_filetypes()
 
-        for _name in self._known_operations:
-            logger.debug(f"Operation found: {_name}")
-
         self._known_engines = {
             e.name: e.load()
             for e in importlib.metadata.entry_points()[
                 "rfi_file_monitor.engines"
             ]
         }
-
-        for _name in self._known_engines:
-            logger.debug(f"Engine found: {_name}")
 
         # add our help window, which will be shared by all appwindows
         self._help_window = HelpWindow(self._pango_docs_map)
@@ -221,10 +214,6 @@ class Application(Gtk.Application):
         except FileNotFoundError:
             pass
         else:
-            logger.debug(
-                f"Reading preferences from {str(PREFERENCES_CONFIG_FILE)}"
-            )
-
             if stored_prefs and isinstance(stored_prefs, dict):
                 # to maintain compatibility with older versions, first look for settings dict
                 if (
@@ -281,8 +270,6 @@ class Application(Gtk.Application):
                             logger.warning(
                                 f"Could not find a corresponding Engine class for key {_key} from preferences file"
                             )
-
-        logger.debug(f"{self._prefs=}")
 
         # acquire google analytics context
         self._google_analytics_context = GoogleAnalyticsContext(
@@ -383,7 +370,6 @@ class Application(Gtk.Application):
             try:
                 with open(yaml_file, "r") as f:
                     yaml_dict = yaml.safe_load(f)
-                logger.debug(f"Open: {yaml_dict=}")
                 if (
                     "version" not in yaml_dict
                     or yaml_dict["version"] != MONITOR_YAML_VERSION
@@ -456,7 +442,6 @@ class Application(Gtk.Application):
         )
 
         for index, window in enumerate(windows):
-            logger.debug(f"Closing Window {index}")
             if window.active_engine.props.running:
                 window.close()
             else:

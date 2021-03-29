@@ -212,7 +212,6 @@ class PreferenceValueCellRenderer(Gtk.CellRenderer):
 
 class PreferencesWindow(Gtk.Window):
     def __init__(self, prefs: Preferences, *args, **kwargs):
-        logger.debug("Creating new PreferencesWindow")
         super().__init__(*args, **kwargs)
 
         self.set_default_size(500, 500)
@@ -431,9 +430,6 @@ class PreferencesWindow(Gtk.Window):
 
             # open for writing
             with PREFERENCES_CONFIG_FILE.open("w") as f:
-                logger.debug(
-                    f"Writing preferences to {str(PREFERENCES_CONFIG_FILE)}"
-                )
                 yaml.safe_dump(data=yaml_dict, stream=f)
         except Exception:
             logger.exception(

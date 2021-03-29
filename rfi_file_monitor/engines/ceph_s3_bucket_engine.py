@@ -186,8 +186,6 @@ class CephS3BucketEngine(BaseS3BucketEngine):
         else:
             self._valid = False
 
-        logger.debug(f"_s3_entry_changed_cb: {self._valid}")
-
         self.notify("valid")
 
     def _get_client_options(self) -> dict:
@@ -196,16 +194,13 @@ class CephS3BucketEngine(BaseS3BucketEngine):
         return rv
 
     def cleanup(self):
-        logger.debug("Running cleanup!")
-
         # delete notification config
         try:
             self.s3_client.delete_bucket_notification_configuration(
                 Bucket=self._get_params().bucket_name
             )
-            logger.debug(f"Successfully deleted bucket notification config")
         except Exception as e:
-            logger.debug(
+            logger.exception(
                 f"Could not restore bucket notification config: {str(e)}"
             )
 
@@ -213,9 +208,8 @@ class CephS3BucketEngine(BaseS3BucketEngine):
         if hasattr(self, "topic_arn"):
             try:
                 self.sns_client.delete_topic(TopicArn=self.topic_arn)
-                logger.debug(f"Successfully removed topic {self.topic_arn}")
             except Exception as e:
-                logger.debug(
+                logger.exception(
                     f"Could not remove topic {self.topic_arn}: {str(e)}"
                 )
 
@@ -248,7 +242,6 @@ class CephS3BucketEngineThread(BaseS3BucketEngineThread):
 
             # self._engine.old_bucket_notification_config = {configs: response.get(configs, []) for configs in AVAILABLE_CONFIGURATIONS}
 
-            # logger.debug(f'{self._engine.old_bucket_notification_config=}')
             GLib.idle_add(
                 self._task_window.set_text,
                 "<b>Configuring bucket notifications...</b>",
@@ -381,7 +374,6 @@ class CephS3BucketEngineThread(BaseS3BucketEngineThread):
 
                     while True:
                         if self._should_exit:
-                            logger.info("Killing CephBucketEngineThread")
                             self._engine.cleanup()
                             return
 
@@ -394,7 +386,7 @@ class CephS3BucketEngineThread(BaseS3BucketEngineThread):
                                 record = body["Records"][0]
                                 event_name: str = record["eventName"]
                             except Exception as e:
-                                logger.debug(
+                                logger.info(
                                     f"Ignoring {_body=} because of {str(e)}"
                                 )
                                 continue
@@ -405,7 +397,6 @@ class CephS3BucketEngineThread(BaseS3BucketEngineThread):
                                 if not self.process_new_file(s3_info):
                                     continue
                         else:
-                            logger.debug("No messages found in queue")
                             time.sleep(1)
         except Exception as e:
             self._engine.cleanup()

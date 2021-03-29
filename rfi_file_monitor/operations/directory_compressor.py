@@ -196,9 +196,6 @@ class DirectoryCompressorOperation(Operation):
                 )
             )
 
-        logger.debug(f"{zipped_files.keys()=}")
-        logger.debug(f"{next(zip(*file_list))=}")
-
         if len(zipped_files) != len(file_list):
             return
 
@@ -229,9 +226,6 @@ class DirectoryCompressorOperation(Operation):
                     f.getmembers(),
                 )
             )
-
-        logger.debug(f"{zipped_files.keys()=}")
-        logger.debug(f"{next(zip(*file_list))=}")
 
         if len(zipped_files) != len(file_list):
             return

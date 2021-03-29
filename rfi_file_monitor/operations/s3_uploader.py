@@ -282,22 +282,15 @@ class S3UploaderOperation(Operation):
         # check if the bucket exists
         # taken from https://stackoverflow.com/a/47565719
         try:
-            logger.debug(f"Checking if bucket {params.bucket_name} exists")
-
             s3_client.head_bucket(Bucket=params.bucket_name)
         except botocore.exceptions.ClientError as e:
             # If a client error is thrown, then check that it was a 404 error.
             # If it was a 404 error, then the bucket does not exist.
             error_code = int(e.response["Error"]["Code"])
             if error_code == 403:
-                logger.info(
-                    f"Bucket {params.bucket_name} exists but is not accessible"
-                )
                 raise
             elif error_code == 404:
-                logger.info(f"Bucket {params.bucket_name} does not exist")
                 if params.force_bucket_creation:
-                    logger.info(f"Trying to create bucket {params.bucket_name}")
                     s3_client.create_bucket(Bucket=params.bucket_name)
                     if bucket_tags:
                         s3_client.put_bucket_tagging(
@@ -312,7 +305,6 @@ class S3UploaderOperation(Operation):
             else:
                 raise
         # try uploading a simple object
-        logger.debug(f"Try uploading a test file to {params.bucket_name}")
         with tempfile.NamedTemporaryFile(delete=False) as f:
             f.write(os.urandom(1024))  # 1 kB
             tmpfile = f.name
@@ -376,10 +368,6 @@ class S3UploaderOperation(Operation):
         file.operation_metadata[operation_index] = {
             "s3 object url": f"{parsed_url.scheme}://{params.bucket_name}.{parsed_url.netloc}/{urllib.parse.quote(key)}"
         }
-        logger.info(
-            f"S3 upload complete from {file.filename} to {params.bucket_name}"
-        )
-        logger.debug(f"{file.operation_metadata[operation_index]=}")
 
     @classmethod
     @retry(

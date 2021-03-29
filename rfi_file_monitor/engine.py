@@ -147,9 +147,9 @@ class Engine(ABC, WidgetParams, Gtk.Grid, metaclass=EngineMeta):
         # display dialog with error message
         if isinstance(e, Exception):
             traceback.print_exc()
-            logger.debug("".join(traceback.format_tb(e.__traceback__)))
+            logger.info("".join(traceback.format_tb(e.__traceback__)))
         elif isinstance(e, str):
-            logger.debug(e)
+            logger.info(e)
         dialog = Gtk.MessageDialog(
             transient_for=self.get_toplevel(),
             modal=True,

@@ -417,7 +417,6 @@ class DropboxUploaderOperation(Operation):
         )
 
     def _launch_space_usage_thread(self, kill):
-        logger.debug("Calling _launch_space_usage_thread")
         space_thread = DropboxSpaceCheckerThread(self)
         space_thread.start()
 
@@ -482,7 +481,6 @@ class DropboxUploaderOperation(Operation):
             return
 
         if refresh_token:
-            logger.debug(f"{refresh_token=}")
             # use refresh token to launch dropbox session
             self._dropbox = dropbox.Dropbox(
                 oauth2_refresh_token=refresh_token,
@@ -494,7 +492,7 @@ class DropboxUploaderOperation(Operation):
                 account_info = self._dropbox.users_get_current_account()
             except dropbox.exceptions.AuthError as e:
                 if e.error.is_invalid_access_token():
-                    logger.debug("Token has been revoked!")
+                    logger.info("Dropbox token has been revoked!")
                     self._dropbox = None
                     # delete keyring password
                     keyring.delete_password(
@@ -524,7 +522,6 @@ class DropboxUploaderOperation(Operation):
                 self._dropbox = None
                 return
 
-            logger.debug(f"{account_info=}")
             if account_info.email.lower() != self.params.email.lower():
                 dialog = Gtk.MessageDialog(
                     transient_for=self.appwindow,
@@ -632,12 +629,7 @@ class DropboxUploaderOperation(Operation):
                 "Validate the email address and link the Dropbox account"
             )
 
-        echo_user = self._dropbox.check_user("test-user")
-        logger.debug(f"{echo_user=}")
-        account_info = self._dropbox.users_get_current_account()
-        logger.debug(f"{account_info=}")
-        space_usage = self._dropbox.users_get_space_usage()
-        logger.debug(f"{space_usage=}")
+        self._dropbox.check_user("test-user")
 
         # create folder and upload test file
         self._base_folder = f"/{self.params.destination_folder}"

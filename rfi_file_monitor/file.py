@@ -116,7 +116,6 @@ class File(ABC):
         return f"{type(self).__name__}: {self._filename} -> {str(self._status)}"
 
     def _update_progressbar_worker_cb(self, index: int, value: float):
-        # logger.debug(f"_update_progressbar_worker_cb: {index=} {value=}")
         if not self.row_reference.valid():
             logger.warning(
                 f"_update_progressbar_worker_cb: {self.filename} is invalid!"

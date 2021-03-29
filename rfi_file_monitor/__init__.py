@@ -48,8 +48,6 @@ def main():
     log_handler_bugsnag.setLevel(logging.WARNING)
     monitor_logger.addHandler(log_handler_bugsnag)
 
-    logger.info("Started")
     app = Application()
     rv = app.run(sys.argv)
-    logger.info("Finished")
     sys.exit(rv)

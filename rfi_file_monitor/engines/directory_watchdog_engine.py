@@ -100,9 +100,12 @@ class DirectoryWatchdogEngineThread(Observer):
         self, engine: DirectoryWatchdogEngine, task_window: LongTaskWindow
     ):
         super().__init__()
-        self._engine = engine
+        self._should_exit: bool = False
+        self._engine: Engine = engine
+        self.params = engine.params
         self._task_window = task_window
         app = engine.appwindow.props.application
+
         self._included_file_patterns = app.get_allowed_file_patterns(
             self.params.allowed_file_patterns
         )
@@ -263,6 +266,7 @@ EngineThread.register(DirectoryWatchdogEngineThread)
 class EventHandler(FileSystemEventHandler):
     def __init__(self, engine: DirectoryWatchdogEngine):
         self._engine = engine
+        self.params = engine.params
         app = engine.appwindow.props.application
         self._included_file_patterns = app.get_allowed_file_patterns(
             self.params.allowed_file_patterns

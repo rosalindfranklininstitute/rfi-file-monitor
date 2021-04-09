@@ -96,6 +96,7 @@ class FileWatchdogEngineThread(Observer):
         super().__init__()
         self._should_exit: bool = False
         self._engine: Engine = engine
+        self.params = engine.params
         self._task_window = task_window
         app = engine.appwindow.props.application
         self._included_patterns = app.get_allowed_file_patterns(
@@ -219,6 +220,7 @@ EngineThread.register(FileWatchdogEngineThread)
 class EventHandler(PatternMatchingEventHandler):
     def __init__(self, engine: FileWatchdogEngine):
         self._engine = engine
+        self.params = engine.params
         app = engine.appwindow.props.application
         included_patterns = app.get_allowed_file_patterns(
             self.params.allowed_patterns

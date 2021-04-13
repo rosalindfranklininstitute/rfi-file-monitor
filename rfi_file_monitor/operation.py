@@ -153,9 +153,11 @@ class Operation(ABC, Gtk.Frame, WidgetParams, metaclass=OperationMeta):
         """
         return
 
-    def postflight_cleanup(self):
+    def preflight_cleanup(self, success: bool):
         """
-        Use this method to do some cleanup, usually things that were done in preflight_cleanup().
+        Use this method to do some cleanup after the preflight_check.
+        The value of success is determined by the global outcome of the
+        preflight_check, not just the current operation.
         """
         return
 

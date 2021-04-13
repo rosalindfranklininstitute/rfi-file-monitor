@@ -1052,7 +1052,7 @@ class PreflightCheckThread(Thread):
 
         if exception_msgs:
             for operation in self._appwindow._operations_box:
-                operation.postflight_cleanup()
+                operation.preflight_cleanup(success=False)
 
             GLib.idle_add(
                 self._appwindow._preflight_check_cb,
@@ -1061,6 +1061,9 @@ class PreflightCheckThread(Thread):
                 priority=GLib.PRIORITY_DEFAULT_IDLE,
             )
             return
+
+        for operation in self._appwindow._operations_box:
+            operation.preflight_cleanup(success=True)
 
         GLib.idle_add(
             self._appwindow._preflight_check_cb,

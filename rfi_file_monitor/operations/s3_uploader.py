@@ -250,8 +250,14 @@ class S3UploaderOperation(Operation):
 
     @classmethod
     def _preflight_check(
-        cls, preflight_check_metadata: Dict[int, Dict[str, Any]], params: Munch
+        cls,
+        preflight_check_metadata: Dict[int, Dict[str, Any]],
+        self: S3UploaderOperation,
+        params: Munch,
     ):
+        # this variable will be used later on in preflight_cleanup
+        self._bucket_created = False
+
         client_options = cls._get_client_options(params)
 
         # bucket creation options
@@ -292,6 +298,7 @@ class S3UploaderOperation(Operation):
             elif error_code == 404:
                 if params.force_bucket_creation:
                     s3_client.create_bucket(Bucket=params.bucket_name)
+                    self._bucket_created = True
                     if bucket_tags:
                         s3_client.put_bucket_tagging(
                             Bucket=params.bucket_name, Tagging=bucket_tags
@@ -352,7 +359,7 @@ class S3UploaderOperation(Operation):
 
     def preflight_check(self):
         self._preflight_check(
-            self.appwindow.preflight_check_metadata, self.params
+            self.appwindow.preflight_check_metadata, self, self.params
         )
 
     @classmethod
@@ -368,6 +375,29 @@ class S3UploaderOperation(Operation):
         file.operation_metadata[operation_index] = {
             "s3 object url": f"{parsed_url.scheme}://{params.bucket_name}.{parsed_url.netloc}/{urllib.parse.quote(key)}"
         }
+
+    @classmethod
+    def _preflight_cleanup(
+        cls, success: bool, self: S3UploaderOperation, params: Munch
+    ):
+        if not success and self._bucket_created:
+            # preflight_check failed and a bucket was created: delete it!
+            client_options = cls._get_client_options(params)
+
+            # open connection
+            s3_client = boto3.client("s3", **client_options)
+
+            try:
+                s3_client.delete_bucket(Bucket=params.bucket_name)
+                logger.info(f"Bucket {params.bucket_name} successfully deleted")
+            except Exception:
+                logger.exception(f"Could not delete {params.bucket_name}")
+
+            del s3_client
+        return
+
+    def preflight_cleanup(self, success: bool):
+        self._preflight_cleanup(success, self, self.params)
 
     @classmethod
     @retry(

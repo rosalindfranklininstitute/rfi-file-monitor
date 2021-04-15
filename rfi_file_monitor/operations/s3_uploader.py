@@ -240,6 +240,19 @@ class S3UploaderOperation(Operation):
         return options
 
     @classmethod
+    def _get_dict_bucket_cors(
+        cls, preflight_check_metadata: Dict[int, Dict[str, Any]]
+    ) -> Optional[dict]:
+        options = query_metadata(preflight_check_metadata, "bucket_cors")
+        if options is None:
+            return None
+        if not isinstance(options, dict) or "CORSRules" not in options:
+            raise ValueError(
+                "bucket_cors does not contain a valid CORS configuration"
+            )
+        return options
+
+    @classmethod
     def _get_client_options(cls, params: Munch) -> dict:
         client_options = dict()
         client_options["endpoint_url"] = params.hostname
@@ -282,6 +295,10 @@ class S3UploaderOperation(Operation):
             preflight_check_metadata, "object_tags"
         )
 
+        # get CORS bucket configuration
+        # see https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html#S3.Client.put_bucket_cors
+        bucket_cors = cls._get_dict_bucket_cors(preflight_check_metadata)
+
         # open connection
         s3_client = boto3.client("s3", **client_options)
 
@@ -306,6 +323,11 @@ class S3UploaderOperation(Operation):
                     if bucket_acl_options:
                         s3_client.put_bucket_acl(
                             Bucket=params.bucket_name, **bucket_acl_options
+                        )
+                    if bucket_cors:
+                        s3_client.put_bucket_cors(
+                            Bucket=params.bucket_name,
+                            CORSConfiguration=bucket_cors,
                         )
                 else:
                     raise

@@ -86,7 +86,7 @@ class DirectoryWatchdogEngineAdvancedSettings(EngineAdvancedSettings):
             column_spacing=5,
         )
 
-        self.attach(ignore_file_patterns_grid, 0, self._row_counter, 1, 2)
+        self.attach(ignore_file_patterns_grid, 0, self._row_counter, 1, 1)
         self._row_counter += 1
         ignore_file_patterns_grid.attach(
             Gtk.Label(
@@ -166,7 +166,7 @@ class DirectoryWatchdogEngineAdvancedSettings(EngineAdvancedSettings):
             column_spacing=5,
         )
 
-        self.attach(ignore_directory_patterns_grid, 0, self._row_counter, 1, 2)
+        self.attach(ignore_directory_patterns_grid, 0, self._row_counter, 1, 1)
         self._row_counter += 1
         ignore_directory_patterns_grid.attach(
             Gtk.Label(

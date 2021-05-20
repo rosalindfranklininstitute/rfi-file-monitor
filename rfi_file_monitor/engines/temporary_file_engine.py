@@ -226,6 +226,17 @@ class FileGeneratorThread(EngineThread):
 
     SUFFIX = ".dat"
 
+
+    def write_file(self, path):
+        path.write_bytes(
+            os.urandom(
+                int(
+                    self.params.filesize_number
+                    * SIZE_UNITS[self.params.filesize_unit]
+                )
+            )
+        )
+
     def run(self):
         # close task_window
         GLib.idle_add(
@@ -245,14 +256,7 @@ class FileGeneratorThread(EngineThread):
                     return
                 basename = f"{self.params.file_prefix}{index}{self.SUFFIX}"
                 path = Path(tempdir, basename)
-                path.write_bytes(
-                    os.urandom(
-                        int(
-                            self.params.filesize_number
-                            * SIZE_UNITS[self.params.filesize_unit]
-                        )
-                    )
-                )
+                self.write_file(path)
                 index = index + 1
                 if (
                     self._engine.props.running

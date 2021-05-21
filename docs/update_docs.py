@@ -82,13 +82,13 @@ for _dest, _source in SOURCES:
                 if "Supported File Formats" in _line:
                     supported_file_formats_found = True
                 elif supported_file_formats_found:
-                    if (matches := re.findall(r"<b>(\w+)</b>", _line)) :
+                    if matches := re.findall(r"<b>(\w+)</b>", _line):
                         supported_file_formats_found = False
             elif _dest == "_engines":
                 if "Exported File Format" in _line:
                     exported_file_format_found = True
                 elif exported_file_format_found:
-                    if (matches := re.findall(r"<b>(\w+)</b>", _line)) :
+                    if matches := re.findall(r"<b>(\w+)</b>", _line):
                         exported_file_format_found = False
 
         if _dest == "_operations":

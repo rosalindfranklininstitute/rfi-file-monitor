@@ -234,7 +234,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                 )
 
             # fix layout a bit. Buttons should be grouped and centered
-            if (buttons_grid_len := len(buttons_grid)) :
+            if buttons_grid_len := len(buttons_grid):
                 engine_grid.attach(buttons_grid, 0, 1, 1, 1)
                 if buttons_grid_len >= 2:
                     # apparently the children of the grid are listed in LIFO order

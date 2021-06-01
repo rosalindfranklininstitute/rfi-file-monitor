@@ -280,3 +280,10 @@ def match_path(
     return any(path.match(p) for p in included_patterns) and not any(
         path.match(p) for p in excluded_patterns
     )
+
+
+class OperationListBox(Gtk.ListBox):
+    """Derive from Gtk.ListBox to ensure we iterate over the ListBoxRow children"""
+
+    def __iter__(self):
+        return map(lambda row: row.get_child(), self.get_children())

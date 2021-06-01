@@ -16,7 +16,11 @@ import inspect
 import collections.abc
 import traceback
 
-from .utils import PATTERN_PLACEHOLDER_TEXT, MONITOR_YAML_VERSION
+from .utils import (
+    PATTERN_PLACEHOLDER_TEXT,
+    MONITOR_YAML_VERSION,
+    OperationListBox,
+)
 from .utils.paramswindow import ParamsWindow
 from .utils import (
     add_action_entries,
@@ -346,9 +350,8 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             vexpand=True,
         )
         operations_frame.add(operations_scrolled_window)
-        self._operations_box = Gtk.Box(
-            orientation=Gtk.Orientation.VERTICAL,
-            spacing=5,
+        self._operations_box = OperationListBox(
+            selection_mode=Gtk.SelectionMode.NONE,
             halign=Gtk.Align.FILL,
             valign=Gtk.Align.FILL,
             hexpand=True,
@@ -703,13 +706,20 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         ][1]
         new_operation = _class(appwindow=self)
         new_operation.index = len(self._operations_box)
-        self._operations_box.pack_start(new_operation, False, False, 0)
-        new_operation.show_all()
+        row = Gtk.ListBoxRow(selectable=False, activatable=False)
+        row.add(new_operation)
+        self._operations_box.insert(row, -1)
+        row.show_all()
         self._update_monitor_switch_sensitivity()
 
     def _remove_operation(self, op_to_remove: Operation):
-        self._operations_box.remove(op_to_remove)
-        self._operations_box.resize_children()
+        for _op in self._operations_box.get_children():
+            if _op.get_child() is op_to_remove:
+                self._operations_box.remove(_op)
+                break
+        else:
+            logger.error("_remove_operation: op_to_remove not found!")
+            return
 
         self._update_monitor_switch_sensitivity()
 
@@ -964,9 +974,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                     if op["name"] == _class.NAME:
                         new_operation = _class(appwindow=self)
                         new_operation.index = len(self._operations_box)
-                        self._operations_box.pack_start(
-                            new_operation, False, False, 0
-                        )
+                        self._operations_box.insert(new_operation, -1)
                         new_operation.update_from_dict(op["params"])
                         new_operation.show_all()
                         break
@@ -1005,9 +1013,7 @@ class PreflightCheckThread(Thread):
 
         for index, operation in enumerate(self._appwindow._operations_box):
             if index > 0 and hasattr(operation, "PREREQUISITES"):
-                preceding_ops = self._appwindow._operations_box.get_children()[
-                    0:index
-                ]
+                preceding_ops = list(self._appwindow._operations_box)[0:index]
                 preceding_ops_str = map(lambda op: op.NAME, preceding_ops)
                 for prerequisite in getattr(operation, "PREREQUISITES"):
                     if (

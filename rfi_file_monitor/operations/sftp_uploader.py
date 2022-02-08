@@ -449,19 +449,14 @@ class SftpUploaderOperation(Operation):
     @classmethod
     def _preflight_check(cls, params: Munch):
         # try connecting to server and copy a simple file
-        with paramiko.SSHClient() as client:
-            client.load_system_host_keys()
-            client.set_missing_host_key_policy(
-                AutoAddPolicy if params.auto_add_keys else RejectPolicy
-            )
-            client.connect(
-                params.hostname,
-                port=int(params.port),
+        with paramiko.Transport((params.hostname, int(params.port))) as transport:
+
+            transport.connect(
                 username=params.username,
                 password=params.password,
             )
             folder_created = False
-            with client.open_sftp() as sftp_client:
+            with paramiko.SFTPClient.from_transport(transport) as sftp_client:
                 try:
                     sftp_client.chdir(params.destination)
                 except IOError:
@@ -546,19 +541,14 @@ class SftpUploaderOperation(Operation):
         processed_dirs_lock: RLock,
     ):
         try:
-            with paramiko.SSHClient() as client:
-                client.load_system_host_keys()
-                client.set_missing_host_key_policy(
-                    AutoAddPolicy if params.auto_add_keys else RejectPolicy
-                )
-                client.connect(
-                    params.hostname,
-                    port=int(params.port),
+            with paramiko.Transport((params.hostname, int(params.port))) as transport:
+
+                transport.connect(
                     username=params.username,
                     password=params.password,
                 )
 
-                with client.open_sftp() as sftp_client:
+                with paramiko.SFTPClient.from_transport(transport) as sftp_client:
                     sftp_client.chdir(params.destination)
                     rel_filename = str(
                         PurePosixPath(*file.relative_filename.parts)

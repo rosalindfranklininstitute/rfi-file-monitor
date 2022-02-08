@@ -449,7 +449,9 @@ class SftpUploaderOperation(Operation):
     @classmethod
     def _preflight_check(cls, params: Munch):
         # try connecting to server and copy a simple file
-        with paramiko.Transport((params.hostname, int(params.port))) as transport:
+        with paramiko.Transport(
+            (params.hostname, int(params.port))
+        ) as transport:
 
             transport.connect(
                 username=params.username,
@@ -541,14 +543,18 @@ class SftpUploaderOperation(Operation):
         processed_dirs_lock: RLock,
     ):
         try:
-            with paramiko.Transport((params.hostname, int(params.port))) as transport:
+            with paramiko.Transport(
+                (params.hostname, int(params.port))
+            ) as transport:
 
                 transport.connect(
                     username=params.username,
                     password=params.password,
                 )
 
-                with paramiko.SFTPClient.from_transport(transport) as sftp_client:
+                with paramiko.SFTPClient.from_transport(
+                    transport
+                ) as sftp_client:
                     sftp_client.chdir(params.destination)
                     rel_filename = str(
                         PurePosixPath(*file.relative_filename.parts)

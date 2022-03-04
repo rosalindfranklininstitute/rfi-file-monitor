@@ -27,7 +27,8 @@ from .preferences import (
     IgnoredFilePatternsPreference,
 )
 from .preferenceswindow import PreferencesWindow
-from .file import RegularFile, File
+from .files.regular_file import RegularFile
+from .file import File
 from .utils.helpwindow import HelpWindow
 from .utils.googleanalytics import GoogleAnalyticsContext
 from .applicationwindow import ApplicationWindow

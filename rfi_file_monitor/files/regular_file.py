@@ -3,7 +3,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib, Gio
 
-from ..file import File
+from ..file import File, FileStatus
 from pathlib import PurePath
 
 class RegularFile(File):

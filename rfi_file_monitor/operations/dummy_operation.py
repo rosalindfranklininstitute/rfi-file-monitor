@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 @with_pango_docs(filename="dummy_operation.pango")
-@supported_filetypes(filetypes=[RegularFile, S3Object, URL, Directory])
+@supported_filetypes(filetypes=[RegularFile, S3Object, Directory])
 class DummyOperation(Operation):
 
     NAME = "Dummy Operation"

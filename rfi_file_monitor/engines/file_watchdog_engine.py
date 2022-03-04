@@ -14,7 +14,8 @@ from ..utils import (
     get_file_creation_timestamp,
     _get_common_patterns,
 )
-from ..file import FileStatus, RegularFile
+from ..file import FileStatus
+from ..files.regular_file import RegularFile
 from ..utils.decorators import (
     exported_filetype,
     with_advanced_settings,

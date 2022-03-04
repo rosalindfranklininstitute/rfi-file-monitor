@@ -6,7 +6,8 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib
 
 from ..engine import Engine, EngineThread
-from ..file import RegularFile, FileStatus
+from ..files.regular_file import RegularFile
+from ..file import FileStatus
 from ..utils.decorators import exported_filetype, with_pango_docs
 
 import logging

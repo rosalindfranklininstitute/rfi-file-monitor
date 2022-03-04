@@ -6,7 +6,9 @@ from gi.repository import Gio
 from ..engine_advanced_settings import EngineAdvancedSettings
 from ..engine import Engine
 from ..utils.exceptions import SkippedOperation
-from ..file import File, RegularFile, Directory, WeightedRegularFile, FileStatus
+from ..file import File, FileStatus
+from ..files.regular_file import RegularFile,  WeightedRegularFile
+from ..files.directory import Directory
 from ..operation import Operation
 
 from typing import Type, Union, Sequence, Callable, Optional

@@ -15,7 +15,9 @@ from tenacity import (
 
 from ..operation import Operation
 from ..utils.exceptions import SkippedOperation
-from ..file import File, RegularFile, Directory
+from ..file import File
+from ..files.regular_file import RegularFile
+from ..files.directory import Directory
 from ..utils import monitor_retry_condition
 from ..utils.decorators import (
     with_pango_docs,

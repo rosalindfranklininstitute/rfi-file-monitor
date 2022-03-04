@@ -2,10 +2,11 @@ import gi
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib, Gio
-
-from regular_file import RegularFile
-from pathlib import PurePath
-from .utils import match_path
+from ..file import File, FileStatus
+from .regular_file import RegularFile
+from pathlib import PurePath, Path
+from ..utils import match_path
+from typing import Final, Dict, Any, Optional, List, Tuple
 
 class Directory(File):
     def __init__(

@@ -5,7 +5,9 @@ from gi.repository import Gtk, Gio, GLib
 
 from ..operation import Operation
 from ..utils.exceptions import SkippedOperation
-from ..file import File, RegularFile, Directory
+from .file import File
+from ..files.regular_file import RegularFile
+from ..files.directory import Directory
 from ..utils import get_md5
 from ..utils.decorators import (
     with_pango_docs,

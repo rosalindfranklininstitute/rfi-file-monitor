@@ -191,9 +191,3 @@ class File(ABC):
         down considerably. I recommend to use it only when value is a whole number
         """
         GLib.idle_add(self._update_progressbar_worker_cb, index, value)
-
-
-
-
-
-

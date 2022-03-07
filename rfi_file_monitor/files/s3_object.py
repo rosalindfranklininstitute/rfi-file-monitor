@@ -5,6 +5,7 @@ from gi.repository import Gtk, GLib, Gio
 from ..file import File, FileStatus
 from pathlib import PurePath, PurePosixPath
 
+
 class S3Object(File):
     def __init__(
         self,

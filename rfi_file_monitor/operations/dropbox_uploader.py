@@ -15,7 +15,7 @@ from ..utils.decorators import (
 )
 from ..utils import get_random_string
 from ..file import File
-from ..files.regular_file import  RegularFile
+from ..files.regular_file import RegularFile
 from ..files.directory import Directory
 
 import logging

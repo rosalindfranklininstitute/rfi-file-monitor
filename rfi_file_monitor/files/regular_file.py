@@ -6,6 +6,7 @@ from gi.repository import Gtk, GLib, Gio
 from ..file import File, FileStatus
 from pathlib import PurePath
 
+
 class RegularFile(File):
     def __init__(
         self,
@@ -21,6 +22,7 @@ class RegularFile(File):
             created,
             status,
         )
+
 
 class WeightedRegularFile(RegularFile):
     def __init__(

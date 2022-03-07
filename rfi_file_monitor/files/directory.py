@@ -8,6 +8,7 @@ from pathlib import PurePath, Path
 from ..utils import match_path
 from typing import Final, Dict, Any, Optional, List, Tuple
 
+
 class Directory(File):
     def __init__(
         self,
@@ -82,4 +83,3 @@ class Directory(File):
 
     def __len__(self):
         return len(self._filelist)
-

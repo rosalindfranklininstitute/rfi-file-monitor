@@ -1,12 +1,12 @@
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, GLib, Gio
+
 from ..file import File, FileStatus
-from .regular_file import RegularFile
 from pathlib import PurePath, Path
 from ..utils import match_path
-from typing import Final, Dict, Any, Optional, List, Tuple
+from typing import List, Tuple
+from time import time
 
 
 class Directory(File):

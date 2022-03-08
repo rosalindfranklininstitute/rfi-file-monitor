@@ -6,10 +6,10 @@ from gi.repository import Gtk, GLib, Gio
 
 from enum import auto, IntEnum, unique
 import logging
-from pathlib import PurePath, PurePosixPath, Path
-from typing import Final, Dict, Any, Optional, List, Tuple
+from pathlib import PurePath, PurePosixPath
+from typing import Final, Dict, Any, Optional
 from abc import ABC, abstractmethod
-from time import time
+
 
 
 logger = logging.getLogger(__name__)

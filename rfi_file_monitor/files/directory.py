@@ -2,7 +2,7 @@ import gi
 
 gi.require_version("Gtk", "3.0")
 
-from gi.repository import GLib
+
 from ..file import File, FileStatus
 from pathlib import PurePath, Path
 from ..utils import match_path

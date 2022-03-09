@@ -6,7 +6,7 @@ from gi.repository import Gtk, GLib, Gio
 
 from enum import auto, IntEnum, unique
 import logging
-from pathlib import PurePath, PurePosixPath
+from pathlib import PurePath
 from typing import Final, Dict, Any, Optional
 from abc import ABC, abstractmethod
 

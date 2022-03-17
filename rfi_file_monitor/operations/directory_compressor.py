@@ -5,7 +5,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
 from ..operation import Operation
-from ..file import Directory
+from ..files.directory import Directory
 from ..utils import ExitableThread, get_random_string
 from ..utils.decorators import supported_filetypes, with_pango_docs
 from ..utils.exceptions import SkippedOperation

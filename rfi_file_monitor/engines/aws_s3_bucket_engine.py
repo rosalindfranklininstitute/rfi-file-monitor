@@ -20,7 +20,7 @@ from .base_s3_bucket_engine import (
     BaseS3BucketEngineThread,
     AVAILABLE_CONFIGURATIONS,
 )
-from ..file import S3Object
+from ..files.s3_object import S3Object
 from ..utils.decorators import (
     exported_filetype,
     with_advanced_settings,

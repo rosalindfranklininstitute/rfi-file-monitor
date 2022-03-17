@@ -14,7 +14,9 @@ from ..utils.decorators import (
     add_directory_support,
 )
 from ..utils import get_random_string
-from ..file import File, RegularFile, Directory
+from ..file import File
+from ..files.regular_file import RegularFile
+from ..files.directory import Directory
 
 import logging
 import os

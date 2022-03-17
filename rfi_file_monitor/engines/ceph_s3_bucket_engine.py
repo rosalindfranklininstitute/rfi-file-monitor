@@ -18,7 +18,7 @@ from .base_s3_bucket_engine import BaseS3BucketEngine, BaseS3BucketEngineThread
 from .ceph_s3_bucket_engine_advanced_settings import (
     CephS3BucketEngineAdvancedSettings,
 )
-from ..file import S3Object
+from ..files.s3_object import S3Object
 from ..utils.decorators import (
     exported_filetype,
     with_advanced_settings,

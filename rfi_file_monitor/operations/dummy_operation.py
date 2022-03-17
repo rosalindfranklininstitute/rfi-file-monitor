@@ -16,13 +16,16 @@ from ..utils.decorators import (
     supported_filetypes,
     add_directory_support,
 )
-from ..file import File, RegularFile, S3Object, URL, Directory
+from ..file import File
+from ..files.regular_file import RegularFile
+from ..files.s3_object import S3Object
+from ..files.directory import Directory
 
 logger = logging.getLogger(__name__)
 
 
 @with_pango_docs(filename="dummy_operation.pango")
-@supported_filetypes(filetypes=[RegularFile, S3Object, URL, Directory])
+@supported_filetypes(filetypes=[RegularFile, S3Object, Directory])
 class DummyOperation(Operation):
 
     NAME = "Dummy Operation"

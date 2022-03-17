@@ -6,7 +6,7 @@ import botocore
 from ..utils.decorators import supported_filetypes, with_pango_docs
 from ..utils.exceptions import SkippedOperation
 from ..utils.s3 import S3ProgressPercentage, TransferConfig
-from ..file import S3Object
+from ..files.s3_object import S3Object
 from .s3_uploader import S3UploaderOperation, ALLOWED_OBJECT_ACL_OPTIONS
 
 import logging

@@ -13,7 +13,7 @@ from tenacity import (
     before_sleep_log,
 )
 
-from ..file import S3Object
+from ..files.s3_object import S3Object
 from ..operation import Operation
 from ..utils.decorators import supported_filetypes, with_pango_docs
 from ..utils import get_random_string, monitor_retry_condition

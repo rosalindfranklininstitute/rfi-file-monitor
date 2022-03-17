@@ -5,7 +5,8 @@ import boto3
 import botocore
 
 from ..engine import Engine, EngineThread
-from ..file import S3Object, FileStatus
+from ..files.s3_object import S3Object
+from ..file import FileStatus
 from ..operations.s3_uploader import AWS_S3_ENGINE_IGNORE_ME
 from ..utils import LongTaskWindow, match_path
 

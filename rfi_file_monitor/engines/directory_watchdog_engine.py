@@ -17,7 +17,8 @@ from .directory_watchdog_engine_advanced_settings import (
     DirectoryWatchdogEngineAdvancedSettings,
 )
 from ..engine import Engine, EngineThread
-from ..file import Directory, FileStatus
+from ..files.directory import Directory
+from ..file import FileStatus
 from ..utils import (
     get_file_creation_timestamp,
     LongTaskWindow,

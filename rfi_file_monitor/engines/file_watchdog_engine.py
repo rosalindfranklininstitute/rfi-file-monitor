@@ -125,37 +125,30 @@ class FileWatchdogEngineThread(Observer):
 
     def _search_for_existing_files(self, directory: Path) -> List[RegularFile]:
         rv: List[RegularFile] = list()
-        for child in directory.iterdir():
-            if (
-                child.is_file()
-                and not child.is_symlink()
-                and match_path(
-                    child,
-                    included_patterns=self._included_patterns,
-                    excluded_patterns=self._excluded_patterns,
-                    case_sensitive=False,
-                )
-            ):
+        path_tree = os.walk(directory)
+        for root, dirs, files in path_tree:
+            for fname in files:
+                if (not Path(fname).is_symlink() and
+                    match_path(
+                        Path(fname),
+                        included_patterns=self._included_patterns,
+                        excluded_patterns=self._excluded_patterns,
+                        case_sensitive=False,
+                    )
 
-                file_path = directory.joinpath(child)
-                relative_file_path = file_path.relative_to(
-                    self.params.monitored_directory
-                )
-                _file = RegularFile(
-                    str(file_path),
-                    relative_file_path,
-                    get_file_creation_timestamp(file_path),
-                    FileStatus.SAVED,
-                )
-                rv.append(_file)
-            elif (
-                self.params.monitor_recursively
-                and child.is_dir()
-                and not child.is_symlink()
-            ):
-                rv.extend(
-                    self._search_for_existing_files(directory.joinpath(child))
-                )
+                ):
+                    file_path = Path(os.path.join(root,fname))
+                    relative_file_path = file_path.relative_to(
+                        self.params.monitored_directory
+                    )
+                    _file = RegularFile(
+                        str(file_path),
+                        relative_file_path,
+                        get_file_creation_timestamp(file_path),
+                        FileStatus.SAVED,
+                    )
+                    rv.append(_file)
+
         return rv
 
     def run(self):

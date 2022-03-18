@@ -19,7 +19,7 @@ import collections.abc
 import functools
 import threading
 from time import sleep
-
+from ..file import FileStatus
 
 logger = logging.getLogger(__name__)
 
@@ -195,22 +195,33 @@ def do_bulk_upload(process_existing_files: Callable[List]):
     @functools.wraps(process_existing_files)
     def wrapper(self: Engine, existing_files: List):
 
+        chunk_size = 2000
         if (
-            len(existing_files) > 2000
-        ):  # do not like this hard coded value but it is emperically derived -
+            len(existing_files) > chunk_size
+        ):
+
+            # do not like this hard coded value but it is emperically derived -
             # this is the max number of files that a queue can take without a long wait for users.
             chunked_input = [
-                existing_files[i : i + 2000]
-                for i in range(0, len(existing_files), 2000)
+                existing_files[i : i + chunk_size]
+                for i in range(0, len(existing_files), chunk_size)
             ]
+            n= 1
+            processed_files = 0
             for rv in chunked_input:
                 chunk_weight = sum(
                     [Path(file.filename).stat().st_size for file in rv]
                 )
                 process_existing_files(self, rv)
-                sleep_time = (chunk_weight/50e6)*0.75
-                sleep(
-                    sleep_time
-                )  # assuming 50 Mb/s network speed as we don't want to block upload with unnecessary waiting. Start queuing up files when we are 75% done.
+
+                while processed_files < chunk_size*n*0.9: # refresh the list when we are at 90% of the size
+                    j = 0
+                    processed_files = sum([
+                        item
+                        for item in self._engine._appwindow._queue_manager._files_dict.values()
+                        if item.status == FileStatus.SUCCESS
+                    ])
+                    sleep(1)
+                n = n + 1
 
     return wrapper

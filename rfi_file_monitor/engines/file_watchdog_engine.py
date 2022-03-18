@@ -20,7 +20,7 @@ from ..utils.decorators import (
     exported_filetype,
     with_advanced_settings,
     with_pango_docs,
-    do_bulk_upload
+    do_bulk_upload,
 )
 from .file_watchdog_engine_advanced_settings import (
     FileWatchdogEngineAdvancedSettings,
@@ -129,16 +129,13 @@ class FileWatchdogEngineThread(Observer):
         path_tree = os.walk(directory)
         for root, dirs, files in path_tree:
             for fname in files:
-                if (not Path(fname).is_symlink() and
-                    match_path(
-                        Path(fname),
-                        included_patterns=self._included_patterns,
-                        excluded_patterns=self._excluded_patterns,
-                        case_sensitive=False,
-                    )
-
+                if not Path(fname).is_symlink() and match_path(
+                    Path(fname),
+                    included_patterns=self._included_patterns,
+                    excluded_patterns=self._excluded_patterns,
+                    case_sensitive=False,
                 ):
-                    file_path = Path(os.path.join(root,fname))
+                    file_path = Path(os.path.join(root, fname))
                     relative_file_path = file_path.relative_to(
                         self.params.monitored_directory
                     )
@@ -170,10 +167,10 @@ class FileWatchdogEngineThread(Observer):
                 priority=GLib.PRIORITY_HIGH,
             )
         GLib.idle_add(
-                self._engine.kill_task_window,
-                self._task_window,
-                priority=GLib.PRIORITY_HIGH,
-            )
+            self._engine.kill_task_window,
+            self._task_window,
+            priority=GLib.PRIORITY_HIGH,
+        )
         return
 
     def run(self):

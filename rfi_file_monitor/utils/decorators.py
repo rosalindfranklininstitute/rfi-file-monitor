@@ -190,18 +190,27 @@ def add_directory_support(run: Callable[[Operation, File], Optional[str]]):
 
     return wrapper
 
-def do_bulk_upload( process_existing_files: Callable[List]):
+
+def do_bulk_upload(process_existing_files: Callable[List]):
     @functools.wraps(process_existing_files)
     def wrapper(self: Engine, existing_files: List):
 
-        if len(existing_files) > 2000: # do not like this hard coded value but it is emperically derived - this is the max number of files that a queue can take without a long wait for users.
-            chunked_input = [existing_files[i:i + 2000] for i in range(0, len(existing_files), 2000)]
+        if (
+            len(existing_files) > 2000
+        ):  # do not like this hard coded value but it is emperically derived -
+            # this is the max number of files that a queue can take without a long wait for users.
+            chunked_input = [
+                existing_files[i : i + 2000]
+                for i in range(0, len(existing_files), 2000)
+            ]
             for rv in chunked_input:
-                chunk_weight = sum([Path(file.filename).stat().st_size for file in rv])
+                chunk_weight = sum(
+                    [Path(file.filename).stat().st_size for file in rv]
+                )
                 process_existing_files(self, rv)
-                sleep_time = chunk_weight/(150e6)
-                logger.info(msg=f'Chunk Weight: {chunk_weight} *********************************************')
-                logger.info(msg=f'Sleep time: {sleep_time} *********************************************')
-                sleep(sleep_time) # assuming good network speed as we don't want to block upload with unnecessary waiting 150 MiB/s
+                sleep_time = (chunk_weight/50e6)*0.75
+                sleep(
+                    sleep_time
+                )  # assuming 50 Mb/s network speed as we don't want to block upload with unnecessary waiting. Start queuing up files when we are 75% done.
 
     return wrapper

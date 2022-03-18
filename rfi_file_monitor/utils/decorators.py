@@ -20,6 +20,7 @@ import functools
 import threading
 from time import sleep
 
+
 logger = logging.getLogger(__name__)
 
 _app = Gio.Application.get_default()
@@ -192,10 +193,15 @@ def add_directory_support(run: Callable[[Operation, File], Optional[str]]):
 def do_bulk_upload( process_existing_files: Callable[List]):
     @functools.wraps(process_existing_files)
     def wrapper(self: Engine, existing_files: List):
-        no_files = sum(len(fs) for _, _, fs, in os.walk(*args))
-        if no_files > 5000: # do not like this hard coded value but will put this in for performance testing
-            chunked_input = [existing_files[i:i + 5000] for i in range(0, len(existing_files), 5000)]
+
+        if len(existing_files) > 2000: # do not like this hard coded value but it is emperically derived - this is the max number of files that a queue can take without a long wait for users.
+            chunked_input = [existing_files[i:i + 2000] for i in range(0, len(existing_files), 2000)]
             for rv in chunked_input:
+                chunk_weight = sum([Path(file.filename).stat().st_size for file in rv])
                 process_existing_files(self, rv)
-                sleep(60) # calculate this based on the file weight?
+                sleep_time = chunk_weight/(150e6)
+                logger.info(msg=f'Chunk Weight: {chunk_weight} *********************************************')
+                logger.info(msg=f'Sleep time: {sleep_time} *********************************************')
+                sleep(sleep_time) # assuming good network speed as we don't want to block upload with unnecessary waiting 150 MiB/s
+
     return wrapper

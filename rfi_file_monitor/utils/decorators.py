@@ -18,6 +18,7 @@ from pathlib import Path
 import collections.abc
 import functools
 import threading
+from time import sleep
 
 logger = logging.getLogger(__name__)
 
@@ -186,4 +187,15 @@ def add_directory_support(run: Callable[[Operation, File], Optional[str]]):
         else:
             raise NotImplementedError(f"{type(file)} is currently unsupported")
 
+    return wrapper
+
+def do_bulk_upload( process_existing_files: Callable[List]):
+    @functools.wraps(process_existing_files)
+    def wrapper(self: Engine, existing_files: List):
+        no_files = sum(len(fs) for _, _, fs, in os.walk(*args))
+        if no_files > 5000: # do not like this hard coded value but will put this in for performance testing
+            chunked_input = [existing_files[i:i + 5000] for i in range(0, len(existing_files), 5000)]
+            for rv in chunked_input:
+                process_existing_files(self, rv)
+                sleep(60) # calculate this based on the file weight?
     return wrapper

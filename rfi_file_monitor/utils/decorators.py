@@ -200,13 +200,14 @@ def do_bulk_upload(process_existing_files: Callable[List]):
             len(existing_files) > chunk_size
         ):
 
-            # do not like this hard coded value but it is emperically derived -
-            # this is the max number of files that a queue can take without a long wait for users.
+            # do not like this hard coded value but it is empirically derived -
+            # this is the max number of files that a queue can take without a long wait for users working on a standard
+            # size machine with 8CPU 8G RAM
             chunked_input = [
-                existing_files[i : i + chunk_size]
+                existing_files[i: i + chunk_size]
                 for i in range(0, len(existing_files), chunk_size)
             ]
-            n= 1
+            n = 1
             processed_files = 0
             for rv in chunked_input:
                 chunk_weight = sum(

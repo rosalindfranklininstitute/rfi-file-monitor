@@ -210,13 +210,12 @@ def do_bulk_upload(process_existing_files: Callable[List]):
             n = 1
             processed_files = 0
             for rv in chunked_input:
-                chunk_weight = sum(
-                    [Path(file.filename).stat().st_size for file in rv]
-                )
+                # chunk_weight = sum(
+                #     [Path(file.filename).stat().st_size for file in rv]
+                # )
                 process_existing_files(self, rv)
 
-                while processed_files < chunk_size*n*0.9: # refresh the list when we are at 90% of the size
-                    j = 0
+                while processed_files < chunk_size*n*0.9:  # refresh the list when we are at 90% of the size
                     processed_files = sum([
                         item
                         for item in self._engine._appwindow._queue_manager._files_dict.values()

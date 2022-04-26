@@ -146,13 +146,17 @@ class FileWatchdogEngineThread(Observer):
                         FileStatus.SAVED,
                     )
                     rv.append(_file)
+        GLib.idle_add(
+            self._engine._appwindow._queue_manager.get_total_files_in_path,
+            len(rv),
+            priority=GLib.PRIORITY_DEFAULT_IDLE,
+        )
 
         return rv
 
     @do_bulk_upload
     def process_existing_files(self, existing_files):
         try:
-
             GLib.idle_add(
                 self._engine._appwindow._queue_manager.add,
                 existing_files,

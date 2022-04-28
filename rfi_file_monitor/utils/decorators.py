@@ -196,15 +196,13 @@ def do_bulk_upload(process_existing_files: Callable[List]):
     def wrapper(self: Engine, existing_files: List):
 
         chunk_size = 2000
-        if (
-            len(existing_files) > chunk_size
-        ):
+        if len(existing_files) > chunk_size:
 
             # do not like this hard coded value but it is empirically derived -
             # this is the max number of files that a queue can take without a long wait for users working on a standard
             # size machine with 8CPU 8G RAM
             chunked_input = [
-                existing_files[i: i + chunk_size]
+                existing_files[i : i + chunk_size]
                 for i in range(0, len(existing_files), chunk_size)
             ]
             n = 1
@@ -215,12 +213,16 @@ def do_bulk_upload(process_existing_files: Callable[List]):
                 # )
                 process_existing_files(self, rv)
 
-                while processed_files < chunk_size*n*0.9:  # refresh the list when we are at 90% of the size
-                    processed_files = sum([
-                        item
-                        for item in self._engine._appwindow._queue_manager._files_dict.values()
-                        if item.status == FileStatus.SUCCESS
-                    ])
+                while (
+                    processed_files < chunk_size * n * 0.9
+                ):  # refresh the list when we are at 90% of the size
+                    processed_files = sum(
+                        [
+                            item
+                            for item in self._engine._appwindow._queue_manager._files_dict.values()
+                            if item.status == FileStatus.SUCCESS
+                        ]
+                    )
                     sleep(1)
                 n = n + 1
 

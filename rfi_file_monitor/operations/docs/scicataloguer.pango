@@ -1,0 +1,22 @@
+<span size="xx-large">SciCataloguer</span>
+
+<span size="x-large">Purpose</span>
+
+This operation creates metadata entries for data taken on the instrument and uploads them into the catalogue. 
+It automatically captures the required data from the previous operations. 
+
+<span size="x-large">Options</span>
+
+FILL IN OPTIONS INFO HERE. Hostname, username?, password?, orcid?, owner, ownergroup, contactemail.
+
+<span size="x-large">Prerequisites</span>
+
+TO DO - CHECK PREREQUISITES. The Scicataloguer should be added at the end of any experimental session and 
+should be proceeded by a Starter/Resumer and a Ceph Uploader operation. 
+
+<span size="x-large">Supported File Formats</span>
+
+<b>RegularFile</b>,<b>Directory</b>
+
+<span size="x-large">Author</span>
+Abigail Alexander

@@ -28,6 +28,7 @@ from ..version import __version__ as core_version
 
 logger = logging.getLogger(__name__)
 
+
 @supported_filetypes(filetypes=(RegularFile, Directory))
 @with_pango_docs(filename="scicataloguer.pango")
 class SciCataloguer(Operation):
@@ -40,8 +41,8 @@ class SciCataloguer(Operation):
         instrument_prefs: Munch[
             Preference, Any
         ] = current_app.get_preferences().settings
-        #self.instrument_choice = instrument_prefs[InstrumentSetup]
-        #self.instr_dict = InstrumentSetup.values[self.instrument_choice]
+        # self.instrument_choice = instrument_prefs[InstrumentSetup]
+        # self.instr_dict = InstrumentSetup.values[self.instrument_choice]
 
         self._grid = Gtk.Grid(
             row_spacing=5,
@@ -77,6 +78,57 @@ class SciCataloguer(Operation):
         )
         self._grid.attach(self._hostname_entry, 1, 0, 1, 1)
 
+        # Username
+        self._grid.attach(
+            Gtk.Label(
+                label="Username",
+                halign=Gtk.Align.START,
+                valign=Gtk.Align.CENTER,
+                hexpand=False,
+                vexpand=False,
+            ),
+            0,
+            1,
+            1,
+            1,
+        )
+        self._username_entry = self.register_widget(
+            Gtk.Entry(
+                halign=Gtk.Align.FILL,
+                valign=Gtk.Align.CENTER,
+                hexpand=True,
+                vexpand=False,
+            ),
+            "username",
+        )
+        self._grid.attach(self._username_entry, 1, 1, 1, 1)
+
+        # Password
+        self._grid.attach(
+            Gtk.Label(
+                label="Password",
+                halign=Gtk.Align.START,
+                valign=Gtk.Align.CENTER,
+                hexpand=False,
+                vexpand=False,
+            ),
+            2,
+            1,
+            1,
+            1,
+        )
+        self._password_entry = self.register_widget(
+            Gtk.Entry(
+                visibility=False,
+                halign=Gtk.Align.FILL,
+                valign=Gtk.Align.CENTER,
+                hexpand=True,
+                vexpand=False,
+            ),
+            "password",
+        )
+        self._grid.attach(self._password_entry, 3, 1, 1, 1)
+
         # Owner
         self._grid.attach(
             Gtk.Label(
@@ -87,7 +139,7 @@ class SciCataloguer(Operation):
                 vexpand=False,
             ),
             0,
-            1,
+            2,
             1,
             1,
         )
@@ -100,7 +152,7 @@ class SciCataloguer(Operation):
             ),
             "owner",
         )
-        self._grid.attach(self._owner_entry, 1, 1, 1, 1)
+        self._grid.attach(self._owner_entry, 1, 2, 1, 1)
 
         # Owner group
         self._grid.attach(
@@ -112,7 +164,7 @@ class SciCataloguer(Operation):
                 vexpand=False,
             ),
             2,
-            1,
+            2,
             1,
             1,
         )
@@ -125,8 +177,8 @@ class SciCataloguer(Operation):
             ),
             "owner_group",
         )
-        self._grid.attach(self._owner_grp_entry, 3, 1, 1, 1)
-        
+        self._grid.attach(self._owner_grp_entry, 3, 2, 1, 1)
+
         # Comtact email
         self._grid.attach(
             Gtk.Label(
@@ -137,7 +189,7 @@ class SciCataloguer(Operation):
                 vexpand=False,
             ),
             0,
-            2,
+            3,
             1,
             1,
         )
@@ -150,7 +202,7 @@ class SciCataloguer(Operation):
             ),
             "contact_email",
         )
-        self._grid.attach(self._email_entry, 1, 2, 1, 1)
+        self._grid.attach(self._email_entry, 1, 3, 1, 1)
 
         # PI
         self._grid.attach(
@@ -162,7 +214,7 @@ class SciCataloguer(Operation):
                 vexpand=False,
             ),
             0,
-            3,
+            4,
             1,
             1,
         )
@@ -175,9 +227,9 @@ class SciCataloguer(Operation):
             ),
             "p_investigator",
         )
-        self._grid.attach(self._pi_entry, 1, 3, 1, 1)
+        self._grid.attach(self._pi_entry, 1, 4, 1, 1)
 
-        
+        """
         self._grid.attach(
             Gtk.Label(
                 label="Technique",
@@ -194,7 +246,7 @@ class SciCataloguer(Operation):
         
 
         # create combo box
-        """
+        
         combo = Gtk.ComboBoxText.new()
         for k in self.instr_dict["techniques"].keys():
             combo.append_text(k)
@@ -212,10 +264,10 @@ class SciCataloguer(Operation):
         """
 
         # create checkbox for raw/derived dataset option
-        checkbox = Gtk.CheckButton(label="Derived Dataset")
-        checkbox.connect("toggled", self.checkbox_toggled)
-        self.derived_dataset = self.checkbox_toggled(checkbox)
-        self._grid.attach(checkbox, 4, 3, 1, 1)
+        self._derived_checkbox = self.register_widget(
+            Gtk.CheckButton(label="Derived Dataset"), "derived_dataset"
+        )
+        self._grid.attach(self._derived_checkbox, 4, 3, 1, 1)
 
         # Input boxes for derived dataset specific fields
         self._grid.attach(
@@ -227,7 +279,7 @@ class SciCataloguer(Operation):
                 vexpand=False,
             ),
             0,
-            4,
+            5,
             1,
             1,
         )
@@ -240,7 +292,7 @@ class SciCataloguer(Operation):
             vexpand=False,
         )
         input_datasets_entry.connect("changed", self.input_datasets_changed)
-        self._grid.attach(input_datasets_entry, 1, 4, 1, 1)
+        self._grid.attach(input_datasets_entry, 1, 5, 1, 1)
 
         self._grid.attach(
             Gtk.Label(
@@ -250,7 +302,7 @@ class SciCataloguer(Operation):
                 hexpand=False,
                 vexpand=False,
             ),
-            0,
+            2,
             5,
             1,
             1,
@@ -264,17 +316,24 @@ class SciCataloguer(Operation):
             vexpand=False,
         )
         used_software_entry.connect("changed", self.used_software_changed)
-        self._grid.attach(used_software_entry, 1, 5, 1, 1)
+        self._grid.attach(used_software_entry, 3, 5, 1, 1)
 
     @staticmethod
-    def _check_required_fields(session_starter_info):
-        if not session_starter_info["experiment name"]:
-            raise RequiredInfoNotFound("Experiment Name required")
-        if not session_starter_info["owner group"]:
+    def _check_required_fields(params):
+        if not params.hostname:
+            raise RequiredInfoNotFound("SciCat hostname required")
+        if not params.username or not params.password:
+            raise RequiredInfoNotFound("SciCat login information required")
+        if not params.contact_email:
+            raise RequiredInfoNotFound("Contact Email required")
+        if not params.p_investigator:
+            raise RequiredInfoNotFound("Principal Investigator required")
+        if not params.owner:
+            raise RequiredInfoNotFound("Owner required")
+        if not params.owner_group:
             raise RequiredInfoNotFound("Owner group required")
-        if not session_starter_info["orcid"]:
-            raise RequiredInfoNotFound("ORCID required")
 
+    """    
     def checkbox_toggled(self, checkbox):
         # Set class attribute for derived/raw dataset
         if checkbox.get_active() == True:
@@ -282,7 +341,7 @@ class SciCataloguer(Operation):
             return True
         elif checkbox.get_active() == False:
             self.derived_dataset = False
-            return False
+            return False"""
 
     def input_datasets_changed(self, input_datasets_entry):
         input_text = input_datasets_entry.get_text()
@@ -299,8 +358,8 @@ class SciCataloguer(Operation):
         try:
             r = ScicatClient(
                 base_url=self.params.hostname,
-                username="REPLACE LATER",
-                password="REPLACE LATER"
+                username=self.params.username,
+                password=self.params.password,
             )
         except Exception as e:
             logger.error(f"Could not login to scicat: {e}")
@@ -310,17 +369,16 @@ class SciCataloguer(Operation):
         self.session_starter_info = query_metadata(
             self.appwindow.preflight_check_metadata, "orcid", full_dict=True
         )
-        # TO DO - no session starter info?
-        if self.session_starter_info:
-            self._check_required_fields(self.session_starter_info)
-        else:
-            raise RequiredInfoNotFound("could not retrieve session information")
+        # TO DO - do we want to keep session starter info
+        self._check_required_fields(self.params)
 
         self.operations_list = [
-            op.get_child().NAME for op in self._appwindow._operations_box.get_children()
+            op.get_child().NAME
+            for op in self._appwindow._operations_box.get_children()
         ]
 
         # Check that a technique has been selected for instruments that might have more than one technique
+        # TO DO 
         if not self.params.technique:
             raise RequiredInfoNotFound(
                 "Please select a technique for this instrument from the drop down list"
@@ -334,8 +392,8 @@ class SciCataloguer(Operation):
             try:
                 scicat_session = ScicatClient(
                     base_url=self.params.hostname,
-                    username="REPLACE LATER",
-                    password="REPLACE LATER",
+                    username=self.params.username,
+                    password=self.params.password,
                 )
             except Exception as e:
                 logger.error(f"Could not login to scicat: {e}")
@@ -366,7 +424,7 @@ class SciCataloguer(Operation):
             data_format = fppath.suffix
 
         # Create Base payload with required fields
-        # TO DO - don't have session starter
+        # TO DO - don't have session starter, or technique
         default_payload = Payload(
             type="raw",  # set default required type and overwrite later if derived
             description=self.session_starter_info["experiment description"],
@@ -380,16 +438,16 @@ class SciCataloguer(Operation):
             accessGroups=access_groups,
             techniques=[{"name": self.params.technique}],
             creationTime=(
-                datetime.fromtimestamp(date_method).strftime("%Y-%m-%dT%H:%M:%S.%f")[
-                    :-3
-                ]
+                datetime.fromtimestamp(date_method).strftime(
+                    "%Y-%m-%dT%H:%M:%S.%f"
+                )[:-3]
                 + "Z"
             ),
         )
 
         # Add in raw/derived specific variables
         # TO DO - don't have session starter
-        if self.derived_dataset:
+        if self.params.derived_dataset:
             payload = DerivedPayload(**default_payload.dict())
             payload.type = "derived"
             payload.investigator = self.params.p_investigator
@@ -416,7 +474,9 @@ class SciCataloguer(Operation):
                 if parser:
                     parser_dict[f[0]] = parser
             if not parser_dict:
-                logger.info(" Parsers not found. Creating payload without metadata")
+                logger.info(
+                    " Parsers not found. Creating payload without metadata"
+                )
 
             payload.datasetName = (
                 self.session_starter_info["experiment name"]
@@ -427,6 +487,7 @@ class SciCataloguer(Operation):
             payload.numberOfFiles = len(file._filelist)
 
             # Scientific metadata
+            # TO DO - technique?
             scientificMetadata: Dict[str, Dict[str, str]] = {}
             if parser_dict:
                 for k, v in parser_dict.items():
@@ -445,14 +506,16 @@ class SciCataloguer(Operation):
                 )
             )
 
-        #TO DO - instr dict and parser
+        # TO DO - instr dict and parser
         elif isinstance(file, RegularFile):
             try:
                 # TO DO - parser
                 parser = self.find_parser(file.filename)
 
             except Exception as e:
-                logger.exception(" Parser not found. Creating payload without metadata")
+                logger.exception(
+                    " Parser not found. Creating payload without metadata"
+                )
                 parser = None
 
             # Creation of standard file items
@@ -465,10 +528,14 @@ class SciCataloguer(Operation):
             payload.size = fstats.st_size
 
             # Creation of scientific metadata
+            # TO DO - technique?
             scientificMetadata = {}
             if parser:
                 scientificMetadata = PayloadHelpers.implement_parser(
-                    self.instr_dict, self.params.technique, file.filename, parser
+                    self.instr_dict,
+                    self.params.technique,
+                    file.filename,
+                    parser,
                 )
             payload.scientificMetadata = (
                 PayloadHelpers.scientific_metadata_concatenation(
@@ -545,7 +612,6 @@ class RawPayload(RawDataset, Payload):
 
 
 # Extends Payload for derived data
-# TO DO - this has not been tested. Need to configure additional derived information
 class DerivedPayload(DerivedDataset, Payload):
     inputDatasets: Optional[List[str]]
     usedSoftware: Optional[List[str]]
@@ -584,6 +650,7 @@ class PayloadHelpers:
 
         return source_folders
 
+    # TO DO - technique
     @classmethod
     def implement_parser(cls, instr_dict, technique, filename, parser):
         scientific_metadata = {}
@@ -591,7 +658,11 @@ class PayloadHelpers:
         extracted = parser.extract_metadata(instr_vars, filename)
         if extracted:
             for k, v in extracted.items():
-                scientific_metadata[k] = {"type": "string", "value": str(v), "unit": ""}
+                scientific_metadata[k] = {
+                    "type": "string",
+                    "value": str(v),
+                    "unit": "",
+                }
         return scientific_metadata
 
     @classmethod

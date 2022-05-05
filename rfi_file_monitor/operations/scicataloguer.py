@@ -1,6 +1,8 @@
 import gi
 from numpy import isin
 
+from rfi_file_monitor.operations.s3_uploader import S3UploaderOperation
+
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gio
 from requests.packages.urllib3.util.retry import Retry
@@ -41,6 +43,7 @@ class SciCataloguer(Operation):
         instrument_prefs: Munch[
             Preference, Any
         ] = current_app.get_preferences().settings
+        # TO DO - handle instrument dict later
         # self.instrument_choice = instrument_prefs[InstrumentSetup]
         # self.instr_dict = InstrumentSetup.values[self.instrument_choice]
 
@@ -200,9 +203,34 @@ class SciCataloguer(Operation):
                 hexpand=True,
                 vexpand=False,
             ),
-            "contact_email",
+            "email",
         )
         self._grid.attach(self._email_entry, 1, 3, 1, 1)
+
+        # Orcid
+        self._grid.attach(
+            Gtk.Label(
+                label="Orcid",
+                halign=Gtk.Align.START,
+                valign=Gtk.Align.CENTER,
+                hexpand=False,
+                vexpand=False,
+            ),
+            2,
+            3,
+            1,
+            1,
+        )
+        self._orcid_entry = self.register_widget(
+            Gtk.Entry(
+                halign=Gtk.Align.FILL,
+                valign=Gtk.Align.CENTER,
+                hexpand=True,
+                vexpand=False,
+            ),
+            "orcid",
+        )
+        self._grid.attach(self._orcid_entry, 3, 3, 1, 1)
 
         # PI
         self._grid.attach(
@@ -225,7 +253,7 @@ class SciCataloguer(Operation):
                 hexpand=True,
                 vexpand=False,
             ),
-            "p_investigator",
+            "investigator",
         )
         self._grid.attach(self._pi_entry, 1, 4, 1, 1)
 
@@ -268,6 +296,57 @@ class SciCataloguer(Operation):
             Gtk.CheckButton(label="Derived Dataset"), "derived_dataset"
         )
         self._grid.attach(self._derived_checkbox, 4, 3, 1, 1)
+
+        # Dataset name
+        self._grid.attach(
+            Gtk.Label(
+                label="Experiment name",
+                halign=Gtk.Align.START,
+                valign=Gtk.Align.CENTER,
+                hexpand=False,
+                vexpand=False,
+            ),
+            0,
+            6,
+            1,
+            1,
+        )
+        self._exp_name_entry = self.register_widget(
+            Gtk.Entry(
+                halign=Gtk.Align.FILL,
+                valign=Gtk.Align.CENTER,
+                hexpand=True,
+                vexpand=False,
+            ),
+            "experiment_name",
+        )
+        self._grid.attach(self._exp_name_entry, 1, 6, 1, 1)
+
+        # Technique
+        # TO DO This should really come from instrument dict somehow...
+        self._grid.attach(
+            Gtk.Label(
+                label="Technique",
+                halign=Gtk.Align.START,
+                valign=Gtk.Align.CENTER,
+                hexpand=False,
+                vexpand=False,
+            ),
+            2,
+            6,
+            1,
+            1,
+        )
+        self._technique_entry = self.register_widget(
+            Gtk.Entry(
+                halign=Gtk.Align.FILL,
+                valign=Gtk.Align.CENTER,
+                hexpand=True,
+                vexpand=False,
+            ),
+            "technique",
+        )
+        self._grid.attach(self._technique_entry, 3, 6, 1, 1)
 
         # Input boxes for derived dataset specific fields
         self._grid.attach(
@@ -324,9 +403,9 @@ class SciCataloguer(Operation):
             raise RequiredInfoNotFound("SciCat hostname required")
         if not params.username or not params.password:
             raise RequiredInfoNotFound("SciCat login information required")
-        if not params.contact_email:
+        if not params.email:
             raise RequiredInfoNotFound("Contact Email required")
-        if not params.p_investigator:
+        if not params.investigator:
             raise RequiredInfoNotFound("Principal Investigator required")
         if not params.owner:
             raise RequiredInfoNotFound("Owner required")
@@ -408,10 +487,11 @@ class SciCataloguer(Operation):
     def create_payload(self, file):
         # Extract relevant fields before initialising Payload
         host_info = PayloadHelpers.get_host_location(file, self.operations_list)
-        if "access groups" in self.instr_dict:
-            access_groups = self.instr_dict["access groups"]
-        else:
-            access_groups = []
+        #if "access groups" in self.instr_dict:
+        #    access_groups = self.instr_dict["access groups"]
+        #else:
+        #    access_groups = []
+        access_groups = []
 
         # INFO - creation time is necessary for initialising Payload
         # also need to ensure only raw types have data format
@@ -430,10 +510,11 @@ class SciCataloguer(Operation):
             description=self.session_starter_info["experiment description"],
             sourceFolder=host_info["sourceFolder"],
             sourceFolderHost=host_info["sourceFolderHost"],
-            instrumentId=str(self.instr_dict["id"]),
+            #TO DO - this would normally be extracted from instrument preferences
+            #instrumentId=str(self.instr_dict["id"]),
             owner=self.params.owner,
             contactEmail=self.params.email,
-            orcidOfOwner=self.session_starter_info["orcid"],
+            orcidOfOwner=self.params.orcid,
             ownerGroup=self.params.owner_group,
             accessGroups=access_groups,
             techniques=[{"name": self.params.technique}],
@@ -450,20 +531,17 @@ class SciCataloguer(Operation):
         if self.params.derived_dataset:
             payload = DerivedPayload(**default_payload.dict())
             payload.type = "derived"
-            payload.investigator = self.params.p_investigator
+            payload.investigator = self.params.investigator
             payload.inputDatasets = self.input_datasets
             payload.usedSoftware = self.used_software
         else:
             payload = RawPayload(**default_payload.dict())
             payload.creationLocation = str(self.instrument_choice)
-            payload.principalInvestigator = self.session_starter_info[
-                "principal investigator"
-            ]
+            payload.principalInvestigator = self.params.investigator
             payload.endTime = payload.creationTime
             payload.dataFormat = data_format
 
         # Add in Directory specific payload details
-        # TO DO - parser....
         if isinstance(file, Directory):
             parser_dict = {}
             for f in file:
@@ -479,7 +557,7 @@ class SciCataloguer(Operation):
                 )
 
             payload.datasetName = (
-                self.session_starter_info["experiment name"]
+                self.params.experiment_name
                 + "/"
                 + str(file.relative_filename.parts[-1])
             )
@@ -487,7 +565,7 @@ class SciCataloguer(Operation):
             payload.numberOfFiles = len(file._filelist)
 
             # Scientific metadata
-            # TO DO - technique?
+            # TO DO - configure later with instrument dict
             scientificMetadata: Dict[str, Dict[str, str]] = {}
             if parser_dict:
                 for k, v in parser_dict.items():
@@ -506,10 +584,8 @@ class SciCataloguer(Operation):
                 )
             )
 
-        # TO DO - instr dict and parser
         elif isinstance(file, RegularFile):
             try:
-                # TO DO - parser
                 parser = self.find_parser(file.filename)
 
             except Exception as e:
@@ -520,7 +596,7 @@ class SciCataloguer(Operation):
 
             # Creation of standard file items
             payload.datasetName = (
-                self.session_starter_info["experiment name"]
+                self.params.experiment_name
                 + "/"
                 + str(PurePosixPath(file.relative_filename))
             )
@@ -528,7 +604,7 @@ class SciCataloguer(Operation):
             payload.size = fstats.st_size
 
             # Creation of scientific metadata
-            # TO DO - technique?
+            # TO DO - configure later with instrument dict
             scientificMetadata = {}
             if parser:
                 scientificMetadata = PayloadHelpers.implement_parser(
@@ -546,7 +622,6 @@ class SciCataloguer(Operation):
         del payload.scientificMetadataDefaults
         return payload
 
-    # TO DO - how do parsers work?
     def find_parser(self, filename):
         for parser in self.parser_list:
             if parser.supports_file(filename):

@@ -81,6 +81,28 @@ class SciCataloguer(Operation):
         )
         self._grid.attach(self._hostname_entry, 1, 0, 1, 1)
 
+        # Operation upload
+        self._grid.attach(
+            Gtk.Label(
+                label="Upload location ",
+                halign=Gtk.Align.START,
+                valign=Gtk.Align.CENTER,
+                hexpand=False,
+                vexpand=False,
+            ),
+            2,
+            0,
+            1,
+            1,
+        )
+        op_combo = Gtk.ComboBoxText.new()
+        self.ops_list = ["S3 Uploader", "SFTP Uploader"]
+        for k in self.ops_list:
+            op_combo.append_text(k)
+
+        op_widget = self.register_widget(op_combo, "operations")
+        self._grid.attach(op_widget, 3, 0, 1, 1)
+
         # Username
         self._grid.attach(
             Gtk.Label(
@@ -291,12 +313,6 @@ class SciCataloguer(Operation):
             self.parser_list.append(e.load())
         """
 
-        # create checkbox for raw/derived dataset option
-        self._derived_checkbox = self.register_widget(
-            Gtk.CheckButton(label="Derived Dataset"), "derived_dataset"
-        )
-        self._grid.attach(self._derived_checkbox, 4, 3, 1, 1)
-
         # Dataset name
         self._grid.attach(
             Gtk.Label(
@@ -307,7 +323,7 @@ class SciCataloguer(Operation):
                 vexpand=False,
             ),
             0,
-            6,
+            5,
             1,
             1,
         )
@@ -320,7 +336,7 @@ class SciCataloguer(Operation):
             ),
             "experiment_name",
         )
-        self._grid.attach(self._exp_name_entry, 1, 6, 1, 1)
+        self._grid.attach(self._exp_name_entry, 1, 5, 1, 1)
 
         # Technique
         # TO DO This should really come from instrument dict somehow...
@@ -333,7 +349,7 @@ class SciCataloguer(Operation):
                 vexpand=False,
             ),
             2,
-            6,
+            5,
             1,
             1,
         )
@@ -346,7 +362,7 @@ class SciCataloguer(Operation):
             ),
             "technique",
         )
-        self._grid.attach(self._technique_entry, 3, 6, 1, 1)
+        self._grid.attach(self._technique_entry, 3, 5, 1, 1)
 
         # Input boxes for derived dataset specific fields
         self._grid.attach(
@@ -358,7 +374,7 @@ class SciCataloguer(Operation):
                 vexpand=False,
             ),
             0,
-            5,
+            6,
             1,
             1,
         )
@@ -371,7 +387,7 @@ class SciCataloguer(Operation):
             vexpand=False,
         )
         input_datasets_entry.connect("changed", self.input_datasets_changed)
-        self._grid.attach(input_datasets_entry, 1, 5, 1, 1)
+        self._grid.attach(input_datasets_entry, 1, 6, 1, 1)
 
         self._grid.attach(
             Gtk.Label(
@@ -382,7 +398,7 @@ class SciCataloguer(Operation):
                 vexpand=False,
             ),
             2,
-            5,
+            6,
             1,
             1,
         )
@@ -395,7 +411,13 @@ class SciCataloguer(Operation):
             vexpand=False,
         )
         used_software_entry.connect("changed", self.used_software_changed)
-        self._grid.attach(used_software_entry, 3, 5, 1, 1)
+        self._grid.attach(used_software_entry, 3, 6, 1, 1)
+
+                # create checkbox for raw/derived dataset option
+        self._derived_checkbox = self.register_widget(
+            Gtk.CheckButton(label="Derived Dataset"), "derived_dataset"
+        )
+        self._grid.attach(self._derived_checkbox, 4, 6, 1, 1)
 
     @staticmethod
     def _check_required_fields(params):
@@ -455,6 +477,11 @@ class SciCataloguer(Operation):
             op.get_child().NAME
             for op in self._appwindow._operations_box.get_children()
         ]
+        # Check that either s3/sftp operation selected
+        if not "S3 Uploader" in self.operations_list or not "SFTP Uploader" in self.operations_list:
+            raise RequiredInfoNotFound(
+                "This operation requires an upload operation. Please select either S3 or SFTP uploader operations."
+            )
 
         # Check that a technique has been selected for instruments that might have more than one technique
         # TO DO 
@@ -486,7 +513,7 @@ class SciCataloguer(Operation):
 
     def create_payload(self, file):
         # Extract relevant fields before initialising Payload
-        host_info = PayloadHelpers.get_host_location(file, self.operations_list)
+        host_info = PayloadHelpers.get_host_location(file, self.operations_list, self.params.operation)
         #if "access groups" in self.instr_dict:
         #    access_groups = self.instr_dict["access groups"]
         #else:
@@ -694,11 +721,11 @@ class DerivedPayload(DerivedDataset, Payload):
 
 class PayloadHelpers:
     @classmethod
-    def get_host_location(cls, file: File, operations_list):
+    def get_host_location(cls, file: File, operations_list, operation):
         """method used in payload to get source folder host"""
         # Ceph Uploader must always be included to use the Scicataloguer, therefore the location must be the ceph location.
 
-        operation_ind = operations_list.index("RFI Cloud Uploader")
+        operation_ind = operations_list.index(operation)
         url_split = None
         if isinstance(file, RegularFile):
             url_split = urlparse(

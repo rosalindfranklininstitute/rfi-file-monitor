@@ -3,25 +3,29 @@
 <span size="x-large">Purpose</span>
 
 This operation creates metadata entries for data taken on the instrument and uploads them into the catalogue. 
-It automatically captures the required data from the previous operations. Uses pyscicat to establish connection 
-to SciCat.
+It automatically captures the required data from the previous operations. It can be used for both raw and derived datasets. 
+Uses pyscicat to establish connection to SciCat.
 
 <span size="x-large">Options</span>
 
-FILL IN OPTIONS INFO HERE. Hostname, username?, password?, orcid?, owner, ownergroup, contactemail.
 * <b>Hostname</b>: the fully qualified domain name or IP address of the SciCat server
+* <b>Upload location</b>: location for data to be uploaded, designated by upload operation
 * <b>Username</b>: the username that will be used to establish the connection with SciCat
 * <b>Password</b>: the password that corresponds to the username
 * <b>Owner</b>: owner of the dataset
-* <b>Owner Group</b>: FINISH
-* <b>Principal Invesigator</b>: FINISH
+* <b>Owner Group</b>
+* <b>Email</b>: contact email for the owner of the dataset
+* <b>Orcid</b>: orcid of the owner of the dataset
+* <b>Principal Invesigator</b>
+* <b>Experiment name</b>: name of the experiment 
+* <b>Instrument</b>: instrument used
+* <b>Technique</b>: the techique used by the instrument
 * <b>Input Datasets</b>: for derived datasets only, comma-separated list of SciCat locations for raw datasets used
 * <b>Used Software</b>: for derived datasets only, comma-separated list of software used to derive analysis results
 
 <span size="x-large">Prerequisites</span>
 
-TO DO - CHECK PREREQUISITES. The Scicataloguer should be added at the end of any experimental session and 
-should be proceeded by a Starter/Resumer and a Ceph Uploader operation. 
+The Scicataloguer should be added at the end of any experimental session and should be preceeded by an uploader operation such as S3 Uploader, SFTP Uploader or Dropbox Uploader. 
 
 <span size="x-large">Supported File Formats</span>
 

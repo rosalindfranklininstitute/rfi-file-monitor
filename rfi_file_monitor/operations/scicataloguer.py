@@ -96,11 +96,11 @@ class SciCataloguer(Operation):
             1,
         )
         op_combo = Gtk.ComboBoxText.new()
-        self.ops_list = ["S3 Uploader", "SFTP Uploader"]
+        self.ops_list = ["S3 Uploader", "SFTP Uploader", "Dropbox Uploader"]
         for k in self.ops_list:
             op_combo.append_text(k)
 
-        op_widget = self.register_widget(op_combo, "operations")
+        op_widget = self.register_widget(op_combo, "operation")
         self._grid.attach(op_widget, 3, 0, 1, 1)
 
         # Username
@@ -322,8 +322,8 @@ class SciCataloguer(Operation):
                 hexpand=False,
                 vexpand=False,
             ),
-            0,
-            5,
+            2,
+            4,
             1,
             1,
         )
@@ -336,10 +336,35 @@ class SciCataloguer(Operation):
             ),
             "experiment_name",
         )
-        self._grid.attach(self._exp_name_entry, 1, 5, 1, 1)
+        self._grid.attach(self._exp_name_entry, 3, 4, 1, 1)
+
+        # Instrument
+        # TO DO - this is temporary until instrument preferences configured
+        self._grid.attach(
+            Gtk.Label(
+                label="Instrument",
+                halign=Gtk.Align.START,
+                valign=Gtk.Align.CENTER,
+                hexpand=False,
+                vexpand=False,
+            ),
+            0,
+            5,
+            1,
+            1,
+        )
+        self._instrument_entry = self.register_widget(
+            Gtk.Entry(
+                halign=Gtk.Align.FILL,
+                valign=Gtk.Align.CENTER,
+                hexpand=True,
+                vexpand=False,
+            ),
+            "instrument_choice",
+        )
+        self._grid.attach(self._instrument_entry, 1, 5, 1, 1)
 
         # Technique
-        # TO DO This should really come from instrument dict somehow...
         self._grid.attach(
             Gtk.Label(
                 label="Technique",
@@ -413,7 +438,7 @@ class SciCataloguer(Operation):
         used_software_entry.connect("changed", self.used_software_changed)
         self._grid.attach(used_software_entry, 3, 6, 1, 1)
 
-                # create checkbox for raw/derived dataset option
+        # create checkbox for raw/derived dataset option
         self._derived_checkbox = self.register_widget(
             Gtk.CheckButton(label="Derived Dataset"), "derived_dataset"
         )
@@ -466,28 +491,27 @@ class SciCataloguer(Operation):
             logger.error(f"Could not login to scicat: {e}")
 
         # check that metadata requirements are met
-        # TO DO - no session starter info?
         self.session_starter_info = query_metadata(
             self.appwindow.preflight_check_metadata, "orcid", full_dict=True
         )
-        # TO DO - do we want to keep session starter info
         self._check_required_fields(self.params)
 
         self.operations_list = [
             op.get_child().NAME
             for op in self._appwindow._operations_box.get_children()
         ]
-        # Check that either s3/sftp operation selected
-        if not "S3 Uploader" in self.operations_list or not "SFTP Uploader" in self.operations_list:
+        # Check that either upload operation selected
+        if not any(
+            "Uploader" in operation for operation in self.operations_list
+        ):
             raise RequiredInfoNotFound(
-                "This operation requires an upload operation. Please select either S3 or SFTP uploader operations."
+                "This operation requires an upload operation. Please select one."
             )
 
         # Check that a technique has been selected for instruments that might have more than one technique
-        # TO DO 
         if not self.params.technique:
             raise RequiredInfoNotFound(
-                "Please select a technique for this instrument from the drop down list"
+                "Please name a technique for this instrument."
             )
 
     def run(self, file: File):
@@ -513,10 +537,13 @@ class SciCataloguer(Operation):
 
     def create_payload(self, file):
         # Extract relevant fields before initialising Payload
-        host_info = PayloadHelpers.get_host_location(file, self.operations_list, self.params.operation)
-        #if "access groups" in self.instr_dict:
+        host_info = PayloadHelpers.get_host_location(
+            file, self.operations_list, self.params.operation
+        )
+        # TO DO - reinstate when instr_dict configured
+        # if "access groups" in self.instr_dict:
         #    access_groups = self.instr_dict["access groups"]
-        #else:
+        # else:
         #    access_groups = []
         access_groups = []
 
@@ -531,14 +558,14 @@ class SciCataloguer(Operation):
             data_format = fppath.suffix
 
         # Create Base payload with required fields
-        # TO DO - don't have session starter, or technique
         default_payload = Payload(
             type="raw",  # set default required type and overwrite later if derived
-            description=self.session_starter_info["experiment description"],
+            # TO DO - another box needed for this?
+            # description=self.session_starter_info["experiment description"],
             sourceFolder=host_info["sourceFolder"],
             sourceFolderHost=host_info["sourceFolderHost"],
-            #TO DO - this would normally be extracted from instrument preferences
-            #instrumentId=str(self.instr_dict["id"]),
+            # TO DO - this would normally be extracted from instrument preferences
+            # instrumentId=str(self.instr_dict["id"]),
             owner=self.params.owner,
             contactEmail=self.params.email,
             orcidOfOwner=self.params.orcid,
@@ -554,7 +581,6 @@ class SciCataloguer(Operation):
         )
 
         # Add in raw/derived specific variables
-        # TO DO - don't have session starter
         if self.params.derived_dataset:
             payload = DerivedPayload(**default_payload.dict())
             payload.type = "derived"
@@ -563,7 +589,9 @@ class SciCataloguer(Operation):
             payload.usedSoftware = self.used_software
         else:
             payload = RawPayload(**default_payload.dict())
-            payload.creationLocation = str(self.instrument_choice)
+            # TO DO this usually comes from instr dict
+            # Temporary change to fetch from text box for now
+            payload.creationLocation = str(self.params.instrument_choice)
             payload.principalInvestigator = self.params.investigator
             payload.endTime = payload.creationTime
             payload.dataFormat = data_format
@@ -592,7 +620,6 @@ class SciCataloguer(Operation):
             payload.numberOfFiles = len(file._filelist)
 
             # Scientific metadata
-            # TO DO - configure later with instrument dict
             scientificMetadata: Dict[str, Dict[str, str]] = {}
             if parser_dict:
                 for k, v in parser_dict.items():
@@ -631,7 +658,6 @@ class SciCataloguer(Operation):
             payload.size = fstats.st_size
 
             # Creation of scientific metadata
-            # TO DO - configure later with instrument dict
             scientificMetadata = {}
             if parser:
                 scientificMetadata = PayloadHelpers.implement_parser(
@@ -725,6 +751,7 @@ class PayloadHelpers:
         """method used in payload to get source folder host"""
         # Ceph Uploader must always be included to use the Scicataloguer, therefore the location must be the ceph location.
 
+        # TO DO - do we want to change from just checking for s3 url?
         operation_ind = operations_list.index(operation)
         url_split = None
         if isinstance(file, RegularFile):
@@ -752,7 +779,6 @@ class PayloadHelpers:
 
         return source_folders
 
-    # TO DO - technique
     @classmethod
     def implement_parser(cls, instr_dict, technique, filename, parser):
         scientific_metadata = {}

@@ -1,28 +1,20 @@
 import gi
-from numpy import isin
-
-from rfi_file_monitor.operations.s3_uploader import S3UploaderOperation
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gio
-from requests.packages.urllib3.util.retry import Retry
 from datetime import datetime
 from ..operation import Operation
-from ..utils import query_metadata, TimeoutHTTPAdapter
+from ..utils import query_metadata
 from ..file import File
 from ..files.directory import Directory
 from ..files.regular_file import RegularFile
 from ..preferences import Preference
 from ..utils.decorators import supported_filetypes, with_pango_docs
-from ..queue_manager import QueueManager
 from munch import Munch
 from pathlib import PurePath, Path, PurePosixPath
 from pyscicat.client import ScicatClient
 from pyscicat.model import Dataset, RawDataset, DerivedDataset
-import importlib.metadata
-import importlib
-import os
-import json
+#import importlib.metadata
 import logging
 from urllib.parse import urlparse
 from typing import Dict, Any, Optional, List
@@ -482,7 +474,7 @@ class SciCataloguer(Operation):
     def preflight_check(self):
 
         try:
-            r = ScicatClient(
+            ScicatClient(
                 base_url=self.params.hostname,
                 username=self.params.username,
                 password=self.params.password,
@@ -622,9 +614,9 @@ class SciCataloguer(Operation):
             # Scientific metadata
             scientificMetadata: Dict[str, Dict[str, str]] = {}
             if parser_dict:
-                for k, v in parser_dict.items():
+                for key, value in parser_dict.items():
                     metadata = PayloadHelpers.implement_parser(
-                        self.instr_dict, self.params.technique, k, v
+                        self.instr_dict, self.params.technique, key, value
                     )
                     for k, v in metadata.items():
                         if k in scientificMetadata.keys():

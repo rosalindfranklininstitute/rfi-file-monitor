@@ -7,7 +7,9 @@ from rfi_file_monitor.operations.scicataloguer import (
 )
 from rfi_file_monitor.operations.s3_uploader import S3UploaderOperation
 from rfi_file_monitor.operations.sftp_uploader import SftpUploaderOperation
-from rfi_file_monitor.operations.dropbox_uploader import DropboxUploaderOperation
+from rfi_file_monitor.operations.dropbox_uploader import (
+    DropboxUploaderOperation,
+)
 from rfi_file_monitor.files.regular_file import RegularFile
 from rfi_file_monitor.file import FileStatus
 from rfi_file_monitor.files.directory import Directory
@@ -45,7 +47,9 @@ class TestPayloadGeneration(TestCase):
             "sftp url": "sftp://sftp.testinstitute.ac.uk:22/home/user/testfile.txt"
         }
         self.file_2 = RegularFile(
-            filename=os.path.join(TEST_DIR, "test_data/test_data/test_dir/myfile.txt"),
+            filename=os.path.join(
+                TEST_DIR, "test_data/test_data/test_dir/myfile.txt"
+            ),
             relative_filename=Path("test_data/testfile.txt"),
             created=0,
             status=FileStatus.CREATED,
@@ -87,20 +91,28 @@ class TestPayloadGeneration(TestCase):
             "techniques": {"cryo-em": ["ImageWidth", "ImageHeight"]},
         }
         self.instrument_choice = "Cryo-EM1"
-        self.operations_list = [S3UploaderOperation.NAME, SftpUploaderOperation.NAME, DropboxUploaderOperation.NAME]
+        self.operations_list = [
+            S3UploaderOperation.NAME,
+            SftpUploaderOperation.NAME,
+            DropboxUploaderOperation.NAME,
+        ]
 
         self.parser = {}
         self.inputDatasets = ["test_dir/myfile1.txt", "test_dir/myfile2.txt"]
         self.usedSoftware = ["testsoftware"]
 
     def test_get_host_location(self):
-        hostfolder = PayloadHelpers.get_host_location(self.file, self.operations_list, "S3 Uploader")
+        hostfolder = PayloadHelpers.get_host_location(
+            self.file, self.operations_list, "S3 Uploader"
+        )
         self.assertEqual(hostfolder["sourceFolder"], "testfile.txt")
         self.assertEqual(
             hostfolder["sourceFolderHost"],
             "https://cryo-em1-test-em-expt-14s3.s3.testinstitute.ac.uk",
         )
-        hostfolder = PayloadHelpers.get_host_location(self.file_2, self.operations_list, "S3 Uploader")
+        hostfolder = PayloadHelpers.get_host_location(
+            self.file_2, self.operations_list, "S3 Uploader"
+        )
         self.assertEqual(hostfolder["sourceFolder"], "test_dir/myfile1.txt")
         self.assertEqual(
             hostfolder["sourceFolderHost"],
@@ -108,7 +120,9 @@ class TestPayloadGeneration(TestCase):
         )
 
     def test_payload_file_generator(self):
-        host_info = PayloadHelpers.get_host_location(self.file, self.operations_list, "S3 Uploader")
+        host_info = PayloadHelpers.get_host_location(
+            self.file, self.operations_list, "S3 Uploader"
+        )
         if "access groups" in self.instr_dict:
             access_groups = self.instr_dict["access groups"]
         else:
@@ -152,7 +166,9 @@ class TestPayloadGeneration(TestCase):
         # Test Raw/Derived specific
         derived_payload = DerivedPayload(**payload.dict())
         derived_payload.type = "derived"
-        derived_payload.investigator = self.session_info["principal investigator"]
+        derived_payload.investigator = self.session_info[
+            "principal investigator"
+        ]
         derived_payload.inputDatasets = self.inputDatasets
         derived_payload.usedSoftware = self.usedSoftware
         derived_payload.scientificMetadata = (
@@ -173,13 +189,17 @@ class TestPayloadGeneration(TestCase):
 
         raw_payload = RawPayload(**payload.dict())
         raw_payload.creationLocation = str(self.instrument_choice)
-        raw_payload.principalInvestigator = self.session_info["principal investigator"]
+        raw_payload.principalInvestigator = self.session_info[
+            "principal investigator"
+        ]
         raw_payload.endTime = payload.creationTime
         raw_payload.dataFormat = data_format
 
         self.assertEqual(raw_payload.creationLocation, "Cryo-EM1")
         self.assertEqual(raw_payload.dataFormat, ".txt")
-        self.assertEqual("test em expt/test_data/testfile.txt", raw_payload.datasetName)
+        self.assertEqual(
+            "test em expt/test_data/testfile.txt", raw_payload.datasetName
+        )
         self.assertEqual(raw_payload.sourceFolder, "testfile.txt")
         self.assertEqual(
             raw_payload.sourceFolderHost,
@@ -187,7 +207,9 @@ class TestPayloadGeneration(TestCase):
         )
 
     def test_payload_dir_generator(self):
-        host_info = PayloadHelpers.get_host_location(self.dir, self.operations_list, "S3 Uploader")
+        host_info = PayloadHelpers.get_host_location(
+            self.dir, self.operations_list, "S3 Uploader"
+        )
         if "access groups" in self.instr_dict:
             access_groups = self.instr_dict["access groups"]
         else:
@@ -226,7 +248,9 @@ class TestPayloadGeneration(TestCase):
         # Create derived dataset
         derived_payload = DerivedPayload(**payload.dict())
         derived_payload.type = "derived"
-        derived_payload.investigator = self.session_info["principal investigator"]
+        derived_payload.investigator = self.session_info[
+            "principal investigator"
+        ]
         derived_payload.inputDatasets = self.inputDatasets
         derived_payload.usedSoftware = self.usedSoftware
         derived_payload.scientificMetadata = (
@@ -242,12 +266,16 @@ class TestPayloadGeneration(TestCase):
         self.assertEqual(derived_payload.usedSoftware, ["testsoftware"])
         self.assertEqual(derived_payload.instrumentId, "0001")
         self.assertEqual(derived_payload.datasetlifecycle["retrievable"], True)
-        self.assertNotIn("scientificMetadataDefaults", derived_payload.dict().keys())
+        self.assertNotIn(
+            "scientificMetadataDefaults", derived_payload.dict().keys()
+        )
 
         # Create raw dataset
         raw_payload = RawPayload(**payload.dict())
         raw_payload.creationLocation = str(self.instrument_choice)
-        raw_payload.principalInvestigator = self.session_info["principal investigator"]
+        raw_payload.principalInvestigator = self.session_info[
+            "principal investigator"
+        ]
         raw_payload.endTime = payload.creationTime
         raw_payload.dataFormat = data_format
 

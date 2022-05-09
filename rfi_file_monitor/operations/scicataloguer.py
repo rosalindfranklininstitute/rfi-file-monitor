@@ -14,7 +14,8 @@ from munch import Munch
 from pathlib import PurePath, Path, PurePosixPath
 from pyscicat.client import ScicatClient
 from pyscicat.model import Dataset, RawDataset, DerivedDataset
-#import importlib.metadata
+
+# import importlib.metadata
 import logging
 from urllib.parse import urlparse
 from typing import Dict, Any, Optional, List

@@ -1,22 +1,20 @@
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gio
+from gi.repository import Gtk
 from datetime import datetime
 from ..operation import Operation
 from ..utils import query_metadata
 from ..file import File
 from ..files.directory import Directory
 from ..files.regular_file import RegularFile
-from ..preferences import Preference
 from ..utils.decorators import supported_filetypes, with_pango_docs
-from munch import Munch
 from pathlib import PurePath, Path, PurePosixPath
 from pyscicat.client import ScicatClient
 from pyscicat.model import Dataset, RawDataset, DerivedDataset
 import logging
 from urllib.parse import urlparse
-from typing import Dict, Any, Optional, List
+from typing import Dict, Optional, List
 from ..version import __version__ as core_version
 
 logger = logging.getLogger(__name__)

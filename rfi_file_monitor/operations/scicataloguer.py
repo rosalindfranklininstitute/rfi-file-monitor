@@ -14,8 +14,6 @@ from munch import Munch
 from pathlib import PurePath, Path, PurePosixPath
 from pyscicat.client import ScicatClient
 from pyscicat.model import Dataset, RawDataset, DerivedDataset
-
-# import importlib.metadata
 import logging
 from urllib.parse import urlparse
 from typing import Dict, Any, Optional, List
@@ -52,7 +50,7 @@ class SciCataloguer(Operation):
         # Hostname
         self._grid.attach(
             Gtk.Label(
-                label="Hostname",
+                label="SciCat Hostname",
                 halign=Gtk.Align.START,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
@@ -271,40 +269,6 @@ class SciCataloguer(Operation):
             "investigator",
         )
         self._grid.attach(self._pi_entry, 1, 4, 1, 1)
-
-        """
-        self._grid.attach(
-            Gtk.Label(
-                label="Technique",
-                halign=Gtk.Align.START,
-                valign=Gtk.Align.CENTER,
-                hexpand=False,
-                vexpand=False,
-            ),
-            0,
-            4,
-            1,
-            1,
-        )
-        
-
-        # create combo box
-        
-        combo = Gtk.ComboBoxText.new()
-        for k in self.instr_dict["techniques"].keys():
-            combo.append_text(k)
-        if len(self.instr_dict["techniques"].keys()) == 1:
-            combo.set_active(0)
-
-        widget = self.register_widget(combo, "technique")
-        self._grid.attach(widget, 1, 4, 1, 1)
-
-        self.parser_list = []
-        for e in importlib.metadata.entry_points()[
-            "rfi_file_monitor_extensions.metadataparsers"
-        ]:
-            self.parser_list.append(e.load())
-        """
 
         # Dataset name
         self._grid.attach(
@@ -591,19 +555,6 @@ class SciCataloguer(Operation):
 
         # Add in Directory specific payload details
         if isinstance(file, Directory):
-            parser_dict = {}
-            for f in file:
-                try:
-                    parser = self.find_parser(f[0])
-                except ParserNotFound:
-                    parser = None
-                if parser:
-                    parser_dict[f[0]] = parser
-            if not parser_dict:
-                logger.info(
-                    " Parsers not found. Creating payload without metadata"
-                )
-
             payload.datasetName = (
                 self.params.experiment_name
                 + "/"
@@ -614,17 +565,6 @@ class SciCataloguer(Operation):
 
             # Scientific metadata
             scientificMetadata: Dict[str, Dict[str, str]] = {}
-            if parser_dict:
-                for key, value in parser_dict.items():
-                    metadata = PayloadHelpers.implement_parser(
-                        self.instr_dict, self.params.technique, key, value
-                    )
-                    for k, v in metadata.items():
-                        if k in scientificMetadata.keys():
-                            if scientificMetadata[k] == v:
-                                continue
-                        else:
-                            scientificMetadata[k] = v
             payload.scientificMetadata = (
                 PayloadHelpers.scientific_metadata_concatenation(
                     scientificMetadata, payload.scientificMetadataDefaults
@@ -632,14 +572,6 @@ class SciCataloguer(Operation):
             )
 
         elif isinstance(file, RegularFile):
-            try:
-                parser = self.find_parser(file.filename)
-
-            except Exception as e:
-                logger.exception(
-                    " Parser not found. Creating payload without metadata"
-                )
-                parser = None
 
             # Creation of standard file items
             payload.datasetName = (
@@ -652,13 +584,6 @@ class SciCataloguer(Operation):
 
             # Creation of scientific metadata
             scientificMetadata = {}
-            if parser:
-                scientificMetadata = PayloadHelpers.implement_parser(
-                    self.instr_dict,
-                    self.params.technique,
-                    file.filename,
-                    parser,
-                )
             payload.scientificMetadata = (
                 PayloadHelpers.scientific_metadata_concatenation(
                     scientificMetadata, payload.scientificMetadataDefaults
@@ -667,16 +592,6 @@ class SciCataloguer(Operation):
 
         del payload.scientificMetadataDefaults
         return payload
-
-    def find_parser(self, filename):
-        for parser in self.parser_list:
-            if parser.supports_file(filename):
-                break
-        else:
-            parser = None
-        if not parser:
-            raise ParserNotFound("parser not found")
-        return parser
 
     # Inserts a dataset into Scicat
     def insert_payload(self, payload, scicat_session):
@@ -771,20 +686,6 @@ class PayloadHelpers:
                 ).parts[0]
 
         return source_folders
-
-    @classmethod
-    def implement_parser(cls, instr_dict, technique, filename, parser):
-        scientific_metadata = {}
-        instr_vars = instr_dict["techniques"][technique]
-        extracted = parser.extract_metadata(instr_vars, filename)
-        if extracted:
-            for k, v in extracted.items():
-                scientific_metadata[k] = {
-                    "type": "string",
-                    "value": str(v),
-                    "unit": "",
-                }
-        return scientific_metadata
 
     @classmethod
     def scientific_metadata_concatenation(cls, scientific_metadata, defaults):

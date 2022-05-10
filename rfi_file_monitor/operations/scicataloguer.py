@@ -30,14 +30,6 @@ class SciCataloguer(Operation):
     def __init__(self, *args, **kwargs):
         Operation.__init__(self, *args, **kwargs)
 
-        current_app = Gio.Application.get_default()
-        instrument_prefs: Munch[
-            Preference, Any
-        ] = current_app.get_preferences().settings
-        # TO DO - handle instrument dict later
-        # self.instrument_choice = instrument_prefs[InstrumentSetup]
-        # self.instr_dict = InstrumentSetup.values[self.instrument_choice]
-
         self._grid = Gtk.Grid(
             row_spacing=5,
             halign=Gtk.Align.FILL,
@@ -356,20 +348,22 @@ class SciCataloguer(Operation):
                 vexpand=False,
             ),
             0,
-            6,
+            7,
             1,
             1,
         )
 
-        input_datasets_entry = Gtk.Entry(
-            placeholder_text="e.g. /testdir/testfile.txt, /folder/file.csv",
-            halign=Gtk.Align.FILL,
-            valign=Gtk.Align.CENTER,
-            hexpand=True,
-            vexpand=False,
+        self._input_datasets_entry = self.register_widget(
+            Gtk.Entry(
+                placeholder_text="e.g. /testdir/testfile.txt, /folder/file.csv",
+                halign=Gtk.Align.FILL,
+                valign=Gtk.Align.CENTER,
+                hexpand=True,
+                vexpand=False,
+            ),
+            "input_datasets",
         )
-        input_datasets_entry.connect("changed", self.input_datasets_changed)
-        self._grid.attach(input_datasets_entry, 1, 6, 1, 1)
+        self._grid.attach(self._input_datasets_entry, 1, 7, 1, 1)
 
         self._grid.attach(
             Gtk.Label(
@@ -378,28 +372,29 @@ class SciCataloguer(Operation):
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
+                sensitive=True,
             ),
             2,
-            6,
+            7,
             1,
             1,
         )
-
-        used_software_entry = Gtk.Entry(
-            placeholder_text="e.g. relion, https://github.com/SciCatProject/pyscicat",
-            halign=Gtk.Align.FILL,
-            valign=Gtk.Align.CENTER,
-            hexpand=True,
-            vexpand=False,
+        self._used_software_entry = self.register_widget(
+            Gtk.Entry(
+                placeholder_text="e.g. relion, https://github.com/SciCatProject/pyscicat",
+                halign=Gtk.Align.FILL,
+                valign=Gtk.Align.CENTER,
+                hexpand=True,
+                vexpand=False,
+            ),
+            "used_software",
         )
-        used_software_entry.connect("changed", self.used_software_changed)
-        self._grid.attach(used_software_entry, 3, 6, 1, 1)
+        self._grid.attach(self._used_software_entry, 3, 7, 1, 1)
 
-        # create checkbox for raw/derived dataset option
-        self._derived_checkbox = self.register_widget(
-            Gtk.CheckButton(label="Derived Dataset"), "derived_dataset"
-        )
-        self._grid.attach(self._derived_checkbox, 4, 6, 1, 1)
+        self._derived_checkbox = Gtk.CheckButton(label="Derived Dataset")
+        self._derived_checkbox.connect("toggled", self.checkbox_toggled)
+        self.params.derived_dataset = self.checkbox_toggled(self._derived_checkbox)
+        self._grid.attach(self._derived_checkbox, 0, 6, 1, 1)
 
     @staticmethod
     def _check_required_fields(params):
@@ -416,28 +411,21 @@ class SciCataloguer(Operation):
         if not params.owner_group:
             raise RequiredInfoNotFound("Owner group required")
 
-    """    
+       
     def checkbox_toggled(self, checkbox):
         # Set class attribute for derived/raw dataset
         if checkbox.get_active() == True:
-            self.derived_dataset = True
+            self.params.derived_dataset = True
+            self._input_datasets_entry.set_sensitive(True)
+            self._used_software_entry.set_sensitive(True)
             return True
         elif checkbox.get_active() == False:
-            self.derived_dataset = False
-            return False"""
-
-    def input_datasets_changed(self, input_datasets_entry):
-        input_text = input_datasets_entry.get_text()
-        self.input_datasets = input_text.split(",")
-        return
-
-    def used_software_changed(self, used_software_entry):
-        input_text = used_software_entry.get_text()
-        self.used_software = input_text.split(",")
-        return
+            self.params.derived_dataset = False
+            self._input_datasets_entry.set_sensitive(False)
+            self._used_software_entry.set_sensitive(False)
+            return False
 
     def preflight_check(self):
-
         try:
             ScicatClient(
                 base_url=self.params.hostname,
@@ -542,8 +530,8 @@ class SciCataloguer(Operation):
             payload = DerivedPayload(**default_payload.dict())
             payload.type = "derived"
             payload.investigator = self.params.investigator
-            payload.inputDatasets = self.input_datasets
-            payload.usedSoftware = self.used_software
+            payload.inputDatasets = self.params.input_datasets.split(",")
+            payload.usedSoftware = self.params.used_software.split(",")
         else:
             payload = RawPayload(**default_payload.dict())
             # TO DO this usually comes from instr dict

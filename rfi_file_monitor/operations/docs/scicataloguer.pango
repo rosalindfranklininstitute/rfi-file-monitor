@@ -4,7 +4,7 @@
 
 This operation creates metadata entries for data taken on the instrument and uploads them into the catalogue. 
 It automatically captures the required data from the previous operations. It can be used for both raw and derived datasets. 
-Uses pyscicat to establish connection to SciCat.
+Uses pyscicat module to establish connection to SciCat. SciCat documentation can be found <a href="https://scicatproject.github.io/documentation/">here</a>.
 
 <span size="x-large">Options</span>
 

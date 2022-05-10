@@ -393,7 +393,9 @@ class SciCataloguer(Operation):
 
         self._derived_checkbox = Gtk.CheckButton(label="Derived Dataset")
         self._derived_checkbox.connect("toggled", self.checkbox_toggled)
-        self.params.derived_dataset = self.checkbox_toggled(self._derived_checkbox)
+        self.params.derived_dataset = self.checkbox_toggled(
+            self._derived_checkbox
+        )
         self._grid.attach(self._derived_checkbox, 0, 6, 1, 1)
 
     @staticmethod
@@ -411,7 +413,6 @@ class SciCataloguer(Operation):
         if not params.owner_group:
             raise RequiredInfoNotFound("Owner group required")
 
-       
     def checkbox_toggled(self, checkbox):
         # Set class attribute for derived/raw dataset
         if checkbox.get_active() == True:

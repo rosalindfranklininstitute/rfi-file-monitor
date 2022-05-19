@@ -37,6 +37,7 @@ requirements:
     - requests
     - pika
     - python-dateutil
+    - pyscicat
 
 test:
   imports:

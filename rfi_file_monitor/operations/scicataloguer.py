@@ -4,7 +4,6 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 from datetime import datetime
 from ..operation import Operation
-from ..utils import query_metadata
 from ..file import File
 from ..files.directory import Directory
 from ..files.regular_file import RegularFile
@@ -40,7 +39,7 @@ class SciCataloguer(Operation):
         # Hostname
         self._grid.attach(
             Gtk.Label(
-                label="SciCat Hostname",
+                label=" SciCat Hostname ",
                 halign=Gtk.Align.START,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
@@ -65,7 +64,7 @@ class SciCataloguer(Operation):
         # Operation upload
         self._grid.attach(
             Gtk.Label(
-                label="Upload location ",
+                label=" Upload location ",
                 halign=Gtk.Align.START,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
@@ -87,7 +86,7 @@ class SciCataloguer(Operation):
         # Username
         self._grid.attach(
             Gtk.Label(
-                label="Username",
+                label=" Username ",
                 halign=Gtk.Align.START,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
@@ -112,7 +111,7 @@ class SciCataloguer(Operation):
         # Password
         self._grid.attach(
             Gtk.Label(
-                label="Password",
+                label=" Password ",
                 halign=Gtk.Align.START,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
@@ -138,7 +137,7 @@ class SciCataloguer(Operation):
         # Owner
         self._grid.attach(
             Gtk.Label(
-                label="Owner",
+                label=" Owner ",
                 halign=Gtk.Align.START,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
@@ -163,7 +162,7 @@ class SciCataloguer(Operation):
         # Owner group
         self._grid.attach(
             Gtk.Label(
-                label="Owner Group",
+                label=" Owner Group ",
                 halign=Gtk.Align.START,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
@@ -188,7 +187,7 @@ class SciCataloguer(Operation):
         # Comtact email
         self._grid.attach(
             Gtk.Label(
-                label="Email",
+                label=" Email ",
                 halign=Gtk.Align.START,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
@@ -213,7 +212,7 @@ class SciCataloguer(Operation):
         # Orcid
         self._grid.attach(
             Gtk.Label(
-                label="Orcid",
+                label=" Orcid ",
                 halign=Gtk.Align.START,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
@@ -238,7 +237,7 @@ class SciCataloguer(Operation):
         # PI
         self._grid.attach(
             Gtk.Label(
-                label="Principal Investigator",
+                label=" Principal Investigator ",
                 halign=Gtk.Align.START,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
@@ -263,7 +262,7 @@ class SciCataloguer(Operation):
         # Dataset name
         self._grid.attach(
             Gtk.Label(
-                label="Experiment name",
+                label=" Experiment name ",
                 halign=Gtk.Align.START,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
@@ -289,7 +288,7 @@ class SciCataloguer(Operation):
         # TO DO - this is temporary until instrument preferences configured
         self._grid.attach(
             Gtk.Label(
-                label="Instrument",
+                label=" Instrument ",
                 halign=Gtk.Align.START,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
@@ -314,7 +313,7 @@ class SciCataloguer(Operation):
         # Technique
         self._grid.attach(
             Gtk.Label(
-                label="Technique",
+                label=" Technique ",
                 halign=Gtk.Align.START,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
@@ -339,7 +338,7 @@ class SciCataloguer(Operation):
         # Input boxes for derived dataset specific fields
         self._grid.attach(
             Gtk.Label(
-                label="Input Datasets",
+                label=" Input Datasets ",
                 halign=Gtk.Align.START,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
@@ -365,7 +364,7 @@ class SciCataloguer(Operation):
 
         self._grid.attach(
             Gtk.Label(
-                label="Used Software",
+                label=" Used Software ",
                 halign=Gtk.Align.START,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
@@ -396,6 +395,19 @@ class SciCataloguer(Operation):
         )
         self._grid.attach(self._derived_checkbox, 0, 6, 1, 1)
 
+    def checkbox_toggled(self, checkbox):
+        # Set class attribute for derived/raw dataset
+        if checkbox.get_active() == True:
+            self.params.derived_dataset = True
+            self._input_datasets_entry.set_sensitive(True)
+            self._used_software_entry.set_sensitive(True)
+            return True
+        elif checkbox.get_active() == False:
+            self.params.derived_dataset = False
+            self._input_datasets_entry.set_sensitive(False)
+            self._used_software_entry.set_sensitive(False)
+            return False
+
     @staticmethod
     def _check_required_fields(params):
         if not params.hostname:
@@ -411,34 +423,21 @@ class SciCataloguer(Operation):
         if not params.owner_group:
             raise RequiredInfoNotFound("Owner group required")
 
-    def checkbox_toggled(self, checkbox):
-        # Set class attribute for derived/raw dataset
-        if checkbox.get_active() == True:
-            self.params.derived_dataset = True
-            self._input_datasets_entry.set_sensitive(True)
-            self._used_software_entry.set_sensitive(True)
-            return True
-        elif checkbox.get_active() == False:
-            self.params.derived_dataset = False
-            self._input_datasets_entry.set_sensitive(False)
-            self._used_software_entry.set_sensitive(False)
-            return False
-
     def preflight_check(self):
+        self._preflight_check(self.params)
+
+    def _preflight_check(self, params):
         try:
             ScicatClient(
-                base_url=self.params.hostname,
-                username=self.params.username,
-                password=self.params.password,
+                base_url=params.hostname,
+                username=params.username,
+                password=params.password,
             )
         except Exception as e:
             logger.error(f"Could not login to scicat: {e}")
+            return str(e)
 
-        # check that metadata requirements are met
-        self.session_starter_info = query_metadata(
-            self.appwindow.preflight_check_metadata, "orcid", full_dict=True
-        )
-        self._check_required_fields(self.params)
+        self._check_required_fields(params)
 
         self.operations_list = [
             op.get_child().NAME
@@ -453,21 +452,21 @@ class SciCataloguer(Operation):
             )
 
         # Check that a technique has been selected for instruments that might have more than one technique
-        if not self.params.technique:
+        if not params.technique:
             raise RequiredInfoNotFound(
                 "Please name a technique for this instrument."
             )
 
-    def run(self, file: File):
+    def _run(self, file: File, params):
 
         # Create the payload
-        payload = self.create_payload(file)
+        payload = self.create_payload(file, params)
         try:
             try:
                 scicat_session = ScicatClient(
-                    base_url=self.params.hostname,
-                    username=self.params.username,
-                    password=self.params.password,
+                    base_url=params.hostname,
+                    username=params.username,
+                    password=params.password,
                 )
             except Exception as e:
                 logger.error(f"Could not login to scicat: {e}")
@@ -479,10 +478,14 @@ class SciCataloguer(Operation):
         else:
             return None
 
-    def create_payload(self, file):
+    def run(self, file: File):
+        self.params.keywords = []
+        return self._run(file, self.params)
+
+    def create_payload(self, file, params):
         # Extract relevant fields before initialising Payload
         host_info = PayloadHelpers.get_host_location(
-            file, self.operations_list, self.params.operation
+            file, self.operations_list, params.operation
         )
         # TO DO - reinstate when instr_dict configured
         # if "access groups" in self.instr_dict:
@@ -510,40 +513,41 @@ class SciCataloguer(Operation):
             sourceFolderHost=host_info["sourceFolderHost"],
             # TO DO - this would normally be extracted from instrument preferences
             # instrumentId=str(self.instr_dict["id"]),
-            owner=self.params.owner,
-            contactEmail=self.params.email,
-            orcidOfOwner=self.params.orcid,
-            ownerGroup=self.params.owner_group,
+            owner=params.owner,
+            contactEmail=params.email,
+            orcidOfOwner=params.orcid,
+            ownerGroup=params.owner_group,
             accessGroups=access_groups,
-            techniques=[{"name": self.params.technique}],
+            techniques=[{"name": params.technique}],
             creationTime=(
                 datetime.fromtimestamp(date_method).strftime(
                     "%Y-%m-%dT%H:%M:%S.%f"
                 )[:-3]
                 + "Z"
             ),
+            keywords=params.keywords
         )
 
         # Add in raw/derived specific variables
-        if self.params.derived_dataset:
+        if params.derived_dataset:
             payload = DerivedPayload(**default_payload.dict())
             payload.type = "derived"
-            payload.investigator = self.params.investigator
-            payload.inputDatasets = self.params.input_datasets.split(",")
-            payload.usedSoftware = self.params.used_software.split(",")
+            payload.investigator = params.investigator
+            payload.inputDatasets = params.input_datasets.split(",")
+            payload.usedSoftware = params.used_software.split(",")
         else:
             payload = RawPayload(**default_payload.dict())
             # TO DO this usually comes from instr dict
             # Temporary change to fetch from text box for now
-            payload.creationLocation = str(self.params.instrument_choice)
-            payload.principalInvestigator = self.params.investigator
+            payload.creationLocation = str(params.instrument_choice)
+            payload.principalInvestigator = params.investigator
             payload.endTime = payload.creationTime
             payload.dataFormat = data_format
 
         # Add in Directory specific payload details
         if isinstance(file, Directory):
             payload.datasetName = (
-                self.params.experiment_name
+                params.experiment_name
                 + "/"
                 + str(file.relative_filename.parts[-1])
             )

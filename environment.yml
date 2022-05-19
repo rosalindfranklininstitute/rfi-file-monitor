@@ -20,5 +20,4 @@ dependencies:
   - tenacity
   - requests
   - pika
-  - pip:
-    - pyscicat
+  - pyscicat

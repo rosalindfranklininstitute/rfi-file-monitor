@@ -525,7 +525,7 @@ class SciCataloguer(Operation):
                 )[:-3]
                 + "Z"
             ),
-            keywords=params.keywords
+            keywords=params.keywords,
         )
 
         # Add in raw/derived specific variables

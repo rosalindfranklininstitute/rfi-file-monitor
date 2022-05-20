@@ -460,6 +460,8 @@ class SciCataloguer(Operation):
 
     def run(self, file: File):
         self.params.keywords = []
+        # This can be added manually in future? TO DO
+        self.params.additional_metadata = {}
         return self._run(file, self.params)
 
     def _run(self, file: File, params):

@@ -40,7 +40,7 @@ class SciCataloguer(Operation):
         self._grid.attach(
             Gtk.Label(
                 label=" SciCat Hostname ",
-                halign=Gtk.Align.START,
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -65,7 +65,7 @@ class SciCataloguer(Operation):
         self._grid.attach(
             Gtk.Label(
                 label=" Upload location ",
-                halign=Gtk.Align.START,
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -87,7 +87,7 @@ class SciCataloguer(Operation):
         self._grid.attach(
             Gtk.Label(
                 label=" Username ",
-                halign=Gtk.Align.START,
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -112,7 +112,7 @@ class SciCataloguer(Operation):
         self._grid.attach(
             Gtk.Label(
                 label=" Password ",
-                halign=Gtk.Align.START,
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -138,7 +138,7 @@ class SciCataloguer(Operation):
         self._grid.attach(
             Gtk.Label(
                 label=" Owner ",
-                halign=Gtk.Align.START,
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -163,7 +163,7 @@ class SciCataloguer(Operation):
         self._grid.attach(
             Gtk.Label(
                 label=" Owner Group ",
-                halign=Gtk.Align.START,
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -188,7 +188,7 @@ class SciCataloguer(Operation):
         self._grid.attach(
             Gtk.Label(
                 label=" Email ",
-                halign=Gtk.Align.START,
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -213,7 +213,7 @@ class SciCataloguer(Operation):
         self._grid.attach(
             Gtk.Label(
                 label=" Orcid ",
-                halign=Gtk.Align.START,
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -238,7 +238,7 @@ class SciCataloguer(Operation):
         self._grid.attach(
             Gtk.Label(
                 label=" Principal Investigator ",
-                halign=Gtk.Align.START,
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -263,7 +263,7 @@ class SciCataloguer(Operation):
         self._grid.attach(
             Gtk.Label(
                 label=" Experiment name ",
-                halign=Gtk.Align.START,
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -289,7 +289,7 @@ class SciCataloguer(Operation):
         self._grid.attach(
             Gtk.Label(
                 label=" Instrument ",
-                halign=Gtk.Align.START,
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -314,7 +314,7 @@ class SciCataloguer(Operation):
         self._grid.attach(
             Gtk.Label(
                 label=" Technique ",
-                halign=Gtk.Align.START,
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,

@@ -548,6 +548,7 @@ class SciCataloguer(Operation):
             PayloadHelpers.scientific_metadata_concatenation(
                 scientificMetadata,
                 _pl.scientificMetadataDefaults,
+                self.params.additional_metadata,
             )
         )
 
@@ -574,6 +575,7 @@ class SciCataloguer(Operation):
             PayloadHelpers.scientific_metadata_concatenation(
                 scientificMetadata,
                 _pl.scientificMetadataDefaults,
+                self.params.additional_metadata,
             )
         )
 
@@ -697,8 +699,11 @@ class PayloadHelpers:
         return source_folders
 
     @classmethod
-    def scientific_metadata_concatenation(cls, scientific_metadata, defaults):
+    def scientific_metadata_concatenation(
+        cls, scientific_metadata, defaults, additional
+    ):
         scientific_metadata |= defaults
+        scientific_metadata |= additional
         return scientific_metadata
 
 

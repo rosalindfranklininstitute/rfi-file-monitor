@@ -457,6 +457,10 @@ class SciCataloguer(Operation):
                 "Please name a technique for this instrument."
             )
 
+    def run(self, file: File):
+        self.params.keywords = []
+        return self._run(file, self.params)
+
     def _run(self, file: File, params):
 
         # Create the payload
@@ -478,10 +482,6 @@ class SciCataloguer(Operation):
         else:
             return None
 
-    def run(self, file: File):
-        self.params.keywords = []
-        return self._run(file, self.params)
-
     def create_payload(self, file, params):
         # Extract relevant fields before initialising Payload
         host_info = PayloadHelpers.get_host_location(
@@ -494,19 +494,8 @@ class SciCataloguer(Operation):
         #    access_groups = []
         access_groups = []
 
-        # INFO - creation time is necessary for initialising Payload
-        # also need to ensure only raw types have data format
-        if isinstance(file, Directory):
-            date_method = file._filelist_timestamp
-            data_format = "directory"
-        elif isinstance(file, RegularFile):
-            date_method = Path(file.filename).stat().st_ctime
-            fppath = PurePath(file.filename)
-            data_format = fppath.suffix
-
         # Create Base payload with required fields
         default_payload = Payload(
-            type="raw",  # set default required type and overwrite later if derived
             # TO DO - another box needed for this?
             # description=self.session_starter_info["experiment description"],
             sourceFolder=host_info["sourceFolder"],
@@ -519,70 +508,96 @@ class SciCataloguer(Operation):
             ownerGroup=params.owner_group,
             accessGroups=access_groups,
             techniques=[{"name": params.technique}],
-            creationTime=(
-                datetime.fromtimestamp(date_method).strftime(
-                    "%Y-%m-%dT%H:%M:%S.%f"
-                )[:-3]
-                + "Z"
-            ),
+            creationTime="",
             keywords=params.keywords,
         )
+
+        # Add in Directory specific payload details
+        if isinstance(file, Directory):
+            data_format = "directory"
+            default_payload = self.is_dir_payload(default_payload, file)
+        elif isinstance(file, RegularFile):
+            fppath = PurePath(file.filename)
+            data_format = fppath.suffix
+            default_payload = self.is_file_payload(default_payload, file)
 
         # Add in raw/derived specific variables
         if params.derived_dataset:
             payload = DerivedPayload(**default_payload.dict())
-            payload.type = "derived"
-            payload.investigator = params.investigator
-            payload.inputDatasets = params.input_datasets.split(",")
-            payload.usedSoftware = params.used_software.split(",")
+            payload = self.is_derived_payload(payload)
         else:
             payload = RawPayload(**default_payload.dict())
-            # TO DO this usually comes from instr dict
-            # Temporary change to fetch from text box for now
-            payload.creationLocation = str(params.instrument_choice)
-            payload.principalInvestigator = params.investigator
-            payload.endTime = payload.creationTime
-            payload.dataFormat = data_format
-
-        # Add in Directory specific payload details
-        if isinstance(file, Directory):
-            payload.datasetName = (
-                params.experiment_name
-                + "/"
-                + str(file.relative_filename.parts[-1])
-            )
-            payload.size = file._total_size
-            payload.numberOfFiles = len(file._filelist)
-
-            # Scientific metadata
-            scientificMetadata: Dict[str, Dict[str, str]] = {}
-            payload.scientificMetadata = (
-                PayloadHelpers.scientific_metadata_concatenation(
-                    scientificMetadata, payload.scientificMetadataDefaults
-                )
-            )
-
-        elif isinstance(file, RegularFile):
-
-            # Creation of standard file items
-            payload.datasetName = (
-                self.params.experiment_name
-                + "/"
-                + str(PurePosixPath(file.relative_filename))
-            )
-            fstats = Path(file.filename).stat()
-            payload.size = fstats.st_size
-
-            # Creation of scientific metadata
-            scientificMetadata = {}
-            payload.scientificMetadata = (
-                PayloadHelpers.scientific_metadata_concatenation(
-                    scientificMetadata, payload.scientificMetadataDefaults
-                )
-            )
+            payload = self.is_raw_payload(payload, data_format)
 
         del payload.scientificMetadataDefaults
         return payload
+
+    def is_file_payload(self, _pl, file):
+        # Creation of standard file items
+        _pl.datasetName = (
+            self.params.experiment_name
+            + "/"
+            + str(PurePosixPath(file.relative_filename))
+        )
+        fstats = Path(file.filename).stat()
+        _pl.size = fstats.st_size
+
+        # Creation of scientific metadata
+        scientificMetadata = {}
+        _pl.scientificMetadata = (
+            PayloadHelpers.scientific_metadata_concatenation(
+                scientificMetadata,
+                _pl.scientificMetadataDefaults,
+            )
+        )
+
+        _pl.creationTime = (
+            datetime.fromtimestamp(
+                Path(file.filename).stat().st_ctime
+            ).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
+            + "Z"
+        )
+        return _pl
+
+    def is_dir_payload(self, _pl, file):
+        _pl.datasetName = (
+            self.params.experiment_name
+            + "/"
+            + str(file.relative_filename.parts[-1])
+        )
+        _pl.size = file._total_size
+        _pl.numberOfFiles = len(file._filelist)
+
+        # Scientific metadata
+        scientificMetadata: Dict[str, Dict[str, str]] = {}
+        _pl.scientificMetadata = (
+            PayloadHelpers.scientific_metadata_concatenation(
+                scientificMetadata,
+                _pl.scientificMetadataDefaults,
+            )
+        )
+
+        _pl.creationTime = (
+            datetime.fromtimestamp(file._filelist_timestamp).strftime(
+                "%Y-%m-%dT%H:%M:%S.%f"
+            )[:-3]
+            + "Z"
+        )
+
+        return _pl
+
+    def is_raw_payload(self, _pl, _data_format):
+        _pl.creationLocation = str(self.params.instrument_choice)
+        _pl.principalInvestigator = self.params.investigator
+        _pl.endTime = _pl.creationTime
+        _pl.dataFormat = _data_format
+        return _pl
+
+    def is_derived_payload(self, _pl):
+        _pl.investigator = self.params.investigator
+        _pl.inputDatasets = self.params.input_datasets.split(",")
+        _pl.usedSoftware = self.params.used_software.split(",")
+        return _pl
 
     # Inserts a dataset into Scicat
     def insert_payload(self, payload, scicat_session):
@@ -624,6 +639,7 @@ class SciCataloguer(Operation):
 
 # Base Payload Model inherits from Dataset Model
 class Payload(Dataset):
+    type: Optional[str]
     datasetlifecycle = {"retrievable": True}
     scientificMetadataDefaults = {}
     scientificMetadataDefaults["RFI File Monitor Version"] = {
@@ -635,11 +651,13 @@ class Payload(Dataset):
 
 # Extends Payload for raw data
 class RawPayload(RawDataset, Payload):
+    type: Optional[str] = "raw"
     dataFormat: Optional[str]
 
 
 # Extends Payload for derived data
 class DerivedPayload(DerivedDataset, Payload):
+    type: Optional[str] = "derived"
     inputDatasets: Optional[List[str]]
     usedSoftware: Optional[List[str]]
 

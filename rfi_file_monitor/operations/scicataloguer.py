@@ -523,6 +523,7 @@ class SciCataloguer(Operation):
 
         # Add in raw/derived specific variables
         if params.derived_dataset:
+            default_payload.type = "derived"
             payload = DerivedPayload(**default_payload.dict())
             payload = self.is_derived_payload(payload)
         else:
@@ -641,8 +642,9 @@ class SciCataloguer(Operation):
 
 # Base Payload Model inherits from Dataset Model
 class Payload(Dataset):
-    type: Optional[str]
+    type: Optional[str] = "raw"
     datasetlifecycle = {"retrievable": True}
+    scientificMetadata = {}
     scientificMetadataDefaults = {}
     scientificMetadataDefaults["RFI File Monitor Version"] = {
         "type": "string",
@@ -653,13 +655,11 @@ class Payload(Dataset):
 
 # Extends Payload for raw data
 class RawPayload(RawDataset, Payload):
-    type: Optional[str] = "raw"
     dataFormat: Optional[str]
 
 
 # Extends Payload for derived data
 class DerivedPayload(DerivedDataset, Payload):
-    type: Optional[str] = "derived"
     inputDatasets: Optional[List[str]]
     usedSoftware: Optional[List[str]]
 

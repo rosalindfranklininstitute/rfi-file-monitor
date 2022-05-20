@@ -395,6 +395,7 @@ class SciCataloguer(Operation):
         )
         self._grid.attach(self._derived_checkbox, 0, 6, 1, 1)
 
+    # Makes input datasets/used software boxes editable if dataset is derived
     def checkbox_toggled(self, checkbox):
         # Set class attribute for derived/raw dataset
         if checkbox.get_active() == True:
@@ -482,37 +483,28 @@ class SciCataloguer(Operation):
         else:
             return None
 
+    # Creates payload to send to scicat
     def create_payload(self, file, params):
-        # Extract relevant fields before initialising Payload
+        # Extract host information
         host_info = PayloadHelpers.get_host_location(
             file, self.operations_list, params.operation
         )
-        # TO DO - reinstate when instr_dict configured
-        # if "access groups" in self.instr_dict:
-        #    access_groups = self.instr_dict["access groups"]
-        # else:
-        #    access_groups = []
-        access_groups = []
 
-        # Create Base payload with required fields
+        # Base payload with required fields
         default_payload = Payload(
-            # TO DO - another box needed for this?
-            # description=self.session_starter_info["experiment description"],
             sourceFolder=host_info["sourceFolder"],
             sourceFolderHost=host_info["sourceFolderHost"],
-            # TO DO - this would normally be extracted from instrument preferences
-            # instrumentId=str(self.instr_dict["id"]),
             owner=params.owner,
             contactEmail=params.email,
             orcidOfOwner=params.orcid,
             ownerGroup=params.owner_group,
-            accessGroups=access_groups,
+            accessGroups=[],
             techniques=[{"name": params.technique}],
             creationTime="",
             keywords=params.keywords,
         )
 
-        # Add in Directory specific payload details
+        # Add in Directory/File specific payload details
         if isinstance(file, Directory):
             data_format = "directory"
             default_payload = self.is_dir_payload(default_payload, file)
@@ -521,7 +513,7 @@ class SciCataloguer(Operation):
             data_format = fppath.suffix
             default_payload = self.is_file_payload(default_payload, file)
 
-        # Add in raw/derived specific variables
+        # Modify base into raw or derived payload
         if params.derived_dataset:
             default_payload.type = "derived"
             payload = DerivedPayload(**default_payload.dict())
@@ -530,11 +522,12 @@ class SciCataloguer(Operation):
             payload = RawPayload(**default_payload.dict())
             payload = self.is_raw_payload(payload, data_format)
 
+        # Remove unneeded metadata defaults
         del payload.scientificMetadataDefaults
         return payload
 
+    # Adds file specific payload data
     def is_file_payload(self, _pl, file):
-        # Creation of standard file items
         _pl.datasetName = (
             self.params.experiment_name
             + "/"
@@ -543,7 +536,7 @@ class SciCataloguer(Operation):
         fstats = Path(file.filename).stat()
         _pl.size = fstats.st_size
 
-        # Creation of scientific metadata
+        # Scientific metadata
         scientificMetadata = {}
         _pl.scientificMetadata = (
             PayloadHelpers.scientific_metadata_concatenation(
@@ -561,6 +554,7 @@ class SciCataloguer(Operation):
         )
         return _pl
 
+    # Adds directory specific payload data
     def is_dir_payload(self, _pl, file):
         _pl.datasetName = (
             self.params.experiment_name
@@ -589,6 +583,7 @@ class SciCataloguer(Operation):
 
         return _pl
 
+    # Adds raw dataset specific data
     def is_raw_payload(self, _pl, _data_format):
         _pl.creationLocation = str(self.params.instrument_choice)
         _pl.principalInvestigator = self.params.investigator
@@ -596,6 +591,7 @@ class SciCataloguer(Operation):
         _pl.dataFormat = _data_format
         return _pl
 
+    # Adds derived dataset specific data
     def is_derived_payload(self, _pl):
         _pl.investigator = self.params.investigator
         _pl.inputDatasets = self.params.input_datasets.split(",")

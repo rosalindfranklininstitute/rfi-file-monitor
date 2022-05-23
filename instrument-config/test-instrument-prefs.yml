@@ -1,0 +1,4 @@
+test-instrument:
+  techniques:
+    test-instrument-technique:
+      - None

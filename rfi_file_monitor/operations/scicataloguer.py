@@ -1,20 +1,22 @@
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk
+from gi.repository import Gtk, Gio
 from datetime import datetime
+from munch import Munch
 from ..operation import Operation
 from ..utils import query_metadata
 from ..file import File
 from ..files.directory import Directory
 from ..files.regular_file import RegularFile
 from ..utils.decorators import supported_filetypes, with_pango_docs
+from ..preferences import Preference, InstrumentSetup
 from pathlib import PurePath, Path, PurePosixPath
 from pyscicat.client import ScicatClient
 from pyscicat.model import Dataset, RawDataset, DerivedDataset
 import logging
 from urllib.parse import urlparse
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Any
 from ..version import __version__ as core_version
 
 logger = logging.getLogger(__name__)
@@ -27,6 +29,13 @@ class SciCataloguer(Operation):
 
     def __init__(self, *args, **kwargs):
         Operation.__init__(self, *args, **kwargs)
+
+        current_app = Gio.Application.get_default()
+        instrument_prefs: Munch[
+            Preference, Any
+        ] = current_app.get_preferences().settings
+        self.instrument_choice = instrument_prefs[InstrumentSetup]
+        self.instr_dict = InstrumentSetup.values[self.instrument_choice]
 
         self._grid = Gtk.Grid(
             row_spacing=5,
@@ -285,11 +294,10 @@ class SciCataloguer(Operation):
         )
         self._grid.attach(self._exp_name_entry, 3, 4, 1, 1)
 
-        # Instrument
-        # TO DO - this is temporary until instrument preferences configured
+        # Technique
         self._grid.attach(
             Gtk.Label(
-                label="Instrument",
+                label="Technique",
                 halign=Gtk.Align.START,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
@@ -300,41 +308,15 @@ class SciCataloguer(Operation):
             1,
             1,
         )
-        self._instrument_entry = self.register_widget(
-            Gtk.Entry(
-                halign=Gtk.Align.FILL,
-                valign=Gtk.Align.CENTER,
-                hexpand=True,
-                vexpand=False,
-            ),
-            "instrument_choice",
-        )
-        self._grid.attach(self._instrument_entry, 1, 5, 1, 1)
+        # create combo box
+        combo = Gtk.ComboBoxText.new()
+        for k in self.instr_dict["techniques"].keys():
+            combo.append_text(k)
+        if len(self.instr_dict["techniques"].keys()) == 1:
+            combo.set_active(0)
 
-        # Technique
-        self._grid.attach(
-            Gtk.Label(
-                label="Technique",
-                halign=Gtk.Align.START,
-                valign=Gtk.Align.CENTER,
-                hexpand=False,
-                vexpand=False,
-            ),
-            2,
-            5,
-            1,
-            1,
-        )
-        self._technique_entry = self.register_widget(
-            Gtk.Entry(
-                halign=Gtk.Align.FILL,
-                valign=Gtk.Align.CENTER,
-                hexpand=True,
-                vexpand=False,
-            ),
-            "technique",
-        )
-        self._grid.attach(self._technique_entry, 3, 5, 1, 1)
+        widget = self.register_widget(combo, "technique")
+        self._grid.attach(widget, 1, 5, 1, 1)
 
         # Input boxes for derived dataset specific fields
         self._grid.attach(
@@ -411,6 +393,13 @@ class SciCataloguer(Operation):
         if not params.owner_group:
             raise RequiredInfoNotFound("Owner group required")
 
+    @staticmethod
+    def _check_instrument(instrument_choice):
+        if instrument_choice == "test-instrument":
+            raise RequiredInfoNotFound(
+                "An instrument is required. Please provide an instrument via the instrument-prefs.yml file in the instrument-config directory instead of using the default test instrument. Instrument choice can be changed in Preferences."
+            )
+
     def checkbox_toggled(self, checkbox):
         # Set class attribute for derived/raw dataset
         if checkbox.get_active() == True:
@@ -433,6 +422,9 @@ class SciCataloguer(Operation):
             )
         except Exception as e:
             logger.error(f"Could not login to scicat: {e}")
+
+        # check that user has provided an instrument
+        self._check_instrument(self.instrument_choice)
 
         # check that metadata requirements are met
         self.session_starter_info = query_metadata(
@@ -508,8 +500,6 @@ class SciCataloguer(Operation):
             # description=self.session_starter_info["experiment description"],
             sourceFolder=host_info["sourceFolder"],
             sourceFolderHost=host_info["sourceFolderHost"],
-            # TO DO - this would normally be extracted from instrument preferences
-            # instrumentId=str(self.instr_dict["id"]),
             owner=self.params.owner,
             contactEmail=self.params.email,
             orcidOfOwner=self.params.orcid,
@@ -533,9 +523,7 @@ class SciCataloguer(Operation):
             payload.usedSoftware = self.params.used_software.split(",")
         else:
             payload = RawPayload(**default_payload.dict())
-            # TO DO this usually comes from instr dict
-            # Temporary change to fetch from text box for now
-            payload.creationLocation = str(self.params.instrument_choice)
+            payload.creationLocation = str(self.instrument_choice)
             payload.principalInvestigator = self.params.investigator
             payload.endTime = payload.creationTime
             payload.dataFormat = data_format
@@ -576,6 +564,10 @@ class SciCataloguer(Operation):
                     scientificMetadata, payload.scientificMetadataDefaults
                 )
             )
+
+        # Add instrument detail
+        if self.instr_dict["id"]:
+            payload.instrumentId=str(self.instr_dict["id"])
 
         del payload.scientificMetadataDefaults
         return payload

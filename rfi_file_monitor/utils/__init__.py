@@ -41,6 +41,14 @@ PREFERENCES_CONFIG_FILE = Path(
     GLib.get_user_config_dir(), "rfi-file-monitor", "prefs.yml"
 )
 
+INSTRUMENT_CONFIG_FILEPATH = Path(
+    GLib.get_current_dir(), "instrument-config", "instrument-prefs.yml"
+)
+
+TEST_INSTRUMENT_CONFIG_FILEPATH = Path(
+    GLib.get_current_dir(), "instrument-config", "test-instrument-prefs.yml"
+)
+
 PATTERN_PLACEHOLDER_TEXT = "e.g *.txt, *.csv or *temp* or *log*"
 
 DEFAULT_TIMEOUT = 5  # seconds

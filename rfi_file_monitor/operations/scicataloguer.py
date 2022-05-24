@@ -14,6 +14,8 @@ from pyscicat.client import ScicatClient
 from pyscicat.model import Dataset, RawDataset, DerivedDataset
 import logging
 from urllib.parse import urlparse
+import importlib.metadata
+import importlib
 from typing import Dict, Optional, List
 from ..version import __version__ as core_version
 
@@ -396,6 +398,114 @@ class SciCataloguer(Operation):
         )
         self._grid.attach(self._derived_checkbox, 0, 6, 1, 1)
 
+        self.tempgrid = Gtk.Grid(
+            row_spacing=5,
+            column_spacing=5,
+            halign=Gtk.Align.FILL,
+            valign=Gtk.Align.CENTER,
+            hexpand=True,
+            vexpand=False,
+        )
+        self._grid.attach(self.tempgrid, 0, 8, 1, 1)
+
+        self.counter = 0  # counter for number of rows added
+        b = Gtk.Button.new_with_label("Manually add metadata")
+        b.connect("clicked", self.on_add_clicked)
+        self.tempgrid.attach(b, 0, 0, 1, 1)
+
+        self.extra_widgets = {}
+
+        self.parser_list = []
+        for e in importlib.metadata.entry_points()[
+            "rfi_file_monitor.metadataparsers"
+        ]:
+            self.parser_list.append(e.load())
+
+    # Add in textboxes to provide metadata manually
+    def on_add_clicked(self, button):
+        i = self.counter
+
+        self.tempgrid.attach(
+            Gtk.Label(
+                label="Name",
+                halign=Gtk.Align.CENTER,
+                valign=Gtk.Align.CENTER,
+                hexpand=False,
+                vexpand=False,
+            ),
+            0,
+            1 + i,
+            1,
+            1,
+        )
+        widget = Gtk.Entry(
+            placeholder_text="Required",
+            halign=Gtk.Align.FILL,
+            valign=Gtk.Align.CENTER,
+            hexpand=True,
+            vexpand=False,
+        )
+        self.tempgrid.attach(widget, 1, 1 + i, 1, 1)
+        self.extra_widgets["name_" + str(i)] = widget
+
+        self.tempgrid.attach(
+            Gtk.Label(
+                label="Value",
+                halign=Gtk.Align.CENTER,
+                valign=Gtk.Align.CENTER,
+                hexpand=False,
+                vexpand=False,
+            ),
+            2,
+            1 + i,
+            1,
+            1,
+        )
+        widget = Gtk.Entry(
+            placeholder_text="Required",
+            halign=Gtk.Align.FILL,
+            valign=Gtk.Align.CENTER,
+            hexpand=True,
+            vexpand=False,
+        )
+        self.tempgrid.attach(widget, 3, 1 + i, 1, 1)
+        self.extra_widgets["value_" + str(i)] = widget
+
+        self.tempgrid.attach(
+            Gtk.Label(
+                label="Unit",
+                halign=Gtk.Align.CENTER,
+                valign=Gtk.Align.CENTER,
+                hexpand=False,
+                vexpand=False,
+            ),
+            4,
+            1 + i,
+            1,
+            1,
+        )
+        widget = Gtk.Entry(
+            halign=Gtk.Align.FILL,
+            valign=Gtk.Align.CENTER,
+            hexpand=True,
+            vexpand=False,
+        )
+        self.tempgrid.attach(widget, 5, 1 + i, 1, 1)
+        self.extra_widgets["unit_" + str(i)] = widget
+
+        # b = Gtk.Button()
+        # b.set_image(
+        # Gtk.Image(icon_name="user-trash", icon_size=Gtk.IconSize.BUTTON)
+        # )
+        # b.connect("clicked", self.on_delete_clicked)
+        # self.tempgrid.attach(b, 6, 1, 1, 1)
+
+        self.tempgrid.show_all()
+        self.counter += 1
+
+    # def on_delete_clicked(self, button):
+    # return
+
     @staticmethod
     def _check_required_fields(params):
         if not params.hostname:
@@ -424,7 +534,16 @@ class SciCataloguer(Operation):
             self._used_software_entry.set_sensitive(False)
             return False
 
+    def _fetch_additional_metadata(self, n, v, u):
+        # here create a dict in correct form? add to self.additional_metadata
+        self.additional_metadata[n] = {
+            "type": "string",
+            "value": v,
+            "unit": u,
+        }
+
     def preflight_check(self):
+
         try:
             ScicatClient(
                 base_url=self.params.hostname,
@@ -458,10 +577,26 @@ class SciCataloguer(Operation):
                 "Please name a technique for this instrument."
             )
 
+        self.additional_metadata = {}
+        _len = int(len(self.extra_widgets) / 3) # there are 3 widgets on each row
+        for i in range(0, _len):
+            _name = self.extra_widgets["name_" + str(i)].get_text()
+            _value = self.extra_widgets["value_" + str(i)].get_text()
+            _unit = self.extra_widgets["unit_" + str(i)].get_text()
+            if _name and _value:
+                self._fetch_additional_metadata(_name, _value, _unit)
+            elif not _name and not _value:
+                break  # we don't want to do anything here?
+            else:
+                raise RequiredInfoNotFound(
+                    "Type and value are required metadata fields."
+                )
+
     def run(self, file: File):
 
         # Create the payload
         payload = self.create_payload(file)
+        print(payload.scientificMetadata)
         try:
             try:
                 scicat_session = ScicatClient(
@@ -550,8 +685,32 @@ class SciCataloguer(Operation):
             payload.size = file._total_size
             payload.numberOfFiles = len(file._filelist)
 
+            parser_dict = {}
+            for f in file:
+                try:
+                    parser = self.find_parser(f[0])
+                except ParserNotFound:
+                    parser = None
+                if parser:
+                    parser_dict[f[0]] = parser
+            if not parser_dict:
+                logger.info(
+                    " Parsers not found. Creating payload without metadata"
+                )
+
             # Scientific metadata
             scientificMetadata: Dict[str, Dict[str, str]] = {}
+            if parser_dict:
+                for k, v in parser_dict.items():
+                    metadata = PayloadHelpers.implement_parser(
+                        self.instr_dict, self.params.technique, k, v
+                    )
+                    for k, v in metadata.items():
+                        if k in scientificMetadata.keys():
+                            if scientificMetadata[k] == v:
+                                continue
+                        else:
+                            scientificMetadata[k] = v
             payload.scientificMetadata = (
                 PayloadHelpers.scientific_metadata_concatenation(
                     scientificMetadata, payload.scientificMetadataDefaults
@@ -569,8 +728,23 @@ class SciCataloguer(Operation):
             fstats = Path(file.filename).stat()
             payload.size = fstats.st_size
 
+            try:
+                parser = self.find_parser(file.filename)
+            except Exception as e:
+                logger.info(
+                    " Parser not found. Creating payload without metadata"
+                )
+                parser = None
+
             # Creation of scientific metadata
             scientificMetadata = {}
+            if parser:
+                scientificMetadata = PayloadHelpers.implement_parser(
+                    self.instr_dict,
+                    self.params.technique,
+                    file.filename,
+                    parser,
+                )
             payload.scientificMetadata = (
                 PayloadHelpers.scientific_metadata_concatenation(
                     scientificMetadata, payload.scientificMetadataDefaults
@@ -579,6 +753,16 @@ class SciCataloguer(Operation):
 
         del payload.scientificMetadataDefaults
         return payload
+
+    def find_parser(self, filename):
+        for parser in self.parser_list:
+            if parser.supports_file(filename):
+                break
+        else:
+            parser = None
+        if not parser:
+            raise ParserNotFound("parser not found")
+        return parser
 
     # Inserts a dataset into Scicat
     def insert_payload(self, payload, scicat_session):
@@ -673,6 +857,16 @@ class PayloadHelpers:
                 ).parts[0]
 
         return source_folders
+
+    @classmethod
+    def implement_parser(cls, instr_dict, technique, filename, parser):
+        scientific_metadata = {}
+        instr_vars = instr_dict["techniques"][technique]
+        extracted = parser.extract_metadata(instr_vars, filename)
+        if extracted:
+            for k, v in extracted.items():
+                scientific_metadata[k] = {"type": "string", "value": str(v), "unit": ""}
+        return scientific_metadata
 
     @classmethod
     def scientific_metadata_concatenation(cls, scientific_metadata, defaults):

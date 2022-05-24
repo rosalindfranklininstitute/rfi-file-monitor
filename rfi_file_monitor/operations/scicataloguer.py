@@ -578,7 +578,9 @@ class SciCataloguer(Operation):
             )
 
         self.additional_metadata = {}
-        _len = int(len(self.extra_widgets) / 3) # there are 3 widgets on each row
+        _len = int(
+            len(self.extra_widgets) / 3
+        )  # there are 3 widgets on each row
         for i in range(0, _len):
             _name = self.extra_widgets["name_" + str(i)].get_text()
             _value = self.extra_widgets["value_" + str(i)].get_text()
@@ -865,7 +867,11 @@ class PayloadHelpers:
         extracted = parser.extract_metadata(instr_vars, filename)
         if extracted:
             for k, v in extracted.items():
-                scientific_metadata[k] = {"type": "string", "value": str(v), "unit": ""}
+                scientific_metadata[k] = {
+                    "type": "string",
+                    "value": str(v),
+                    "unit": "",
+                }
         return scientific_metadata
 
     @classmethod

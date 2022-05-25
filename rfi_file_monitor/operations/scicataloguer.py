@@ -525,7 +525,7 @@ class SciCataloguer(Operation):
         # Check for instrument id
         # Add instrument detail
         if self.instr_dict["id"]:
-            payload.instrumentId=str(self.instr_dict["id"])
+            payload.instrumentId = str(self.instr_dict["id"])
 
         # Remove unneeded metadata defaults
         del payload.scientificMetadataDefaults

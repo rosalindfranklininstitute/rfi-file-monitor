@@ -4,7 +4,6 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 from datetime import datetime
 from ..operation import Operation
-from ..utils import query_metadata
 from ..file import File
 from ..files.directory import Directory
 from ..files.regular_file import RegularFile
@@ -52,8 +51,8 @@ class SciCataloguer(Operation):
         # Hostname
         tempgrid.attach(
             Gtk.Label(
-                label="SciCat Hostname",
-                halign=Gtk.Align.START,
+                label=" SciCat Hostname ",
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -77,8 +76,8 @@ class SciCataloguer(Operation):
         # Operation upload
         tempgrid.attach(
             Gtk.Label(
-                label="Upload location ",
-                halign=Gtk.Align.START,
+                label=" Upload location ",
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -99,8 +98,8 @@ class SciCataloguer(Operation):
         # Username
         tempgrid.attach(
             Gtk.Label(
-                label="Username",
-                halign=Gtk.Align.START,
+                label=" Username ",
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -124,8 +123,8 @@ class SciCataloguer(Operation):
         # Password
         tempgrid.attach(
             Gtk.Label(
-                label="Password",
-                halign=Gtk.Align.START,
+                label=" Password ",
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -150,8 +149,8 @@ class SciCataloguer(Operation):
         # Owner
         tempgrid.attach(
             Gtk.Label(
-                label="Owner",
-                halign=Gtk.Align.START,
+                label=" Owner ",
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -175,8 +174,8 @@ class SciCataloguer(Operation):
         # Owner group
         tempgrid.attach(
             Gtk.Label(
-                label="Owner Group",
-                halign=Gtk.Align.START,
+                label=" Owner Group ",
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -200,8 +199,8 @@ class SciCataloguer(Operation):
         # Comtact email
         tempgrid.attach(
             Gtk.Label(
-                label="Email",
-                halign=Gtk.Align.START,
+                label=" Email ",
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -225,8 +224,8 @@ class SciCataloguer(Operation):
         # Orcid
         tempgrid.attach(
             Gtk.Label(
-                label="Orcid",
-                halign=Gtk.Align.START,
+                label=" Orcid ",
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -250,8 +249,8 @@ class SciCataloguer(Operation):
         # PI
         tempgrid.attach(
             Gtk.Label(
-                label="Principal Investigator",
-                halign=Gtk.Align.START,
+                label=" Principal Investigator ",
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -275,8 +274,8 @@ class SciCataloguer(Operation):
         # Dataset name
         tempgrid.attach(
             Gtk.Label(
-                label="Experiment name",
-                halign=Gtk.Align.START,
+                label=" Experiment name ",
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -301,8 +300,8 @@ class SciCataloguer(Operation):
         # TO DO - this is temporary until instrument preferences configured
         tempgrid.attach(
             Gtk.Label(
-                label="Instrument",
-                halign=Gtk.Align.START,
+                label=" Instrument ",
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -326,8 +325,8 @@ class SciCataloguer(Operation):
         # Technique
         tempgrid.attach(
             Gtk.Label(
-                label="Technique",
-                halign=Gtk.Align.START,
+                label=" Technique ",
+                halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
@@ -351,7 +350,7 @@ class SciCataloguer(Operation):
         # Input boxes for derived dataset specific fields
         tempgrid.attach(
             Gtk.Label(
-                label="Input Datasets",
+                label=" Input Datasets ",
                 halign=Gtk.Align.START,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
@@ -377,7 +376,7 @@ class SciCataloguer(Operation):
 
         tempgrid.attach(
             Gtk.Label(
-                label="Used Software",
+                label=" Used Software ",
                 halign=Gtk.Align.START,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
@@ -506,6 +505,20 @@ class SciCataloguer(Operation):
         self.tempgrid.show_all()
         self.counter += 1
 
+    # Makes input datasets/used software boxes editable if dataset is derived
+    def checkbox_toggled(self, checkbox):
+        # Set class attribute for derived/raw dataset
+        if checkbox.get_active() == True:
+            self.params.derived_dataset = True
+            self._input_datasets_entry.set_sensitive(True)
+            self._used_software_entry.set_sensitive(True)
+            return True
+        elif checkbox.get_active() == False:
+            self.params.derived_dataset = False
+            self._input_datasets_entry.set_sensitive(False)
+            self._used_software_entry.set_sensitive(False)
+            return False
+
     @staticmethod
     def _check_required_fields(params):
         if not params.hostname:
@@ -521,19 +534,6 @@ class SciCataloguer(Operation):
         if not params.owner_group:
             raise RequiredInfoNotFound("Owner group required")
 
-    def checkbox_toggled(self, checkbox):
-        # Set class attribute for derived/raw dataset
-        if checkbox.get_active() == True:
-            self.params.derived_dataset = True
-            self._input_datasets_entry.set_sensitive(True)
-            self._used_software_entry.set_sensitive(True)
-            return True
-        elif checkbox.get_active() == False:
-            self.params.derived_dataset = False
-            self._input_datasets_entry.set_sensitive(False)
-            self._used_software_entry.set_sensitive(False)
-            return False
-
     def _fetch_additional_metadata(self, n, v, u):
         # here create a dict in correct form? add to self.additional_metadata
         self.additional_metadata[n] = {
@@ -543,21 +543,18 @@ class SciCataloguer(Operation):
         }
 
     def preflight_check(self):
+        self._preflight_check(self.params)
 
+    def _preflight_check(self, params):
+        self._check_required_fields(params)
         try:
             ScicatClient(
-                base_url=self.params.hostname,
-                username=self.params.username,
-                password=self.params.password,
+                base_url=params.hostname,
+                username=params.username,
+                password=params.password,
             )
         except Exception as e:
-            logger.error(f"Could not login to scicat: {e}")
-
-        # check that metadata requirements are met
-        self.session_starter_info = query_metadata(
-            self.appwindow.preflight_check_metadata, "orcid", full_dict=True
-        )
-        self._check_required_fields(self.params)
+            raise Exception(f"Could not login to scicat: {e}")
 
         self.operations_list = [
             op.get_child().NAME
@@ -572,7 +569,7 @@ class SciCataloguer(Operation):
             )
 
         # Check that a technique has been selected for instruments that might have more than one technique
-        if not self.params.technique:
+        if not params.technique:
             raise RequiredInfoNotFound(
                 "Please name a technique for this instrument."
             )
@@ -597,166 +594,184 @@ class SciCataloguer(Operation):
                 )
 
     def run(self, file: File):
+        self.params.keywords = []
+        # This can be added manually in future? TO DO
+        self.params.additional_metadata = {}
+        return self._run(file, self.params)
+
+    def _run(self, file: File, params):
 
         # Create the payload
-        payload = self.create_payload(file)
-        print(payload.scientificMetadata)
+        payload = self.create_payload(file, params)
         try:
             try:
                 scicat_session = ScicatClient(
-                    base_url=self.params.hostname,
-                    username=self.params.username,
-                    password=self.params.password,
+                    base_url=params.hostname,
+                    username=params.username,
+                    password=params.password,
                 )
             except Exception as e:
-                logger.error(f"Could not login to scicat: {e}")
-                return str(e)
+                raise Exception(f"Could not login to scicat: {e}")
             self.upsert_payload(payload, scicat_session)
         except Exception as e:
-            logger.exception(f"Scicataloger.run exception")
-            return str(e)
+            raise Exception(f"Scicataloger.run exception")
         else:
             return None
 
-    def create_payload(self, file):
-        # Extract relevant fields before initialising Payload
+    # Creates payload to send to scicat
+    def create_payload(self, file, params):
+        # Extract host information
         host_info = PayloadHelpers.get_host_location(
-            file, self.operations_list, self.params.operation
+            file, self.operations_list, params.operation
         )
-        # TO DO - reinstate when instr_dict configured
-        # if "access groups" in self.instr_dict:
-        #    access_groups = self.instr_dict["access groups"]
-        # else:
-        #    access_groups = []
-        access_groups = []
 
-        # INFO - creation time is necessary for initialising Payload
-        # also need to ensure only raw types have data format
-        if isinstance(file, Directory):
-            date_method = file._filelist_timestamp
-            data_format = "directory"
-        elif isinstance(file, RegularFile):
-            date_method = Path(file.filename).stat().st_ctime
-            fppath = PurePath(file.filename)
-            data_format = fppath.suffix
-
-        # Create Base payload with required fields
+        # Base payload with required fields
         default_payload = Payload(
-            type="raw",  # set default required type and overwrite later if derived
-            # TO DO - another box needed for this?
-            # description=self.session_starter_info["experiment description"],
             sourceFolder=host_info["sourceFolder"],
             sourceFolderHost=host_info["sourceFolderHost"],
-            # TO DO - this would normally be extracted from instrument preferences
-            # instrumentId=str(self.instr_dict["id"]),
-            owner=self.params.owner,
-            contactEmail=self.params.email,
-            orcidOfOwner=self.params.orcid,
-            ownerGroup=self.params.owner_group,
-            accessGroups=access_groups,
-            techniques=[{"name": self.params.technique}],
-            creationTime=(
-                datetime.fromtimestamp(date_method).strftime(
-                    "%Y-%m-%dT%H:%M:%S.%f"
-                )[:-3]
-                + "Z"
-            ),
+            owner=params.owner,
+            contactEmail=params.email,
+            orcidOfOwner=params.orcid,
+            ownerGroup=params.owner_group,
+            accessGroups=[],
+            techniques=[{"name": params.technique}],
+            creationTime="",
+            keywords=params.keywords,
         )
 
-        # Add in raw/derived specific variables
-        if self.params.derived_dataset:
+        # Add in Directory/File specific payload details
+        if isinstance(file, Directory):
+            data_format = "directory"
+            default_payload = self.is_dir_payload(default_payload, file)
+        elif isinstance(file, RegularFile):
+            fppath = PurePath(file.filename)
+            data_format = fppath.suffix
+            default_payload = self.is_file_payload(default_payload, file)
+
+        # Modify base into raw or derived payload
+        if params.derived_dataset:
+            default_payload.type = "derived"
             payload = DerivedPayload(**default_payload.dict())
-            payload.type = "derived"
-            payload.investigator = self.params.investigator
-            payload.inputDatasets = self.params.input_datasets.split(",")
-            payload.usedSoftware = self.params.used_software.split(",")
+            payload = self.is_derived_payload(payload)
         else:
             payload = RawPayload(**default_payload.dict())
-            # TO DO this usually comes from instr dict
-            # Temporary change to fetch from text box for now
-            payload.creationLocation = str(self.params.instrument_choice)
-            payload.principalInvestigator = self.params.investigator
-            payload.endTime = payload.creationTime
-            payload.dataFormat = data_format
+            payload = self.is_raw_payload(payload, data_format)
 
-        # Add in Directory specific payload details
-        if isinstance(file, Directory):
-            payload.datasetName = (
-                self.params.experiment_name
-                + "/"
-                + str(file.relative_filename.parts[-1])
-            )
-            payload.size = file._total_size
-            payload.numberOfFiles = len(file._filelist)
-
-            parser_dict = {}
-            for f in file:
-                try:
-                    parser = self.find_parser(f[0])
-                except ParserNotFound:
-                    parser = None
-                if parser:
-                    parser_dict[f[0]] = parser
-            if not parser_dict:
-                logger.info(
-                    " Parsers not found. Creating payload without metadata"
-                )
-
-            # Scientific metadata
-            scientificMetadata: Dict[str, Dict[str, str]] = {}
-            if parser_dict:
-                for k, v in parser_dict.items():
-                    metadata = PayloadHelpers.implement_parser(
-                        self.instr_dict, self.params.technique, k, v
-                    )
-                    for k, v in metadata.items():
-                        if k in scientificMetadata.keys():
-                            if scientificMetadata[k] == v:
-                                continue
-                        else:
-                            scientificMetadata[k] = v
-            payload.scientificMetadata = (
-                PayloadHelpers.scientific_metadata_concatenation(
-                    scientificMetadata, payload.scientificMetadataDefaults
-                )
-            )
-
-        elif isinstance(file, RegularFile):
-
-            # Creation of standard file items
-            payload.datasetName = (
-                self.params.experiment_name
-                + "/"
-                + str(PurePosixPath(file.relative_filename))
-            )
-            fstats = Path(file.filename).stat()
-            payload.size = fstats.st_size
-
-            try:
-                parser = self.find_parser(file.filename)
-            except Exception as e:
-                logger.info(
-                    " Parser not found. Creating payload without metadata"
-                )
-                parser = None
-
-            # Creation of scientific metadata
-            scientificMetadata = {}
-            if parser:
-                scientificMetadata = PayloadHelpers.implement_parser(
-                    self.instr_dict,
-                    self.params.technique,
-                    file.filename,
-                    parser,
-                )
-            payload.scientificMetadata = (
-                PayloadHelpers.scientific_metadata_concatenation(
-                    scientificMetadata, payload.scientificMetadataDefaults
-                )
-            )
-
+        # Remove unneeded metadata defaults
         del payload.scientificMetadataDefaults
         return payload
+
+    # Adds file specific payload data
+    def is_file_payload(self, _payload, file):
+        _payload.datasetName = (
+            self.params.experiment_name
+            + "/"
+            + str(PurePosixPath(file.relative_filename))
+        )
+        fstats = Path(file.filename).stat()
+        _payload.size = fstats.st_size
+
+        try:
+            parser = self.find_parser(file.filename)
+        except Exception as e:
+            logger.info(
+                " Parser not found. Creating payload without metadata"
+            )
+            parser = None
+
+        # Scientific metadata
+        scientificMetadata = {}
+        if parser:
+            scientificMetadata = PayloadHelpers.implement_parser(
+                self.instr_dict,
+                self.params.technique,
+                file.filename,
+                parser,
+            )
+
+        _payload.scientificMetadata = (
+            PayloadHelpers.scientific_metadata_concatenation(
+                scientificMetadata,
+                _payload.scientificMetadataDefaults,
+                self.params.additional_metadata,
+            )
+        )
+
+        _payload.creationTime = (
+            datetime.fromtimestamp(
+                Path(file.filename).stat().st_ctime
+            ).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
+            + "Z"
+        )
+        return _payload
+
+    # Adds directory specific payload data
+    def is_dir_payload(self, _payload, file):
+        _payload.datasetName = (
+            self.params.experiment_name
+            + "/"
+            + str(file.relative_filename.parts[-1])
+        )
+        _payload.size = file._total_size
+        _payload.numberOfFiles = len(file._filelist)
+
+        parser_dict = {}
+        for f in file:
+            try:
+                parser = self.find_parser(f[0])
+            except ParserNotFound:
+                parser = None
+        if parser:
+            parser_dict[f[0]] = parser
+        if not parser_dict:
+            logger.info(
+                " Parsers not found. Creating payload without metadata"
+            )
+
+        # Scientific metadata
+        scientificMetadata: Dict[str, Dict[str, str]] = {}
+        if parser_dict:
+            for k, v in parser_dict.items():
+                metadata = PayloadHelpers.implement_parser(
+                    self.instr_dict, self.params.technique, k, v
+                )
+                for k, v in metadata.items():
+                    if k in scientificMetadata.keys():
+                        if scientificMetadata[k] == v:
+                            continue
+                    else:
+                        scientificMetadata[k] = v
+        _payload.scientificMetadata = (
+            PayloadHelpers.scientific_metadata_concatenation(
+                scientificMetadata,
+                _payload.scientificMetadataDefaults,
+                self.params.additional_metadata,
+            )
+        )
+
+        _payload.creationTime = (
+            datetime.fromtimestamp(file._filelist_timestamp).strftime(
+                "%Y-%m-%dT%H:%M:%S.%f"
+            )[:-3]
+            + "Z"
+        )
+
+        return _payload
+
+    # Adds raw dataset specific data
+    def is_raw_payload(self, _payload, _data_format):
+        _payload.creationLocation = str(self.params.instrument_choice)
+        _payload.principalInvestigator = self.params.investigator
+        _payload.endTime = _payload.creationTime
+        _payload.dataFormat = _data_format
+        return _payload
+
+    # Adds derived dataset specific data
+    def is_derived_payload(self, _payload):
+        _payload.investigator = self.params.investigator
+        _payload.inputDatasets = self.params.input_datasets.split(",")
+        _payload.usedSoftware = self.params.used_software.split(",")
+        return _payload
 
     def find_parser(self, filename):
         for parser in self.parser_list:
@@ -775,10 +790,7 @@ class SciCataloguer(Operation):
             if r:
                 logger.info(f"Payload catalogued, PID: {r}")
         except Exception as e:
-            logger.error(
-                f"Could not catalogue payload in scicat: {e.statusCode} -> {e.message}"
-            )
-            return str(e)
+            raise Exception(f"Could not catalogue payload in scicat: {e}")
 
     # Upserts dataset in Scicat
     # This won't work with upserting until features added into PySciCat
@@ -798,7 +810,7 @@ class SciCataloguer(Operation):
                 # if r:
                 #    logger.info(f"Payload upserted, PID: {r}")
                 # except Exception as e:
-                #   logger.error(f"Could not catalogue payload in scicat: {e}")
+                #   raise Exception(f"Could not catalogue payload in scicat: {e}")
                 #   return str(e)
             else:
                 self.insert_payload(payload, scicat_session)
@@ -808,7 +820,9 @@ class SciCataloguer(Operation):
 
 # Base Payload Model inherits from Dataset Model
 class Payload(Dataset):
+    type: Optional[str] = "raw"
     datasetlifecycle = {"retrievable": True}
+    scientificMetadata = {}
     scientificMetadataDefaults = {}
     scientificMetadataDefaults["RFI File Monitor Version"] = {
         "type": "string",
@@ -877,8 +891,11 @@ class PayloadHelpers:
         return scientific_metadata
 
     @classmethod
-    def scientific_metadata_concatenation(cls, scientific_metadata, defaults):
+    def scientific_metadata_concatenation(
+        cls, scientific_metadata, defaults, additional
+    ):
         scientific_metadata |= defaults
+        scientific_metadata |= additional
         return scientific_metadata
 
 

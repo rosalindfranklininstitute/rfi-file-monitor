@@ -455,7 +455,7 @@ class SciCataloguer(Operation):
             vexpand=False,
         )
         self.tempgrid.attach(widget, 1, 1 + i, 1, 1)
-        self.extra_widgets["name_" + str(i)] = widget
+        self.extra_widgets["name" + str(i)] = widget
 
         self.tempgrid.attach(
             Gtk.Label(
@@ -478,7 +478,7 @@ class SciCataloguer(Operation):
             vexpand=False,
         )
         self.tempgrid.attach(widget, 3, 1 + i, 1, 1)
-        self.extra_widgets["value_" + str(i)] = widget
+        self.extra_widgets["value" + str(i)] = widget
 
         self.tempgrid.attach(
             Gtk.Label(
@@ -500,7 +500,7 @@ class SciCataloguer(Operation):
             vexpand=False,
         )
         self.tempgrid.attach(widget, 5, 1 + i, 1, 1)
-        self.extra_widgets["unit_" + str(i)] = widget
+        self.extra_widgets["unit" + str(i)] = widget
 
         self.tempgrid.show_all()
         self.counter += 1
@@ -534,13 +534,29 @@ class SciCataloguer(Operation):
         if not params.owner_group:
             raise RequiredInfoNotFound("Owner group required")
 
-    def _fetch_additional_metadata(self, n, v, u):
-        # here create a dict in correct form? add to self.additional_metadata
-        self.additional_metadata[n] = {
-            "type": "string",
-            "value": v,
-            "unit": u,
-        }
+    # Iterates over every metadata row and extracts data
+    def _fetch_additional_metadata(self):
+        self.params.additional_metadata = {}
+        rows = int(len(self.extra_widgets) / 3)
+        for i in range(0, rows):
+            _name = self.extra_widgets["name" + str(i)].get_text()
+            _value = self.extra_widgets["value" + str(i)].get_text()
+            _unit = self.extra_widgets["unit" + str(i)].get_text()
+            if _name and _value:
+                self.additional_metadata[_name] = {
+                    "type": "string",
+                    "value": _value,
+                    "unit": _unit,
+                }
+            # don't throw exception if row left empty, just ignore
+            elif not _name and not _value:
+                logger.info(
+                    "name and value not provided for additional metadata row, skipping"
+                )
+            else:
+                raise RequiredInfoNotFound(
+                    "Both type and value are required metadata fields."
+                )
 
     def preflight_check(self):
         self._preflight_check(self.params)
@@ -574,29 +590,11 @@ class SciCataloguer(Operation):
                 "Please name a technique for this instrument."
             )
 
-        self.additional_metadata = {}
-        _len = int(
-            len(self.extra_widgets) / 3
-        )  # there are 3 widgets on each row
-        for i in range(0, _len):
-            _name = self.extra_widgets["name_" + str(i)].get_text()
-            _value = self.extra_widgets["value_" + str(i)].get_text()
-            _unit = self.extra_widgets["unit_" + str(i)].get_text()
-            if _name and _value:
-                self._fetch_additional_metadata(_name, _value, _unit)
-            elif not _name and not _value:
-                logger.info(
-                    "name and value not provided for additional metadata row, skipping"
-                )
-            else:
-                raise RequiredInfoNotFound(
-                    "Type and value are required metadata fields."
-                )
+        # Fetch additional metadata
+        self._fetch_additional_metadata
 
     def run(self, file: File):
         self.params.keywords = []
-        # This can be added manually in future? TO DO
-        self.params.additional_metadata = {}
         return self._run(file, self.params)
 
     def _run(self, file: File, params):
@@ -674,9 +672,7 @@ class SciCataloguer(Operation):
         try:
             parser = self.find_parser(file.filename)
         except Exception as e:
-            logger.info(
-                " Parser not found. Creating payload without metadata"
-            )
+            logger.info(" Parser not found. Creating payload without metadata")
             parser = None
 
         # Scientific metadata
@@ -724,9 +720,7 @@ class SciCataloguer(Operation):
         if parser:
             parser_dict[f[0]] = parser
         if not parser_dict:
-            logger.info(
-                " Parsers not found. Creating payload without metadata"
-            )
+            logger.info(" Parsers not found. Creating payload without metadata")
 
         # Scientific metadata
         scientificMetadata: Dict[str, Dict[str, str]] = {}

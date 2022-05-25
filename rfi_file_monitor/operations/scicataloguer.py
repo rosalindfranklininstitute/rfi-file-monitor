@@ -428,6 +428,7 @@ class SciCataloguer(Operation):
         self._preflight_check(self.params)
 
     def _preflight_check(self, params):
+        self._check_required_fields(params)
         try:
             ScicatClient(
                 base_url=params.hostname,
@@ -435,10 +436,7 @@ class SciCataloguer(Operation):
                 password=params.password,
             )
         except Exception as e:
-            logger.error(f"Could not login to scicat: {e}")
-            return str(e)
-
-        self._check_required_fields(params)
+            raise Exception(f"Could not login to scicat: {e}")
 
         self.operations_list = [
             op.get_child().NAME
@@ -476,12 +474,10 @@ class SciCataloguer(Operation):
                     password=params.password,
                 )
             except Exception as e:
-                logger.error(f"Could not login to scicat: {e}")
-                return str(e)
+                raise Exception(f"Could not login to scicat: {e}")
             self.upsert_payload(payload, scicat_session)
         except Exception as e:
-            logger.exception(f"Scicataloger.run exception")
-            return str(e)
+            raise Exception(f"Scicataloger.run exception")
         else:
             return None
 
@@ -607,10 +603,9 @@ class SciCataloguer(Operation):
             if r:
                 logger.info(f"Payload catalogued, PID: {r}")
         except Exception as e:
-            logger.error(
-                f"Could not catalogue payload in scicat: {e.statusCode} -> {e.message}"
+            raise Exception(
+                f"Could not catalogue payload in scicat: {e}"
             )
-            return str(e)
 
     # Upserts dataset in Scicat
     # This won't work with upserting until features added into PySciCat
@@ -630,7 +625,7 @@ class SciCataloguer(Operation):
                 # if r:
                 #    logger.info(f"Payload upserted, PID: {r}")
                 # except Exception as e:
-                #   logger.error(f"Could not catalogue payload in scicat: {e}")
+                #   raise Exception(f"Could not catalogue payload in scicat: {e}")
                 #   return str(e)
             else:
                 self.insert_payload(payload, scicat_session)

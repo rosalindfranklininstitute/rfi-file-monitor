@@ -522,6 +522,11 @@ class SciCataloguer(Operation):
             payload = RawPayload(**default_payload.dict())
             payload = self.is_raw_payload(payload, data_format)
 
+        # Check for instrument id
+        # Add instrument detail
+        if self.instr_dict["id"]:
+            payload.instrumentId=str(self.instr_dict["id"])
+
         # Remove unneeded metadata defaults
         del payload.scientificMetadataDefaults
         return payload

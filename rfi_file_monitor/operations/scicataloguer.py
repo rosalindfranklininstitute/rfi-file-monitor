@@ -603,9 +603,7 @@ class SciCataloguer(Operation):
             if r:
                 logger.info(f"Payload catalogued, PID: {r}")
         except Exception as e:
-            raise Exception(
-                f"Could not catalogue payload in scicat: {e}"
-            )
+            raise Exception(f"Could not catalogue payload in scicat: {e}")
 
     # Upserts dataset in Scicat
     # This won't work with upserting until features added into PySciCat

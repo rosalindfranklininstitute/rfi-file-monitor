@@ -39,8 +39,18 @@ class SciCataloguer(Operation):
         )
         self.add(self._grid)
 
+        tempgrid = Gtk.Grid(
+            row_spacing=5,
+            column_spacing=5,
+            halign=Gtk.Align.FILL,
+            valign=Gtk.Align.CENTER,
+            hexpand=True,
+            vexpand=False,
+        )
+        self._grid.attach(tempgrid, 0, 0, 1, 1)
+
         # Hostname
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label="SciCat Hostname",
                 halign=Gtk.Align.START,
@@ -62,10 +72,10 @@ class SciCataloguer(Operation):
             ),
             "hostname",
         )
-        self._grid.attach(self._hostname_entry, 1, 0, 1, 1)
+        tempgrid.attach(self._hostname_entry, 1, 0, 1, 1)
 
         # Operation upload
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label="Upload location ",
                 halign=Gtk.Align.START,
@@ -84,10 +94,10 @@ class SciCataloguer(Operation):
             op_combo.append_text(k)
 
         op_widget = self.register_widget(op_combo, "operation")
-        self._grid.attach(op_widget, 3, 0, 1, 1)
+        tempgrid.attach(op_widget, 3, 0, 1, 1)
 
         # Username
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label="Username",
                 halign=Gtk.Align.START,
@@ -109,10 +119,10 @@ class SciCataloguer(Operation):
             ),
             "username",
         )
-        self._grid.attach(self._username_entry, 1, 1, 1, 1)
+        tempgrid.attach(self._username_entry, 1, 1, 1, 1)
 
         # Password
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label="Password",
                 halign=Gtk.Align.START,
@@ -135,10 +145,10 @@ class SciCataloguer(Operation):
             ),
             "password",
         )
-        self._grid.attach(self._password_entry, 3, 1, 1, 1)
+        tempgrid.attach(self._password_entry, 3, 1, 1, 1)
 
         # Owner
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label="Owner",
                 halign=Gtk.Align.START,
@@ -160,10 +170,10 @@ class SciCataloguer(Operation):
             ),
             "owner",
         )
-        self._grid.attach(self._owner_entry, 1, 2, 1, 1)
+        tempgrid.attach(self._owner_entry, 1, 2, 1, 1)
 
         # Owner group
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label="Owner Group",
                 halign=Gtk.Align.START,
@@ -185,10 +195,10 @@ class SciCataloguer(Operation):
             ),
             "owner_group",
         )
-        self._grid.attach(self._owner_grp_entry, 3, 2, 1, 1)
+        tempgrid.attach(self._owner_grp_entry, 3, 2, 1, 1)
 
         # Comtact email
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label="Email",
                 halign=Gtk.Align.START,
@@ -210,10 +220,10 @@ class SciCataloguer(Operation):
             ),
             "email",
         )
-        self._grid.attach(self._email_entry, 1, 3, 1, 1)
+        tempgrid.attach(self._email_entry, 1, 3, 1, 1)
 
         # Orcid
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label="Orcid",
                 halign=Gtk.Align.START,
@@ -235,10 +245,10 @@ class SciCataloguer(Operation):
             ),
             "orcid",
         )
-        self._grid.attach(self._orcid_entry, 3, 3, 1, 1)
+        tempgrid.attach(self._orcid_entry, 3, 3, 1, 1)
 
         # PI
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label="Principal Investigator",
                 halign=Gtk.Align.START,
@@ -260,10 +270,10 @@ class SciCataloguer(Operation):
             ),
             "investigator",
         )
-        self._grid.attach(self._pi_entry, 1, 4, 1, 1)
+        tempgrid.attach(self._pi_entry, 1, 4, 1, 1)
 
         # Dataset name
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label="Experiment name",
                 halign=Gtk.Align.START,
@@ -285,11 +295,11 @@ class SciCataloguer(Operation):
             ),
             "experiment_name",
         )
-        self._grid.attach(self._exp_name_entry, 3, 4, 1, 1)
+        tempgrid.attach(self._exp_name_entry, 3, 4, 1, 1)
 
         # Instrument
         # TO DO - this is temporary until instrument preferences configured
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label="Instrument",
                 halign=Gtk.Align.START,
@@ -311,10 +321,10 @@ class SciCataloguer(Operation):
             ),
             "instrument_choice",
         )
-        self._grid.attach(self._instrument_entry, 1, 5, 1, 1)
+        tempgrid.attach(self._instrument_entry, 1, 5, 1, 1)
 
         # Technique
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label="Technique",
                 halign=Gtk.Align.START,
@@ -336,10 +346,10 @@ class SciCataloguer(Operation):
             ),
             "technique",
         )
-        self._grid.attach(self._technique_entry, 3, 5, 1, 1)
+        tempgrid.attach(self._technique_entry, 3, 5, 1, 1)
 
         # Input boxes for derived dataset specific fields
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label="Input Datasets",
                 halign=Gtk.Align.START,
@@ -363,9 +373,9 @@ class SciCataloguer(Operation):
             ),
             "input_datasets",
         )
-        self._grid.attach(self._input_datasets_entry, 1, 7, 1, 1)
+        tempgrid.attach(self._input_datasets_entry, 1, 7, 1, 1)
 
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label="Used Software",
                 halign=Gtk.Align.START,
@@ -389,29 +399,29 @@ class SciCataloguer(Operation):
             ),
             "used_software",
         )
-        self._grid.attach(self._used_software_entry, 3, 7, 1, 1)
+        tempgrid.attach(self._used_software_entry, 3, 7, 1, 1)
 
         self._derived_checkbox = Gtk.CheckButton(label="Derived Dataset")
         self._derived_checkbox.connect("toggled", self.checkbox_toggled)
         self.params.derived_dataset = self.checkbox_toggled(
             self._derived_checkbox
         )
-        self._grid.attach(self._derived_checkbox, 0, 6, 1, 1)
+        tempgrid.attach(self._derived_checkbox, 0, 6, 1, 1)
 
         self.tempgrid = Gtk.Grid(
             row_spacing=5,
             column_spacing=5,
-            halign=Gtk.Align.FILL,
+            halign=Gtk.Align.CENTER,
             valign=Gtk.Align.CENTER,
             hexpand=True,
             vexpand=False,
         )
-        self._grid.attach(self.tempgrid, 0, 8, 1, 1)
+        self._grid.attach(self.tempgrid, 0, 1, 1, 1)
 
         self.counter = 0  # counter for number of rows added
         b = Gtk.Button.new_with_label("Manually add metadata")
         b.connect("clicked", self.on_add_clicked)
-        self.tempgrid.attach(b, 0, 0, 1, 1)
+        self.tempgrid.attach(b, 3, 0, 1, 1)
 
         self.extra_widgets = {}
 
@@ -493,18 +503,8 @@ class SciCataloguer(Operation):
         self.tempgrid.attach(widget, 5, 1 + i, 1, 1)
         self.extra_widgets["unit_" + str(i)] = widget
 
-        # b = Gtk.Button()
-        # b.set_image(
-        # Gtk.Image(icon_name="user-trash", icon_size=Gtk.IconSize.BUTTON)
-        # )
-        # b.connect("clicked", self.on_delete_clicked)
-        # self.tempgrid.attach(b, 6, 1, 1, 1)
-
         self.tempgrid.show_all()
         self.counter += 1
-
-    # def on_delete_clicked(self, button):
-    # return
 
     @staticmethod
     def _check_required_fields(params):
@@ -588,7 +588,9 @@ class SciCataloguer(Operation):
             if _name and _value:
                 self._fetch_additional_metadata(_name, _value, _unit)
             elif not _name and not _value:
-                break  # we don't want to do anything here?
+                logger.info(
+                    "name and value not provided for additional metadata row, skipping"
+                )
             else:
                 raise RequiredInfoNotFound(
                     "Type and value are required metadata fields."

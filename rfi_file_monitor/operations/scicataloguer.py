@@ -525,76 +525,76 @@ class SciCataloguer(Operation):
         return payload
 
     # Adds file specific payload data
-    def is_file_payload(self, _pl, file):
-        _pl.datasetName = (
+    def is_file_payload(self, _payload, file):
+        _payload.datasetName = (
             self.params.experiment_name
             + "/"
             + str(PurePosixPath(file.relative_filename))
         )
         fstats = Path(file.filename).stat()
-        _pl.size = fstats.st_size
+        _payload.size = fstats.st_size
 
         # Scientific metadata
         scientificMetadata = {}
-        _pl.scientificMetadata = (
+        _payload.scientificMetadata = (
             PayloadHelpers.scientific_metadata_concatenation(
                 scientificMetadata,
-                _pl.scientificMetadataDefaults,
+                _payload.scientificMetadataDefaults,
                 self.params.additional_metadata,
             )
         )
 
-        _pl.creationTime = (
+        _payload.creationTime = (
             datetime.fromtimestamp(
                 Path(file.filename).stat().st_ctime
             ).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
             + "Z"
         )
-        return _pl
+        return _payload
 
     # Adds directory specific payload data
-    def is_dir_payload(self, _pl, file):
-        _pl.datasetName = (
+    def is_dir_payload(self, _payload, file):
+        _payload.datasetName = (
             self.params.experiment_name
             + "/"
             + str(file.relative_filename.parts[-1])
         )
-        _pl.size = file._total_size
-        _pl.numberOfFiles = len(file._filelist)
+        _payload.size = file._total_size
+        _payload.numberOfFiles = len(file._filelist)
 
         # Scientific metadata
         scientificMetadata: Dict[str, Dict[str, str]] = {}
-        _pl.scientificMetadata = (
+        _payload.scientificMetadata = (
             PayloadHelpers.scientific_metadata_concatenation(
                 scientificMetadata,
-                _pl.scientificMetadataDefaults,
+                _payload.scientificMetadataDefaults,
                 self.params.additional_metadata,
             )
         )
 
-        _pl.creationTime = (
+        _payload.creationTime = (
             datetime.fromtimestamp(file._filelist_timestamp).strftime(
                 "%Y-%m-%dT%H:%M:%S.%f"
             )[:-3]
             + "Z"
         )
 
-        return _pl
+        return _payload
 
     # Adds raw dataset specific data
-    def is_raw_payload(self, _pl, _data_format):
-        _pl.creationLocation = str(self.params.instrument_choice)
-        _pl.principalInvestigator = self.params.investigator
-        _pl.endTime = _pl.creationTime
-        _pl.dataFormat = _data_format
-        return _pl
+    def is_raw_payload(self, _payload, _data_format):
+        _payload.creationLocation = str(self.params.instrument_choice)
+        _payload.principalInvestigator = self.params.investigator
+        _payload.endTime = _payload.creationTime
+        _payload.dataFormat = _data_format
+        return _payload
 
     # Adds derived dataset specific data
-    def is_derived_payload(self, _pl):
-        _pl.investigator = self.params.investigator
-        _pl.inputDatasets = self.params.input_datasets.split(",")
-        _pl.usedSoftware = self.params.used_software.split(",")
-        return _pl
+    def is_derived_payload(self, _payload):
+        _payload.investigator = self.params.investigator
+        _payload.inputDatasets = self.params.input_datasets.split(",")
+        _payload.usedSoftware = self.params.used_software.split(",")
+        return _payload
 
     # Inserts a dataset into Scicat
     def insert_payload(self, payload, scicat_session):

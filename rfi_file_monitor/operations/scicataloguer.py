@@ -379,7 +379,6 @@ class SciCataloguer(Operation):
 
     # Makes input datasets/used software boxes editable if dataset is derived
     def checkbox_toggled(self, checkbox):
-        # Set class attribute for derived/raw dataset
         if checkbox.get_active() == True:
             self.params.derived_dataset = True
             self._input_datasets_entry.set_sensitive(True)
@@ -412,19 +411,6 @@ class SciCataloguer(Operation):
             raise RequiredInfoNotFound(
                 "An instrument is required. Please provide an instrument via the instrument-prefs.yml file in the instrument-config directory instead of using the default test instrument. Instrument choice can be changed in Preferences."
             )
-
-    def checkbox_toggled(self, checkbox):
-        # Set class attribute for derived/raw dataset
-        if checkbox.get_active() == True:
-            self.params.derived_dataset = True
-            self._input_datasets_entry.set_sensitive(True)
-            self._used_software_entry.set_sensitive(True)
-            return True
-        elif checkbox.get_active() == False:
-            self.params.derived_dataset = False
-            self._input_datasets_entry.set_sensitive(False)
-            self._used_software_entry.set_sensitive(False)
-            return False
 
     def preflight_check(self):
         self._preflight_check(self.params)

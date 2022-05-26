@@ -729,12 +729,12 @@ class SciCataloguer(Operation):
                 metadata = PayloadHelpers.implement_parser(
                     self.instr_dict, self.params.technique, k, v
                 )
-                for k, v in metadata.items():
-                    if k in scientificMetadata.keys():
-                        if scientificMetadata[k] == v:
+                for key, value in metadata.items():
+                    if key in scientificMetadata.keys():
+                        if scientificMetadata[key] == value:
                             continue
                     else:
-                        scientificMetadata[k] = v
+                        scientificMetadata[key] = value
         _payload.scientificMetadata = (
             PayloadHelpers.scientific_metadata_concatenation(
                 scientificMetadata,

@@ -184,10 +184,20 @@ if INSTRUMENT_CONFIG_FILEPATH.is_file():
         yaml_file=INSTRUMENT_CONFIG_FILEPATH,
         description="This is the instrument description. Instruments can be specified in a instrument-prefs.yml file inside the instrument-config directory.",
     )
-else:
+elif TEST_INSTRUMENT_CONFIG_FILEPATH.is_file():
     InstrumentSetup = DictPreference.from_file(
         key="Instrument Setup",
         yaml_file=TEST_INSTRUMENT_CONFIG_FILEPATH,
+        description="This is a default instrument. Instruments can be specified in a instrument-prefs.yml file inside the instrument-config directory.",
+    )
+else:
+    InstrumentSetup = DictPreference(
+        key="Instrument Setup",
+        values={
+            "test-instrument": {
+                "techniques": {"test-instrument-technique": ["None"]}
+            },
+        },
         description="This is a default instrument. Instruments can be specified in a instrument-prefs.yml file inside the instrument-config directory.",
     )
 

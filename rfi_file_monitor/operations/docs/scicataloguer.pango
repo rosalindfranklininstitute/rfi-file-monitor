@@ -3,8 +3,8 @@
 <span size="x-large">Purpose</span>
 
 This operation creates metadata entries for data taken on the instrument and uploads them into the catalogue. 
-It automatically captures the required data from the previous operations. It can be used for both raw and derived datasets. 
-Uses pyscicat module to establish connection to SciCat. SciCat documentation can be found <a href="https://scicatproject.github.io/documentation/">here</a>.
+It automatically captures the required data from the previous operations. It can be used for both raw and derived datasets.
+SciCat documentation can be found <a href="https://scicatproject.github.io/documentation/">here</a>.
 
 <span size="x-large">Options</span>
 
@@ -16,10 +16,9 @@ Uses pyscicat module to establish connection to SciCat. SciCat documentation can
 * <b>Owner Group</b>
 * <b>Email</b>: contact email for the owner of the dataset
 * <b>Orcid</b>: orcid of the owner of the dataset
-* <b>Principal Invesigator</b>
+* <b>Principal Investigator</b>
 * <b>Experiment name</b>: name of the experiment 
-* <b>Instrument</b>: instrument used
-* <b>Technique</b>: the techique used by the instrument
+* <b>Technique</b>: the techique used by the instrument set in preferences
 * <b>Input Datasets</b>: for derived datasets only, comma-separated list of SciCat locations for raw datasets used
 * <b>Used Software</b>: for derived datasets only, comma-separated list of software used to derive analysis results
 

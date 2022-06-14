@@ -173,7 +173,7 @@ class TestPayloadGeneration(TestCase):
         derived_payload.usedSoftware = self.usedSoftware
         derived_payload.scientificMetadata = (
             PayloadHelpers.scientific_metadata_concatenation(
-                scientificMetadata, payload.scientificMetadataDefaults
+                scientificMetadata, payload.scientificMetadataDefaults, {}
             )
         )
         del derived_payload.scientificMetadataDefaults
@@ -255,7 +255,7 @@ class TestPayloadGeneration(TestCase):
         derived_payload.usedSoftware = self.usedSoftware
         derived_payload.scientificMetadata = (
             PayloadHelpers.scientific_metadata_concatenation(
-                scientificMetadata, payload.scientificMetadataDefaults
+                scientificMetadata, payload.scientificMetadataDefaults, {}
             )
         )
         del derived_payload.scientificMetadataDefaults

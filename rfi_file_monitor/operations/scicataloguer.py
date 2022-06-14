@@ -698,9 +698,8 @@ class PayloadHelpers:
     def scientific_metadata_concatenation(
         cls, scientific_metadata, defaults, additional
     ):
-        scientific_metadata |= defaults
-        scientific_metadata |= additional
-        return scientific_metadata
+        _metadata = {**scientific_metadata, **defaults, **additional}
+        return _metadata
 
 
 class ParserNotFound(Exception):

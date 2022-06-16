@@ -598,7 +598,7 @@ class SciCataloguer(Operation):
         except Exception as e:
             raise Exception(f"Could not catalogue payload in scicat: {e}")
 
-    # Upserts dataset in Scicat
+    # Updates or inserts dataset in Scicat
     def upsert_payload(self, payload, scicat_session):
         # Ensure that raw/derived datasets don't overwrite each other
         query_results = scicat_session.get_datasets(
@@ -606,30 +606,15 @@ class SciCataloguer(Operation):
         )
         if query_results:
             if query_results[0]["datasetName"] == payload.datasetName:
-                logger.info("pretending to upsert payload")
                 try:
-                    if payload.type == "raw":
-                        r = scicat_session.upsert_raw_dataset(
-                            payload,
-                            {
-                                "datasetName": payload.datasetName,
-                                "type": payload.type,
-                            },
-                        )
-                    else:
-                        r = scicat_session.upsert_derived_dataset(
-                            payload,
-                            {
-                                "datasetName": payload.datasetName,
-                                "type": payload.type,
-                            },
-                        )
-                    if r:
-                        logger.info(f"Payload upserted, PID: {r}")
-                except Exception as e:
-                    raise Exception(
-                        f"Could not catalogue payload in scicat: {e}"
+                    r = scicat_session.update_dataset(
+                        payload,
+                        query_results[0]["pid"],
                     )
+                    if r:
+                        logger.info(f"Payload updated, PID: {r}")
+                except Exception as e:
+                    raise Exception(f"Could not update payload in scicat: {e}")
             else:
                 self.insert_payload(payload, scicat_session)
         else:

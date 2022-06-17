@@ -9,6 +9,10 @@ from munch import Munch
 
 from .operation import Operation
 from .engine import Engine
+from rfi_file_monitor.utils import (
+    INSTRUMENT_CONFIG_FILEPATH,
+    TEST_INSTRUMENT_CONFIG_FILEPATH,
+)
 
 
 class Preference(ABC):
@@ -173,6 +177,29 @@ IgnoredFilePatternsPreference = StringPreference(
     description="These comma separated file patterns will be added automatically to the ignored patterns of all operations and engines that support them.",
     default="*.swp,*.swx,*.DS_Store",
 )
+
+if INSTRUMENT_CONFIG_FILEPATH.is_file():
+    InstrumentSetup = DictPreference.from_file(
+        key="Instrument Setup",
+        yaml_file=INSTRUMENT_CONFIG_FILEPATH,
+        description="This is the instrument description. Instruments can be specified in a instrument-prefs.yml file inside the instrument-config directory.",
+    )
+elif TEST_INSTRUMENT_CONFIG_FILEPATH.is_file():
+    InstrumentSetup = DictPreference.from_file(
+        key="Instrument Setup",
+        yaml_file=TEST_INSTRUMENT_CONFIG_FILEPATH,
+        description="This is a default instrument. Instruments can be specified in a instrument-prefs.yml file inside the instrument-config directory.",
+    )
+else:
+    InstrumentSetup = DictPreference(
+        key="Instrument Setup",
+        values={
+            "test-instrument": {
+                "techniques": {"test-instrument-technique": ["None"]}
+            },
+        },
+        description="This is a default instrument. Instruments can be specified in a instrument-prefs.yml file inside the instrument-config directory.",
+    )
 
 
 class Preferences(NamedTuple):

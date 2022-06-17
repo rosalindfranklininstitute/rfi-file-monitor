@@ -1,19 +1,21 @@
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk
+from gi.repository import Gtk, Gio
 from datetime import datetime
+from munch import Munch
 from ..operation import Operation
 from ..file import File
 from ..files.directory import Directory
 from ..files.regular_file import RegularFile
 from ..utils.decorators import supported_filetypes, with_pango_docs
+from ..preferences import Preference, InstrumentSetup
 from pathlib import PurePath, Path, PurePosixPath
 from pyscicat.client import ScicatClient
 from pyscicat.model import Dataset, RawDataset, DerivedDataset
 import logging
 from urllib.parse import urlparse
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Any
 from ..version import __version__ as core_version
 
 logger = logging.getLogger(__name__)
@@ -26,6 +28,13 @@ class SciCataloguer(Operation):
 
     def __init__(self, *args, **kwargs):
         Operation.__init__(self, *args, **kwargs)
+
+        current_app = Gio.Application.get_default()
+        instrument_prefs: Munch[
+            Preference, Any
+        ] = current_app.get_preferences().settings
+        self.instrument_choice = instrument_prefs[InstrumentSetup]
+        self.instr_dict = InstrumentSetup.values[self.instrument_choice]
 
         self._grid = Gtk.Grid(
             row_spacing=5,
@@ -284,11 +293,10 @@ class SciCataloguer(Operation):
         )
         self._grid.attach(self._exp_name_entry, 3, 4, 1, 1)
 
-        # Instrument
-        # TO DO - this is temporary until instrument preferences configured
+        # Technique
         self._grid.attach(
             Gtk.Label(
-                label=" Instrument ",
+                label=" Technique ",
                 halign=Gtk.Align.CENTER,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
@@ -299,41 +307,15 @@ class SciCataloguer(Operation):
             1,
             1,
         )
-        self._instrument_entry = self.register_widget(
-            Gtk.Entry(
-                halign=Gtk.Align.FILL,
-                valign=Gtk.Align.CENTER,
-                hexpand=True,
-                vexpand=False,
-            ),
-            "instrument_choice",
-        )
-        self._grid.attach(self._instrument_entry, 1, 5, 1, 1)
+        # create combo box
+        combo = Gtk.ComboBoxText.new()
+        for k in self.instr_dict["techniques"].keys():
+            combo.append_text(k)
+        if len(self.instr_dict["techniques"].keys()) == 1:
+            combo.set_active(0)
 
-        # Technique
-        self._grid.attach(
-            Gtk.Label(
-                label=" Technique ",
-                halign=Gtk.Align.CENTER,
-                valign=Gtk.Align.CENTER,
-                hexpand=False,
-                vexpand=False,
-            ),
-            2,
-            5,
-            1,
-            1,
-        )
-        self._technique_entry = self.register_widget(
-            Gtk.Entry(
-                halign=Gtk.Align.FILL,
-                valign=Gtk.Align.CENTER,
-                hexpand=True,
-                vexpand=False,
-            ),
-            "technique",
-        )
-        self._grid.attach(self._technique_entry, 3, 5, 1, 1)
+        widget = self.register_widget(combo, "technique")
+        self._grid.attach(widget, 1, 5, 1, 1)
 
         # Input boxes for derived dataset specific fields
         self._grid.attach(
@@ -397,7 +379,6 @@ class SciCataloguer(Operation):
 
     # Makes input datasets/used software boxes editable if dataset is derived
     def checkbox_toggled(self, checkbox):
-        # Set class attribute for derived/raw dataset
         if checkbox.get_active() == True:
             self.params.derived_dataset = True
             self._input_datasets_entry.set_sensitive(True)
@@ -423,6 +404,13 @@ class SciCataloguer(Operation):
             raise RequiredInfoNotFound("Owner required")
         if not params.owner_group:
             raise RequiredInfoNotFound("Owner group required")
+
+    @staticmethod
+    def _check_instrument(instrument_choice):
+        if instrument_choice == "test-instrument":
+            raise RequiredInfoNotFound(
+                "An instrument is required. Please provide an instrument via the instrument-prefs.yml file in the instrument-config directory instead of using the default test instrument. Instrument choice can be changed in Preferences."
+            )
 
     def preflight_check(self):
         self._preflight_check(self.params)
@@ -520,6 +508,11 @@ class SciCataloguer(Operation):
             payload = RawPayload(**default_payload.dict())
             payload = self.is_raw_payload(payload, data_format)
 
+        # Check for instrument id
+        # Add instrument detail
+        if "id" in self.instr_dict:
+            payload.instrumentId = str(self.instr_dict["id"])
+
         # Remove unneeded metadata defaults
         del payload.scientificMetadataDefaults
         return payload
@@ -583,7 +576,7 @@ class SciCataloguer(Operation):
 
     # Adds raw dataset specific data
     def is_raw_payload(self, _payload, _data_format):
-        _payload.creationLocation = str(self.params.instrument_choice)
+        _payload.creationLocation = str(self.instrument_choice)
         _payload.principalInvestigator = self.params.investigator
         _payload.endTime = _payload.creationTime
         _payload.dataFormat = _data_format
@@ -605,8 +598,7 @@ class SciCataloguer(Operation):
         except Exception as e:
             raise Exception(f"Could not catalogue payload in scicat: {e}")
 
-    # Upserts dataset in Scicat
-    # This won't work with upserting until features added into PySciCat
+    # Updates or inserts dataset in Scicat
     def upsert_payload(self, payload, scicat_session):
         # Ensure that raw/derived datasets don't overwrite each other
         query_results = scicat_session.get_datasets(
@@ -614,17 +606,15 @@ class SciCataloguer(Operation):
         )
         if query_results:
             if query_results[0]["datasetName"] == payload.datasetName:
-                logger.info("pretending to upsert payload")
-                # try:
-                # if payload.type == "raw":
-                # r = scicat_session.upsert_raw_dataset(payload, {"datasetName": payload.datasetName, "type": payload.type})
-                # else:
-                # r = scicat_session.upsert_derived_dataset(payload, {"datasetName": payload.datasetName, "type": payload.type})
-                # if r:
-                #    logger.info(f"Payload upserted, PID: {r}")
-                # except Exception as e:
-                #   raise Exception(f"Could not catalogue payload in scicat: {e}")
-                #   return str(e)
+                try:
+                    r = scicat_session.update_dataset(
+                        payload,
+                        query_results[0]["pid"],
+                    )
+                    if r:
+                        logger.info(f"Payload updated, PID: {r}")
+                except Exception as e:
+                    raise Exception(f"Could not update payload in scicat: {e}")
             else:
                 self.insert_payload(payload, scicat_session)
         else:
@@ -693,9 +683,8 @@ class PayloadHelpers:
     def scientific_metadata_concatenation(
         cls, scientific_metadata, defaults, additional
     ):
-        scientific_metadata |= defaults
-        scientific_metadata |= additional
-        return scientific_metadata
+        _metadata = {**scientific_metadata, **defaults, **additional}
+        return _metadata
 
 
 class ParserNotFound(Exception):

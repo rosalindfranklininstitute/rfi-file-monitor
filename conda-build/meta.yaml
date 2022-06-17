@@ -40,6 +40,8 @@ requirements:
     - pyscicat
 
 test:
+  source_files:
+    - tests/**
   imports:
     - rfi_file_monitor
     - rfi_file_monitor.application
@@ -70,6 +72,7 @@ test:
     - rfi_file_monitor.operations.s3_downloader
     - rfi_file_monitor.operations.s3_uploader
     - rfi_file_monitor.operations.sftp_uploader
+    - rfi_file_monitor.operations.scicataloguer
     - rfi_file_monitor.preferences
     - rfi_file_monitor.preferenceswindow
     - rfi_file_monitor.queue_manager
@@ -84,6 +87,7 @@ test:
     - rfi_file_monitor.version
   commands:
     - pip check
+    - nose2 -v --log-level DEBUG
     - test -f $SP_DIR/rfi_file_monitor/docs/queue_manager.pango  # [unix]
     - test -f $SP_DIR/rfi_file_monitor/operations/docs/template.pango  # [unix]
     - test -f $SP_DIR/rfi_file_monitor/engines/docs/template.pango  # [unix]
@@ -92,6 +96,7 @@ test:
     - if not exist %SP_DIR%\\rfi_file_monitor\\engines\\docs\\\template.pango exit 1  # [win]
   requires:
     - pip
+    - nose2
 
 about:
   home: https://github.com/RosalindFranklinInstitute/rfi-file-monitor

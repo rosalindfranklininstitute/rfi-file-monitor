@@ -15,7 +15,6 @@ from threading import Thread
 import inspect
 import collections.abc
 import traceback
-
 from .utils import (
     PATTERN_PLACEHOLDER_TEXT,
     MONITOR_YAML_VERSION,
@@ -114,60 +113,55 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         # for action_entry in action_entries:
         #     add_action_entries(self, *action_entry)
 
-       # self.set_border_width(10)
         main_grid = Gtk.Grid(row_spacing=10, **EXPAND_AND_FILL)
         self.set_child(main_grid)
        #
-       #  controls_frame = Gtk.Frame(
-       #      label="File Monitor Controls",
-       #      halign=Gtk.Align.FILL,
-       #      valign=Gtk.Align.FILL,
-       #      hexpand=True,
-       #      vexpand=False,
-       #  )
-       #  main_grid.attach(controls_frame, 0, 0, 1, 1)
-       #
-       #  controls_grid = Gtk.Grid(
-       #      halign=Gtk.Align.FILL,
-       #      valign=Gtk.Align.FILL,
-       #      hexpand=True,
-       #      vexpand=False,
-       #  )
-       #
-       #  controls_grid_basic = Gtk.Grid(
-       #      **EXPAND_AND_FILL, #border_width=10,
-       #       column_spacing=5, row_spacing=5
-       #  )
-       #  controls_frame.add(controls_grid)
-       #  controls_grid.attach(controls_grid_basic, 0, 0, 1, 1)
-       #  monitor_play_button = Gtk.Button(
-       #      action_name="win.play",
-       #      image=Gtk.Image(
-       #          icon_name="media-playback-start", icon_size=Gtk.IconSize.DIALOG
-       #      ),
-       #      halign=Gtk.Align.CENTER,
-       #      valign=Gtk.Align.END,
-       #      hexpand=False,
-       #      vexpand=False,
-       #  )
-       #  controls_grid_basic.attach(monitor_play_button, 0, 0, 1, 1)
-       #  monitor_stop_button = Gtk.Button(
-       #      action_name="win.stop",
-       #      image=Gtk.Image(
-       #          icon_name="media-playback-stop", icon_size=Gtk.IconSize.DIALOG
-       #      ),
-       #      halign=Gtk.Align.CENTER,
-       #      valign=Gtk.Align.START,
-       #      hexpand=False,
-       #      vexpand=False,
-       #  )
-       #  controls_grid_basic.attach(monitor_stop_button, 0, 1, 1, 1)
-       #
-       #  # turn the buttons off for now
-       #  # play will become active when operations have been added
-       #  self.lookup_action("play").set_enabled(False)
-       #  self.lookup_action("stop").set_enabled(False)
-       #
+        controls_frame = Gtk.Frame(
+            label="File Monitor Controls",
+            halign=Gtk.Align.FILL,
+            valign=Gtk.Align.FILL,
+            hexpand=True,
+            vexpand=False,
+        )
+        main_grid.attach(controls_frame, 0, 0, 1, 1)
+
+        controls_grid = Gtk.Grid(
+            halign=Gtk.Align.FILL,
+            valign=Gtk.Align.FILL,
+            hexpand=True,
+            vexpand=False,
+        )
+
+        controls_grid_basic = Gtk.Grid(
+            **EXPAND_AND_FILL,
+             column_spacing=5, row_spacing=5
+        )
+        controls_frame.set_child(controls_grid)
+        controls_grid.attach(controls_grid_basic, 0, 0, 1, 1)
+        monitor_play_button = Gtk.Button(
+            action_name="win.play",
+            icon_name="media-playback-start",
+            halign=Gtk.Align.CENTER,
+            valign=Gtk.Align.END,
+            hexpand=False,
+            vexpand=False,
+        )
+        controls_grid_basic.attach(monitor_play_button, 0, 0, 1, 1)
+        monitor_stop_button = Gtk.Button(
+            action_name="win.stop",
+            icon_name="media-playback-stop",
+            halign=Gtk.Align.CENTER,
+            valign=Gtk.Align.START,
+            hexpand=False,
+            vexpand=False,
+        )
+        controls_grid_basic.attach(monitor_stop_button, 0, 1, 1, 1)
+
+        # turn the buttons off for now
+        # play will become active when operations have been added
+        self.lookup_action("play").set_enabled(False)
+        self.lookup_action("stop").set_enabled(False)
+
        #  # add the notebook with the engines
        #  self._engines_notebook = Gtk.Notebook(
        #      **EXPAND_AND_FILL,
@@ -350,7 +344,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         #     hexpand=True,
         #     vexpand=True,
         # )
-        # operations_frame.add(operations_scrolled_window)
+        # operations_frame.set_child(operations_scrolled_window)
         # self._operations_box = OperationListBox(
         #     selection_mode=Gtk.SelectionMode.NONE,
         #     halign=Gtk.Align.FILL,
@@ -358,7 +352,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         #     hexpand=True,
         #     vexpand=True,
         # )
-        # operations_scrolled_window.add(self._operations_box)
+        # operations_scrolled_window.set_child(self._operations_box)
         #
         # output_frame = Gtk.Frame(
         #     label="Processing Queue",
@@ -470,14 +464,14 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     #
     #     files_frame = Gtk.Frame(border_width=5)
     #     files_scrolled_window = Gtk.ScrolledWindow(**EXPAND_AND_FILL)
-    #     files_frame.add(files_scrolled_window)
+    #     files_frame.set_child(files_scrolled_window)
     #     output_grid.attach(files_frame, 0, 1, 1, 1)
-    #     output_frame.add(output_grid)
+    #     output_frame.set_child(output_grid)
     #
     #     files_tree_view = Gtk.TreeView(
     #         model=self._files_tree_model_filter, border_width=5
     #     )
-    #     files_scrolled_window.add(files_tree_view)
+    #     files_scrolled_window.set_child(files_tree_view)
     #
     #     renderer = Gtk.CellRendererText()
     #     column = Gtk.TreeViewColumn(
@@ -708,7 +702,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     #     new_operation = _class(appwindow=self)
     #     new_operation.index = len(self._operations_box)
     #     row = Gtk.ListBoxRow(selectable=False, activatable=False)
-    #     row.add(new_operation)
+    #     row.set_child(new_operation)
     #     self._operations_box.insert(row, -1)
     #     row.show_all()
     #     self._update_monitor_switch_sensitivity()

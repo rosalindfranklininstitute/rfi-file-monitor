@@ -18,13 +18,14 @@ import traceback
 from .utils import (
     PATTERN_PLACEHOLDER_TEXT,
     MONITOR_YAML_VERSION,
-#     OperationListBox,
+    OperationListBox,
  )
 # from .utils.paramswindow import ParamsWindow
 from .utils import (
 #     add_action_entries,
     EXPAND_AND_FILL,
 #     LongTaskWindow,
+
 #     class_in_object_iterable,
 )
 # from .file import FileStatus, File
@@ -159,35 +160,35 @@ class ApplicationWindow(Gtk.ApplicationWindow):
 
         # turn the buttons off for now
         # play will become active when operations have been added
-        self.lookup_action("play").set_enabled(False)
-        self.lookup_action("stop").set_enabled(False)
+        # self.lookup_action("play").set_enabled(False)
+        # self.lookup_action("stop").set_enabled(False)
 
-       #  # add the notebook with the engines
-       #  self._engines_notebook = Gtk.Notebook(
-       #      **EXPAND_AND_FILL,
-       #      scrollable=True,
-       #  )
-       #  controls_grid_basic.attach(self._engines_notebook, 1, 0, 6, 2)
-
-       # # self._engines: List[Engine] = list()
-       #
-       #  for engine_cls in self.get_property(
-       #      "application"
-       #  ).known_engines.values():
-       #      if not (self._prefs.engines[engine_cls] or force_all):
-       #          continue
-       #      engine = engine_cls(appwindow=self)
-       #      engine_grid = Gtk.Grid(
-       #          **EXPAND_AND_FILL, row_spacing=5, border_width=5
-       #      )
-       #      engine_grid.attach(engine, 0, 0, 1, 1)
-       #      buttons_grid = Gtk.Grid(
-       #          halign=Gtk.Align.FILL,
-       #          valign=Gtk.Align.CENTER,
-       #          hexpand=True,
-       #          vexpand=False,
-       #          column_spacing=5,
-       #      )
+        # add the notebook with the engines
+        # self._engines_notebook = Gtk.Notebook(
+        #     **EXPAND_AND_FILL,
+        #     scrollable=True,
+        # )
+        # controls_grid_basic.attach(self._engines_notebook, 1, 0, 6, 2)
+        #
+        # self._engines: List[Engine] = list()
+        #
+        # for engine_cls in self.get_property(
+        #     "application"
+        # ).known_engines.values():
+        #     if not (self._prefs.engines[engine_cls] or force_all):
+        #         continue
+        #     engine = engine_cls(appwindow=self)
+        #     engine_grid = Gtk.Grid(
+        #         **EXPAND_AND_FILL, row_spacing=5, border_width=5
+        #     )
+        #     engine_grid.attach(engine, 0, 0, 1, 1)
+        #     buttons_grid = Gtk.Grid(
+        #         halign=Gtk.Align.FILL,
+        #         valign=Gtk.Align.CENTER,
+        #         hexpand=True,
+        #         vexpand=False,
+        #         column_spacing=5,
+        #     )
        #      # add button and dialog for advanced settings if necessary
        #      if (
        #          engine_cls
@@ -319,49 +320,49 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         #     self.lookup_action("add-operation").set_enabled(False)
         #     self._controls_operations_combo.set_sensitive(False)
         #
-        # paned = Gtk.Paned(
-        #     wide_handle=True,
-        #     orientation=Gtk.Orientation.VERTICAL,
-        #     halign=Gtk.Align.FILL,
-        #     valign=Gtk.Align.FILL,
-        #     hexpand=True,
-        #     vexpand=True,
-        # )
-        # main_grid.attach(paned, 0, 1, 1, 1)
-        #
-        # operations_frame = Gtk.Frame(
-        #     label="List of Operations",
-        #     halign=Gtk.Align.FILL,
-        #     valign=Gtk.Align.FILL,
-        #     hexpand=True,
-        #     vexpand=True,
-        # )
-        # paned.pack1(operations_frame, resize=True, shrink=False)
-        # operations_scrolled_window = Gtk.ScrolledWindow(
-        #     hscrollbar_policy=Gtk.PolicyType.NEVER,
-        #     halign=Gtk.Align.FILL,
-        #     valign=Gtk.Align.FILL,
-        #     hexpand=True,
-        #     vexpand=True,
-        # )
-        # operations_frame.set_child(operations_scrolled_window)
-        # self._operations_box = OperationListBox(
-        #     selection_mode=Gtk.SelectionMode.NONE,
-        #     halign=Gtk.Align.FILL,
-        #     valign=Gtk.Align.FILL,
-        #     hexpand=True,
-        #     vexpand=True,
-        # )
-        # operations_scrolled_window.set_child(self._operations_box)
-        #
-        # output_frame = Gtk.Frame(
-        #     label="Processing Queue",
-        #     halign=Gtk.Align.FILL,
-        #     valign=Gtk.Align.FILL,
-        #     hexpand=True,
-        #     vexpand=True,
-        # )
-        # paned.pack2(output_frame, resize=True, shrink=False)
+        paned = Gtk.Paned(
+            wide_handle=True,
+            orientation=Gtk.Orientation.VERTICAL,
+            halign=Gtk.Align.FILL,
+            valign=Gtk.Align.FILL,
+            hexpand=True,
+            vexpand=True,
+        )
+        main_grid.attach(paned, 0, 1, 1, 1)
+
+        operations_frame = Gtk.Frame(
+            label="List of Operations",
+            halign=Gtk.Align.FILL,
+            valign=Gtk.Align.FILL,
+            hexpand=True,
+            vexpand=True,
+        )
+        paned.set_start_child(operations_frame)
+        operations_scrolled_window = Gtk.ScrolledWindow(
+            hscrollbar_policy=Gtk.PolicyType.NEVER,
+            halign=Gtk.Align.FILL,
+            valign=Gtk.Align.FILL,
+            hexpand=True,
+            vexpand=True,
+        )
+        operations_frame.set_child(operations_scrolled_window)
+        self._operations_box = OperationListBox(
+            selection_mode=Gtk.SelectionMode.NONE,
+            halign=Gtk.Align.FILL,
+            valign=Gtk.Align.FILL,
+            hexpand=True,
+            vexpand=True,
+        )
+        operations_scrolled_window.set_child(self._operations_box)
+
+        output_frame = Gtk.Frame(
+            label="Processing Queue",
+            halign=Gtk.Align.FILL,
+            valign=Gtk.Align.FILL,
+            hexpand=True,
+            vexpand=True,
+        )
+        paned.set_end_child(output_frame)
         #
         # self._files_tree_model = Gtk.TreeStore(
         #     str,  # filename, relative to monitored directory

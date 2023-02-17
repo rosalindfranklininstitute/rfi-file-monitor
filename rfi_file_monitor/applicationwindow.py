@@ -20,7 +20,7 @@ from .utils import (
     MONITOR_YAML_VERSION,
     OperationListBox,
  )
-# from .utils.paramswindow import ParamsWindow
+from .utils.paramswindow import ParamsWindow
 from .utils import (
 #     add_action_entries,
     EXPAND_AND_FILL,
@@ -29,7 +29,7 @@ from .utils import (
 #     class_in_object_iterable,
 )
 # from .file import FileStatus, File
-# from .queue_manager import QueueManager
+from .queue_manager import QueueManager
 #from .engine import Engine
 # from .operation import Operation
 # from .preferences import Preferences
@@ -435,33 +435,33 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             vexpand=False,
         )
         filters_grid.attach(self._name_filter_entry, 3, 0, 1, 1)
-        # self._name_filter_entry.connect(
-        #     "changed", self._name_filter_entry_changed
-        # )
-        #
-        # queue_manager_button = Gtk.Button(
-        #     label="Queue Manager",
-        #     action_name="win.queue-manager",
-        #     halign=Gtk.Align.END,
-        #     valign=Gtk.Align.CENTER,
-        #     hexpand=True,
-        #     vexpand=False,
-        # )
-       # filters_grid.attach(queue_manager_button, 4, 0, 1, 1)
-       # self._queue_manager = QueueManager(self)
-        #self._queue_manager_window = ParamsWindow(
-         #   self._queue_manager, self, "Queue Manager"
-        #)
-    #
-    #     help_queue_manager_button = Gtk.Button(
-    #         label="Help",
-    #         action_name="win.help-queue-manager",
-    #         halign=Gtk.Align.END,
-    #         valign=Gtk.Align.CENTER,
-    #         hexpand=False,
-    #         vexpand=False,
-    #     )
-    #     filters_grid.attach(help_queue_manager_button, 5, 0, 1, 1)
+        self._name_filter_entry.connect(
+            "changed", self._name_filter_entry_changed
+        )
+
+        queue_manager_button = Gtk.Button(
+            label="Queue Manager",
+            action_name="win.queue-manager",
+            halign=Gtk.Align.END,
+            valign=Gtk.Align.CENTER,
+            hexpand=True,
+            vexpand=False,
+        )
+        filters_grid.attach(queue_manager_button, 4, 0, 1, 1)
+        self._queue_manager = QueueManager(self)
+        self._queue_manager_window = ParamsWindow(
+           self._queue_manager, self, "Queue Manager"
+        )
+
+        help_queue_manager_button = Gtk.Button(
+            label="Help",
+            action_name="win.help-queue-manager",
+            halign=Gtk.Align.END,
+            valign=Gtk.Align.CENTER,
+            hexpand=False,
+            vexpand=False,
+        )
+        filters_grid.attach(help_queue_manager_button, 5, 0, 1, 1)
     #
     #     files_frame = Gtk.Frame(border_width=5)
     #     files_scrolled_window = Gtk.ScrolledWindow(**EXPAND_AND_FILL)
@@ -732,8 +732,8 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         popover.show_all()
         popover.popup()
 
-    # def _name_filter_entry_changed(self, entry):
-    #     self._files_tree_model_filter.refilter()
+    def _name_filter_entry_changed(self, entry):
+        self._files_tree_model_filter.refilter()
 
     # def _time_cell_data_func(
     #     self, tree_column, cell, tree_model: Gtk.TreeStore, iter, func_data

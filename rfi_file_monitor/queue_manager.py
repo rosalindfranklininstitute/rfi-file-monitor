@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import gi
 
-gi.require_version("Gtk", "3.0")
+gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, GLib, GObject
 
 from typing import OrderedDict as OrderedDictType
@@ -44,7 +44,6 @@ class QueueManager(WidgetParams, Gtk.Grid):
             valign=Gtk.Align.FILL,
             hexpand=True,
             vexpand=True,
-            border_width=5,
             row_spacing=5,
         )
         Gtk.Grid.__init__(self, **kwargs)

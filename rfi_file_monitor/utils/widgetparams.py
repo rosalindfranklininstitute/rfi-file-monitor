@@ -1,6 +1,6 @@
 import gi
 
-gi.require_version("Gtk", "3.0")
+gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk
 from pathlib import Path
 from typing import Final, Any, List, final, Optional
@@ -44,11 +44,11 @@ class WidgetParams:
     ):
         self._params[param_name] = checkbutton.get_active()
 
-    @final
-    def _filechooserbutton_selection_changed_cb(
-        self, filechooserbutton: Gtk.FileChooserButton, param_name: str
-    ):
-        self._params[param_name] = filechooserbutton.get_filename()
+    # @final
+    # def _filechooserbutton_selection_changed_cb(
+    #     self, filechooserbutton: Gtk.FileChooserButton, param_name: str
+    # ):
+    #     self._params[param_name] = filechooserbutton.get_filename()
 
     @final
     def _spinbutton_value_changed_cb(

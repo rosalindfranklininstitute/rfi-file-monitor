@@ -1,6 +1,6 @@
 import gi
 
-gi.require_version("Gtk", "3.0")
+gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk
 
 import logging
@@ -15,12 +15,11 @@ class ParamsWindow(Gtk.Window):
         super().__init__(
             destroy_with_parent=True,
             transient_for=parent,
-            window_position=Gtk.WindowPosition.NONE,
-            border_width=5,
+            #window_position=Gtk.WindowPosition.NONE,
             title=title,
         )
-        self.add(contents)
-        contents.show_all()
+        self.set_child(contents)
+
 
     def do_delete_event(self, event):
         return self.hide_on_delete()

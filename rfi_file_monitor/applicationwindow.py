@@ -28,7 +28,7 @@ from .utils import (
 
 #     class_in_object_iterable,
 )
-# from .file import FileStatus, File
+from .file import FileStatus, File
 from .queue_manager import QueueManager
 #from .engine import Engine
 # from .operation import Operation
@@ -364,23 +364,23 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         )
         paned.set_end_child(output_frame)
         #
-        # self._files_tree_model = Gtk.TreeStore(
-        #     str,  # filename, relative to monitored directory
-        #     float,  # epoch time
-        #     int,  # status as code
-        #     str,  # operation name
-        #     float,  # operation progress
-        #     str,  # operation progress as string
-        #     str,  # background color
-        #     str,  # error message
-        # )
-        #
-        # self._files_tree_model_filter = Gtk.TreeModelFilter(
-        #     child_model=self._files_tree_model
-        # )
-        # self._files_tree_model_filter.set_visible_func(
-        #     self._files_tree_model_visible_func
-        # )
+        self._files_tree_model = Gtk.TreeStore(
+            str,  # filename, relative to monitored directory
+            float,  # epoch time
+            int,  # status as code
+            str,  # operation name
+            float,  # operation progress
+            str,  # operation progress as string
+            str,  # background color
+            str,  # error message
+        )
+
+        self._files_tree_model_filter = Gtk.TreeModelFilter(
+            child_model=self._files_tree_model
+        )
+        self._files_tree_model_filter.set_visible_func(
+            self._files_tree_model_visible_func
+        )
         #
         output_grid = Gtk.Grid(**EXPAND_AND_FILL, row_spacing=2)
 
@@ -462,52 +462,52 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             vexpand=False,
         )
         filters_grid.attach(help_queue_manager_button, 5, 0, 1, 1)
-    #
-    #     files_frame = Gtk.Frame(border_width=5)
-    #     files_scrolled_window = Gtk.ScrolledWindow(**EXPAND_AND_FILL)
-    #     files_frame.set_child(files_scrolled_window)
-    #     output_grid.attach(files_frame, 0, 1, 1, 1)
-    #     output_frame.set_child(output_grid)
-    #
-    #     files_tree_view = Gtk.TreeView(
-    #         model=self._files_tree_model_filter, border_width=5
-    #     )
-    #     files_scrolled_window.set_child(files_tree_view)
-    #
-    #     renderer = Gtk.CellRendererText()
-    #     column = Gtk.TreeViewColumn(
-    #         "Filename", renderer, text=0, cell_background=6
-    #     )
-    #     files_tree_view.append_column(column)
-    #
-    #     renderer = Gtk.CellRendererText()
-    #     column = Gtk.TreeViewColumn("Created", renderer, cell_background=6)
-    #     column.set_cell_data_func(
-    #         renderer, self._time_cell_data_func, func_data=dict(column=1)
-    #     )
-    #     files_tree_view.append_column(column)
-    #
-    #     renderer = Gtk.CellRendererText()
-    #     column = Gtk.TreeViewColumn("Status", renderer, cell_background=6)
-    #     column.set_cell_data_func(
-    #         renderer, self._status_cell_data_func, func_data=dict(column=2)
-    #     )
-    #     files_tree_view.append_column(column)
-    #
-    #     renderer = Gtk.CellRendererText()
-    #     column = Gtk.TreeViewColumn(
-    #         "Operation", renderer, text=3, cell_background=6
-    #     )
-    #     files_tree_view.append_column(column)
-    #
-    #     renderer = Gtk.CellRendererProgress()
-    #     column = Gtk.TreeViewColumn(
-    #         "Progress", renderer, value=4, text=5, cell_background=6
-    #     )
-    #     files_tree_view.append_column(column)
-    #
-    #     files_tree_view.set_tooltip_column(column=7)
-    #
+
+        files_frame = Gtk.Frame()
+        files_scrolled_window = Gtk.ScrolledWindow(**EXPAND_AND_FILL)
+        files_frame.set_child(files_scrolled_window)
+        output_grid.attach(files_frame, 0, 1, 1, 1)
+        output_frame.set_child(output_grid)
+
+        files_tree_view = Gtk.TreeView(
+            model=self._files_tree_model_filter
+        )
+        files_scrolled_window.set_child(files_tree_view)
+
+        renderer = Gtk.CellRendererText()
+        column = Gtk.TreeViewColumn(
+            "Filename", renderer, text=0, cell_background=6
+        )
+        files_tree_view.append_column(column)
+
+        renderer = Gtk.CellRendererText()
+        column = Gtk.TreeViewColumn("Created", renderer, cell_background=6)
+        column.set_cell_data_func(
+            renderer, self._time_cell_data_func, func_data=dict(column=1)
+        )
+        files_tree_view.append_column(column)
+
+        renderer = Gtk.CellRendererText()
+        column = Gtk.TreeViewColumn("Status", renderer, cell_background=6)
+        column.set_cell_data_func(
+            renderer, self._status_cell_data_func, func_data=dict(column=2)
+        )
+        files_tree_view.append_column(column)
+
+        renderer = Gtk.CellRendererText()
+        column = Gtk.TreeViewColumn(
+            "Operation", renderer, text=3, cell_background=6
+        )
+        files_tree_view.append_column(column)
+
+        renderer = Gtk.CellRendererProgress()
+        column = Gtk.TreeViewColumn(
+            "Progress", renderer, value=4, text=5, cell_background=6
+        )
+        files_tree_view.append_column(column)
+
+        files_tree_view.set_tooltip_column(column=7)
+
     #     # add status bar
     #     self._status_grid = Gtk.Grid(
     #         halign=Gtk.Align.FILL,
@@ -640,10 +640,10 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     #         else:
     #             self.lookup_action("play").set_enabled(False)
 
-    # def _files_tree_model_visible_func(self, model, iter, data):
-    #     # Children should always be shown when the parent is visible
-    #     if model.iter_parent(iter) is not None:
-    #         return True
+    def _files_tree_model_visible_func(self, model, iter, data):
+        # Children should always be shown when the parent is visible
+        if model.iter_parent(iter) is not None:
+            return True
 
         # status = FileStatus(model[iter][2])
         #
@@ -735,23 +735,23 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     def _name_filter_entry_changed(self, entry):
         self._files_tree_model_filter.refilter()
 
-    # def _time_cell_data_func(
-    #     self, tree_column, cell, tree_model: Gtk.TreeStore, iter, func_data
-    # ):
-    #     # we currently dont write a timestamp for the individual operations
-    #     if tree_model.iter_parent(iter) is not None:
-    #         cell.set_property("text", "")
-    #         return
-    #     epoch = tree_model.get_value(iter, func_data["column"])
-    #     date_string = ctime(epoch)
-    #     cell.set_property("text", date_string)
+    def _time_cell_data_func(
+        self, tree_column, cell, tree_model: Gtk.TreeStore, iter, func_data
+    ):
+        # we currently dont write a timestamp for the individual operations
+        if tree_model.iter_parent(iter) is not None:
+            cell.set_property("text", "")
+            return
+        epoch = tree_model.get_value(iter, func_data["column"])
+        date_string = ctime(epoch)
+        cell.set_property("text", date_string)
 
-    # def _status_cell_data_func(
-    #     self, tree_column, cell, tree_model, iter, func_data
-    # ):
-    #     status = tree_model.get_value(iter, func_data["column"])
-    #     status_string = str(FileStatus(status))
-    #     cell.set_property("text", status_string)
+    def _status_cell_data_func(
+        self, tree_column, cell, tree_model, iter, func_data
+    ):
+        status = tree_model.get_value(iter, func_data["column"])
+        status_string = str(FileStatus(status))
+        cell.set_property("text", status_string)
 
     # def on_minimize(self, action, param):
     #     self.iconify()
@@ -759,25 +759,25 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     # def on_close(self, action, param):
     #     self.close()
     #
-    # def on_status_filter(self, action, param, arg):
-    #     # invert state!
-    #     action.set_state(
-    #         GLib.Variant.new_boolean(not action.get_state().get_boolean())
-    #     )
-    #     self._files_tree_model_filter.refilter()
+    def on_status_filter(self, action, param, arg):
+        # invert state!
+        action.set_state(
+            GLib.Variant.new_boolean(not action.get_state().get_boolean())
+        )
+        self._files_tree_model_filter.refilter()
 
-    # def on_play(self, action, param):
-       # self.lookup_action("play").set_enabled(False)
-      #  task_window = LongTaskWindow(self)
-        #task_window.set_text("<b>Running preflight check</b>")
-       # task_window.show()
-       #  watch_cursor = Gdk.Cursor.new_for_display(
-       #      Gdk.Display.get_default(), Gdk.CursorType.WATCH
-       #  )
-       # task_window.get_window().set_cursor(watch_cursor)
+    def on_play(self, action, param):
+       self.lookup_action("play").set_enabled(False)
+       task_window = LongTaskWindow(self)
+       task_window.set_text("<b>Running preflight check</b>")
+       task_window.show()
+       watch_cursor = Gdk.Cursor.new_for_display(
+            Gdk.Display.get_default(), Gdk.CursorType.WATCH
+        )
+       task_window.get_window().set_cursor(watch_cursor)
 
-        # Cleanup tree model
-        # self._files_tree_model.clear()
+       # Cleanup tree model
+       self._files_tree_model.clear()
         #PreflightCheckThread(self, task_window).start()
     #
     # def on_stop(self, action, param):

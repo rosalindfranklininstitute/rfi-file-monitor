@@ -11,3 +11,4 @@ ldap_connect.json
 rfi-instruments-dev*.yml
 .vscode
 .DS_Store
+rfi-file-monitor-old

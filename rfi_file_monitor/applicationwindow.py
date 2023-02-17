@@ -4,7 +4,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
-from gi.repository import Gtk, GLib, Gdk
+from gi.repository import Gtk, GLib, Gdk, Gio
 import yaml
 
 from typing import Final, Dict, Any, List, Optional
@@ -179,7 +179,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         #         continue
         #     engine = engine_cls(appwindow=self)
         #     engine_grid = Gtk.Grid(
-        #         **EXPAND_AND_FILL, row_spacing=5, border_width=5
+        #         **EXPAND_AND_FILL, row_spacing=5
         #     )
         #     engine_grid.attach(engine, 0, 0, 1, 1)
         #     buttons_grid = Gtk.Grid(
@@ -382,59 +382,59 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         #     self._files_tree_model_visible_func
         # )
         #
-        # output_grid = Gtk.Grid(**EXPAND_AND_FILL, row_spacing=2, border_width=2)
-        #
-        # filters_grid = Gtk.Grid(
-        #     border_width=5,
-        #     halign=Gtk.Align.FILL,
-        #     valign=Gtk.Align.CENTER,
-        #     hexpand=True,
-        #     vexpand=False,
-        #     column_spacing=5,
-        # )
-        # output_grid.attach(filters_grid, 0, 0, 1, 1)
-        #
-        # label = Gtk.Label(
-        #     label="Queue Filters:",
-        #     halign=Gtk.Align.START,
-        #     valign=Gtk.Align.CENTER,
-        #     hexpand=False,
-        #     vexpand=False,
-        # )
-        # filters_grid.attach(label, 0, 0, 1, 1)
-        # state_filters_button = Gtk.Button(
-        #     label="Status",
-        #     halign=Gtk.Align.START,
-        #     valign=Gtk.Align.CENTER,
-        #     hexpand=False,
-        #     vexpand=False,
-        # )
-        # filters_grid.attach(state_filters_button, 1, 0, 1, 1)
-        #
-        # state_filter_popover = Gtk.Popover.new_from_model(
-        #     state_filters_button,
-        #     self.get_property("application").filter_popover_menu,
-        # )
-        # state_filters_button.connect(
-        #     "clicked", self._state_filters_button_clicked, state_filter_popover
-        # )
-        #
-        # label = Gtk.Label(
-        #     label="Name:",
-        #     halign=Gtk.Align.START,
-        #     valign=Gtk.Align.CENTER,
-        #     hexpand=False,
-        #     vexpand=False,
-        # )
-        # filters_grid.attach(label, 2, 0, 1, 1)
-        # self._name_filter_entry = Gtk.Entry(
-        #     placeholder_text=PATTERN_PLACEHOLDER_TEXT,
-        #     halign=Gtk.Align.START,
-        #     valign=Gtk.Align.CENTER,
-        #     hexpand=False,
-        #     vexpand=False,
-        # )
-        # filters_grid.attach(self._name_filter_entry, 3, 0, 1, 1)
+        output_grid = Gtk.Grid(**EXPAND_AND_FILL, row_spacing=2)
+
+        filters_grid = Gtk.Grid(
+            halign=Gtk.Align.FILL,
+            valign=Gtk.Align.CENTER,
+            hexpand=True,
+            vexpand=False,
+            column_spacing=5,
+        )
+        output_grid.attach(filters_grid, 0, 0, 1, 1)
+
+        label = Gtk.Label(
+            label="Queue Filters:",
+            halign=Gtk.Align.START,
+            valign=Gtk.Align.CENTER,
+            hexpand=False,
+            vexpand=False,
+        )
+        filters_grid.attach(label, 0, 0, 1, 1)
+        state_filters_button = Gtk.Button(
+            label="Status",
+            halign=Gtk.Align.START,
+            valign=Gtk.Align.CENTER,
+            hexpand=False,
+            vexpand=False,
+        )
+        filters_grid.attach(state_filters_button, 1, 0, 1, 1)
+
+
+        state_filter_popover = Gtk.PopoverMenu.new_from_model(
+
+            self.get_property("application").filter_popover_menu
+        )
+        state_filters_button.connect(
+            "clicked", self._state_filters_button_clicked, state_filter_popover
+        )
+
+        label = Gtk.Label(
+            label="Name:",
+            halign=Gtk.Align.START,
+            valign=Gtk.Align.CENTER,
+            hexpand=False,
+            vexpand=False,
+        )
+        filters_grid.attach(label, 2, 0, 1, 1)
+        self._name_filter_entry = Gtk.Entry(
+            placeholder_text=PATTERN_PLACEHOLDER_TEXT,
+            halign=Gtk.Align.START,
+            valign=Gtk.Align.CENTER,
+            hexpand=False,
+            vexpand=False,
+        )
+        filters_grid.attach(self._name_filter_entry, 3, 0, 1, 1)
         # self._name_filter_entry.connect(
         #     "changed", self._name_filter_entry_changed
         # )
@@ -728,10 +728,10 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     #                 op.index - 1
     #             )  # reordering all the indices of the ops.
 
-    # def _state_filters_button_clicked(self, button, popover):
-    #     popover.show_all()
-    #     popover.popup()
-    #
+    def _state_filters_button_clicked(self, button, popover):
+        popover.show_all()
+        popover.popup()
+
     # def _name_filter_entry_changed(self, entry):
     #     self._files_tree_model_filter.refilter()
 

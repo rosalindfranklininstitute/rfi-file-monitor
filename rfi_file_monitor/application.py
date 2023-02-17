@@ -90,8 +90,8 @@ class Application(Gtk.Application):
     #
     #     self._google_analytics_context.consumer_thread.should_exit = True
     #
-    # def do_startup(self):
-    #     Gtk.Application.do_startup(self)
+    def do_startup(self):
+        Gtk.Application.do_startup(self)
     #
     #     # this may need to be checked on other platforms as well
     #     if platform.system() == "Darwin":
@@ -107,12 +107,12 @@ class Application(Gtk.Application):
     #     builder = Gtk.Builder.new_from_string(commonmenus_str, -1)
     #     self.set_menubar(builder.get_object("menubar"))
     #
-    #     # get file filter menu
-    #     popover_filter_menu_str = importlib.resources.read_text(
-    #         "rfi_file_monitor.data", "filter-popover.ui"
-    #     )
-    #     builder = Gtk.Builder.new_from_string(popover_filter_menu_str, -1)
-    #     self.filter_popover_menu = builder.get_object("filter-popover-menu")
+        # get file filter menu
+        popover_filter_menu_str = importlib.resources.read_text(
+            "rfi_file_monitor.data", "filter-popover.ui"
+        )
+        builder = Gtk.Builder.new_from_string(popover_filter_menu_str, -1)
+        self.filter_popover_menu = builder.get_object("filter-popover-menu")
     #
     #     action_entries = (
     #         ("about", self.on_about),

@@ -43,10 +43,10 @@ def main():
     log_handler_stream.setLevel(logging.DEBUG)
     monitor_logger.addHandler(log_handler_stream)
 
-    # log to bugsnag
-    log_handler_bugsnag = BugsnagHandler()
-    log_handler_bugsnag.setLevel(logging.WARNING)
-    monitor_logger.addHandler(log_handler_bugsnag)
+    # # log to bugsnag
+    # log_handler_bugsnag = BugsnagHandler()
+    # log_handler_bugsnag.setLevel(logging.WARNING)
+    # monitor_logger.addHandler(log_handler_bugsnag)
 
     app = Application()
     rv = app.run(sys.argv)

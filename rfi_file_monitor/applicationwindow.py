@@ -22,9 +22,9 @@ from .utils import (
  )
 from .utils.paramswindow import ParamsWindow
 from .utils import (
-#     add_action_entries,
+    add_action_entries,
     EXPAND_AND_FILL,
-#     LongTaskWindow,
+     LongTaskWindow,
 
 #     class_in_object_iterable,
 )
@@ -32,8 +32,8 @@ from .file import FileStatus, File
 from .queue_manager import QueueManager
 #from .engine import Engine
 # from .operation import Operation
-# from .preferences import Preferences
-
+from .preferences import Preferences
+from .menus.filter_popover_menu import FilterPopoverMenu
 logger = logging.getLogger(__name__)
 
 
@@ -44,75 +44,74 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     def __init__(self, force_all=False, **kwargs):
         Gtk.ApplicationWindow.__init__(self, **kwargs)
 
-        # self._prefs: Preferences = self.get_property(
-        #     "application"
-        # ).get_preferences()
-        #
-        # self._preflight_check_metadata: Final[
-        #     Dict[int, Dict[str, Any]]
-        # ] = dict()
-        # self._yaml_file: str = None
-        #
-        # self.set_default_size(1000, 1000)
-        #
-        # action_entries = (
-        #     ("save", self.on_save),
-        #     ("save-as", self.on_save_as),
-        #     ("close", self.on_close),
-        #     ("minimize", self.on_minimize),
-        #     ("play", self.on_play),
-        #     ("stop", self.on_stop),
-        #     ("add-operation", self.on_add_operation),
-        #     ("queue-manager", self.on_open_queue_manager),
-        #     ("help-queue-manager", self.on_open_queue_manager_help),
-        #     (
-        #         "status-filter-created",
-        #         self.on_status_filter,
-        #         None,
-        #         GLib.Variant.new_boolean(True),
-        #         FileStatus.CREATED,
-        #     ),
-        #     (
-        #         "status-filter-saved",
-        #         self.on_status_filter,
-        #         None,
-        #         GLib.Variant.new_boolean(True),
-        #         FileStatus.SAVED,
-        #     ),
-        #     (
-        #         "status-filter-queued",
-        #         self.on_status_filter,
-        #         None,
-        #         GLib.Variant.new_boolean(True),
-        #         FileStatus.QUEUED,
-        #     ),
-        #     (
-        #         "status-filter-running",
-        #         self.on_status_filter,
-        #         None,
-        #         GLib.Variant.new_boolean(True),
-        #         FileStatus.RUNNING,
-        #     ),
-        #     (
-        #         "status-filter-success",
-        #         self.on_status_filter,
-        #         None,
-        #         GLib.Variant.new_boolean(True),
-        #         FileStatus.SUCCESS,
-        #     ),
-        #     (
-        #         "status-filter-failure",
-        #         self.on_status_filter,
-        #         None,
-        #         GLib.Variant.new_boolean(True),
-        #         FileStatus.FAILURE,
-        #     ),
-        # )
+        self._prefs: Preferences = self.get_property(
+            "application"
+        ).get_preferences()
 
+        self._preflight_check_metadata: Final[
+            Dict[int, Dict[str, Any]]
+        ] = dict()
+        self._yaml_file: str = None
+        #
+        self.set_default_size(1000, 1000)
+        #
+        action_entries = (
+            ("save", self.on_save),
+            ("save-as", self.on_save_as),
+            ("close", self.on_close),
+            ("minimize", self.on_minimize),
+            # ("play", self.on_play),
+            ("stop", self.on_stop),
+            ("add-operation", self.on_add_operation),
+            ("queue-manager", self.on_open_queue_manager),
+            ("help-queue-manager", self.on_open_queue_manager_help),
+            ("status-filter-created",
+                self.on_status_filter,
+                None,
+                GLib.Variant.new_boolean(True),
+                FileStatus.CREATED,
+            ),
+            (
+                "status-filter-saved",
+                self.on_status_filter,
+                None,
+                GLib.Variant.new_boolean(True),
+                FileStatus.SAVED,
+            ),
+            (
+                "status-filter-queued",
+                self.on_status_filter,
+                None,
+                GLib.Variant.new_boolean(True),
+                FileStatus.QUEUED,
+            ),
+            (
+                "status-filter-running",
+                self.on_status_filter,
+                None,
+                GLib.Variant.new_boolean(True),
+                FileStatus.RUNNING,
+            ),
+            (
+                "status-filter-success",
+                self.on_status_filter,
+                None,
+                GLib.Variant.new_boolean(True),
+                FileStatus.SUCCESS,
+            ),
+            (
+                "status-filter-failure",
+                self.on_status_filter,
+                None,
+                GLib.Variant.new_boolean(True),
+                FileStatus.FAILURE,
+            ),
+        )
+        #
         # This doesn't work, which is kind of uncool
-        # self.add_action_entries(action_entries)
-        # for action_entry in action_entries:
-        #     add_action_entries(self, *action_entry)
+       # self.add_action_entries(action_entries)
+        for action_entry in action_entries:
+            add_action_entries(self, *action_entry)
 
         main_grid = Gtk.Grid(row_spacing=10, **EXPAND_AND_FILL)
         self.set_child(main_grid)
@@ -401,23 +400,21 @@ class ApplicationWindow(Gtk.ApplicationWindow):
             vexpand=False,
         )
         filters_grid.attach(label, 0, 0, 1, 1)
-        state_filters_button = Gtk.Button(
+        state_filter_popover = Gtk.PopoverMenu.new_from_model(
+
+            self.get_property("application").filter_popover_menu
+        )
+        state_filters_button = Gtk.MenuButton(
             label="Status",
             halign=Gtk.Align.START,
             valign=Gtk.Align.CENTER,
             hexpand=False,
             vexpand=False,
         )
+        state_filters_button.set_popover(state_filter_popover)
         filters_grid.attach(state_filters_button, 1, 0, 1, 1)
 
 
-        state_filter_popover = Gtk.PopoverMenu.new_from_model(
-
-            self.get_property("application").filter_popover_menu
-        )
-        state_filters_button.connect(
-            "clicked", self._state_filters_button_clicked, state_filter_popover
-        )
 
         label = Gtk.Label(
             label="Name:",
@@ -687,26 +684,26 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     #     dialog.select_item(type(engine))
     #     dialog.present()
     #
-    # def on_open_queue_manager(self, action, param):
-    #     self._queue_manager_window.present()
-    #
-    # def on_open_queue_manager_help(self, action, param):
-    #     dialog = self.get_property("application").help_window
-    #     dialog.props.transient_for = self
-    #    # dialog.select_item(QueueManager)
-    #     dialog.present()
+    def on_open_queue_manager(self, action, param):
+        self._queue_manager_window.present()
 
-    # def on_add_operation(self, action, param):
-    #     _class = self._controls_operations_combo.get_model()[
-    #         self._controls_operations_combo.get_active_iter()
-    #     ][1]
-    #     new_operation = _class(appwindow=self)
-    #     new_operation.index = len(self._operations_box)
-    #     row = Gtk.ListBoxRow(selectable=False, activatable=False)
-    #     row.set_child(new_operation)
-    #     self._operations_box.insert(row, -1)
-    #     row.show_all()
-    #     self._update_monitor_switch_sensitivity()
+    def on_open_queue_manager_help(self, action, param):
+        dialog = self.get_property("application").help_window
+        dialog.props.transient_for = self
+       # dialog.select_item(QueueManager)
+        dialog.present()
+
+    def on_add_operation(self, action, param):
+        _class = self._controls_operations_combo.get_model()[
+            self._controls_operations_combo.get_active_iter()
+        ][1]
+        new_operation = _class(appwindow=self)
+        new_operation.index = len(self._operations_box)
+        row = Gtk.ListBoxRow(selectable=False, activatable=False)
+        row.set_child(new_operation)
+        self._operations_box.insert(row, -1)
+        row.show_all()
+        self._update_monitor_switch_sensitivity()
 
     # def _remove_operation(self, op_to_remove: Operation):
     #     for _op in self._operations_box.get_children():
@@ -728,9 +725,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     #                 op.index - 1
     #             )  # reordering all the indices of the ops.
 
-    def _state_filters_button_clicked(self, button, popover):
-        popover.show_all()
-        popover.popup()
+
 
     def _name_filter_entry_changed(self, entry):
         self._files_tree_model_filter.refilter()
@@ -753,12 +748,12 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         status_string = str(FileStatus(status))
         cell.set_property("text", status_string)
 
-    # def on_minimize(self, action, param):
-    #     self.iconify()
+    def on_minimize(self, action, param):
+        self.iconify()
 
-    # def on_close(self, action, param):
-    #     self.close()
-    #
+    def on_close(self, action, param):
+        self.close()
+
     def on_status_filter(self, action, param, arg):
         # invert state!
         action.set_state(
@@ -766,230 +761,230 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         )
         self._files_tree_model_filter.refilter()
 
-    def on_play(self, action, param):
-       self.lookup_action("play").set_enabled(False)
-       task_window = LongTaskWindow(self)
-       task_window.set_text("<b>Running preflight check</b>")
-       task_window.show()
-       watch_cursor = Gdk.Cursor.new_for_display(
-            Gdk.Display.get_default(), Gdk.CursorType.WATCH
-        )
-       task_window.get_window().set_cursor(watch_cursor)
+    # def on_play(self, action, param):
+    #    self.lookup_action("play").set_enabled(False)
+    #    task_window = LongTaskWindow(self)
+    #    task_window.set_text("<b>Running preflight check</b>")
+    #    task_window.show()
+    #    watch_cursor = Gdk.Cursor.new_for_display(
+    #         Gdk.Display.get_default(), Gdk.CursorType.WATCH
+    #     )
+    #    task_window.get_window().set_cursor(watch_cursor)
+    #
+    #    # Cleanup tree model
+    #    self._files_tree_model.clear()
+    #    PreflightCheckThread(self, task_window).start()
+    #
+    def on_stop(self, action, param):
+        self.lookup_action("stop").set_enabled(False)
 
-       # Cleanup tree model
-       self._files_tree_model.clear()
-        #PreflightCheckThread(self, task_window).start()
+        self._active_engine.stop()
+
+    # def _preflight_check_cb(
+    #     self, task_window: LongTaskWindow, exception_msgs: Optional[List[str]]
+    # ):
+    #     task_window.get_window().set_cursor(None)
+    #     task_window.destroy()
     #
-    # def on_stop(self, action, param):
-    #     self.lookup_action("stop").set_enabled(False)
-    #
-    #     self._active_engine.stop()
-    #
-    # # def _preflight_check_cb(
-    # #     self, task_window: LongTaskWindow, exception_msgs: Optional[List[str]]
-    # # ):
-    # #     task_window.get_window().set_cursor(None)
-    # #     task_window.destroy()
-    # #
-    # #     if exception_msgs:
-    # #         dialog = Gtk.MessageDialog(
-    # #             transient_for=self.get_toplevel(),
-    # #             modal=True,
-    # #             destroy_with_parent=True,
-    # #             message_type=Gtk.MessageType.ERROR,
-    # #             buttons=Gtk.ButtonsType.CLOSE,
-    # #             text="Operation configuration error(s) found",
-    # #             secondary_text="\n".join(exception_msgs),
-    # #         )
-    # #         dialog.run()
-    # #         dialog.destroy()
-    # #         self.lookup_action("play").set_enabled(True)
-    # #         return
-    #
-    #     # Launch the queue manager and the engine
-    #     self._active_engine.set_sensitive(False)
-    #     self._queue_manager.set_sensitive(False)
-    #
-    #     for operation in self._operations_box:
-    #         operation.set_sensitive(False)
-    #
-    #     self._queue_manager_running_changed_handler_id = (
-    #         self._queue_manager.connect(
-    #             "notify::running", self._queue_manager_running_changed
-    #         )
-    #     )
-    #     self._active_engine_running_changed_handler_id = (
-    #         self._active_engine.connect(
-    #             "notify::running", self._active_engine_running_changed
-    #         )
-    #     )
-    #     self._queue_manager.start()
-    #
-    # def _queue_manager_running_changed(self, queue_manager, param):
-    #     if queue_manager.props.running:
-    #         self._active_engine.start()
-    #     else:
-    #         # at this point everything should have stopped, except for Jobs that still need to finish and cannot be killed
-    #         self._active_engine.set_sensitive(True)
-    #         self._queue_manager.set_sensitive(True)
-    #
-    #         for operation in self._operations_box:
-    #             operation.set_sensitive(True)
-    #
-    #         self._active_engine.disconnect(
-    #             self._active_engine_running_changed_handler_id
-    #         )
-    #         self._queue_manager.disconnect(
-    #             self._queue_manager_running_changed_handler_id
-    #         )
-    #         del self._active_engine_running_changed_handler_id
-    #         del self._queue_manager_running_changed_handler_id
-    #         self.lookup_action("play").set_enabled(True)
-    #
-    # def _active_engine_running_changed(self, active_engine, param):
-    #     if active_engine.props.running:
-    #         # at this point things should really be running.
-    #         self.lookup_action("stop").set_enabled(True)
-    #         self.get_property(
-    #             "application"
-    #         ).google_analytics_context.send_event(
-    #             "RUN-ENGINE", active_engine.NAME
-    #         )
-    #     else:
-    #         self.lookup_action("stop").set_enabled(False)
-    #         self._queue_manager.stop()
-    #
-    # def _engine_valid_changed_cb(self, engine, param):
-    #     self._update_monitor_switch_sensitivity()
-    #
-    # def _write_to_yaml(self):
-    #     yaml_dict = dict(
-    #         version=MONITOR_YAML_VERSION,
-    #         active_engine=self._active_engine.NAME,
-    #         queue_manager=self._queue_manager.exportable_params,
-    #         operations=[
-    #             dict(name=op.NAME, params=op.exportable_params)
-    #             for op in self._operations_box
-    #         ],
-    #         engines=[
-    #             dict(name=engine.NAME, params=engine.exportable_params)
-    #             for engine in self._engines
-    #         ],
-    #     )
-    #     with open(self._yaml_file, "w") as f:
-    #         yaml.safe_dump(yaml_dict, f)
-    #
-    # def on_save(self, action, param):
-    #     if self._yaml_file is None:
-    #         self.on_save_as(action, param)
-    #     try:
-    #         self._write_to_yaml()
-    #     except Exception as e:
+    #     if exception_msgs:
     #         dialog = Gtk.MessageDialog(
-    #             transient_for=self,
+    #             transient_for=self.get_toplevel(),
     #             modal=True,
     #             destroy_with_parent=True,
     #             message_type=Gtk.MessageType.ERROR,
     #             buttons=Gtk.ButtonsType.CLOSE,
-    #             text=f"Could not write to {self._yaml_file}",
-    #             secondary_text=str(e),
+    #             text="Operation configuration error(s) found",
+    #             secondary_text="\n".join(exception_msgs),
     #         )
     #         dialog.run()
     #         dialog.destroy()
-    #
-    # def on_save_as(self, action, param):
-    #     # open a file chooser dialog
-    #     dialog = Gtk.FileChooserNative(
-    #         modal=True,
-    #         title="Save monitor configuration to YAML file",
-    #         transient_for=self,
-    #         action=Gtk.FileChooserAction.SAVE,
-    #     )
-    #     filter = Gtk.FileFilter()
-    #     filter.add_pattern("*.yml")
-    #     filter.add_pattern("*.yaml")
-    #     filter.set_name("YAML file")
-    #     dialog.add_filter(filter)
-    #
-    #     if dialog.run() == Gtk.ResponseType.ACCEPT:
-    #         self._yaml_file = dialog.get_filename()
-    #         dialog.destroy()
-    #         # ensure filename ends in .yaml or .yml
-    #         if not self._yaml_file.endswith(
-    #             ".yml"
-    #         ) and not self._yaml_file.endswith(".yaml"):
-    #             self._yaml_file += ".yml"
-    #         try:
-    #             self._write_to_yaml()
-    #         except Exception as e:
-    #             dialog = Gtk.MessageDialog(
-    #                 transient_for=self,
-    #                 modal=True,
-    #                 destroy_with_parent=True,
-    #                 message_type=Gtk.MessageType.ERROR,
-    #                 buttons=Gtk.ButtonsType.CLOSE,
-    #                 text=f"Could not write to {self._yaml_file}",
-    #                 secondary_text=str(e),
-    #             )
-    #             dialog.run()
-    #             dialog.destroy()
-    #     else:
-    #         dialog.destroy()
-    #
-    # def load_from_yaml_dict(self, yaml_dict: dict):
-    #
-    #     # active_engine
-    #     active_engine = yaml_dict["active_engine"]
-    #     queue_manager = yaml_dict["queue_manager"]
-    #     operations = yaml_dict["operations"]
-    #     engines = yaml_dict["engines"]
-    #
-    #     for engine in engines:
-    #         # find corresponding engine in appwindow
-    #         engine_match = next(
-    #             e for e in self._engines if e.NAME == engine["name"]
-    #         )
-    #         engine_match.update_from_dict(engine["params"])
-    #         if active_engine == engine_match.NAME:
-    #             active_engine_index = self._engines.index(engine_match)
-    #             break
-    #     else:
-    #         logger.error(
-    #             f"Active engine {active_engine} not found in list of engines"
-    #         )
+    #         self.lookup_action("play").set_enabled(True)
     #         return
+
+        # Launch the queue manager and the engine
+        self._active_engine.set_sensitive(False)
+        self._queue_manager.set_sensitive(False)
+
+        for operation in self._operations_box:
+            operation.set_sensitive(False)
+
+        self._queue_manager_running_changed_handler_id = (
+            self._queue_manager.connect(
+                "notify::running", self._queue_manager_running_changed
+            )
+        )
+        self._active_engine_running_changed_handler_id = (
+            self._active_engine.connect(
+                "notify::running", self._active_engine_running_changed
+            )
+        )
+        self._queue_manager.start()
+
+    def _queue_manager_running_changed(self, queue_manager, param):
+        if queue_manager.props.running:
+            self._active_engine.start()
+        else:
+            # at this point everything should have stopped, except for Jobs that still need to finish and cannot be killed
+            self._active_engine.set_sensitive(True)
+            self._queue_manager.set_sensitive(True)
+
+            for operation in self._operations_box:
+                operation.set_sensitive(True)
+
+            self._active_engine.disconnect(
+                self._active_engine_running_changed_handler_id
+            )
+            self._queue_manager.disconnect(
+                self._queue_manager_running_changed_handler_id
+            )
+            del self._active_engine_running_changed_handler_id
+            del self._queue_manager_running_changed_handler_id
+            self.lookup_action("play").set_enabled(True)
+
+    def _active_engine_running_changed(self, active_engine, param):
+        if active_engine.props.running:
+            # at this point things should really be running.
+            self.lookup_action("stop").set_enabled(True)
+            self.get_property(
+                "application"
+            ).google_analytics_context.send_event(
+                "RUN-ENGINE", active_engine.NAME
+            )
+        else:
+            self.lookup_action("stop").set_enabled(False)
+            self._queue_manager.stop()
+
+    def _engine_valid_changed_cb(self, engine, param):
+        self._update_monitor_switch_sensitivity()
+
+    def _write_to_yaml(self):
+        yaml_dict = dict(
+            version=MONITOR_YAML_VERSION,
+            active_engine=self._active_engine.NAME,
+            queue_manager=self._queue_manager.exportable_params,
+            operations=[
+                dict(name=op.NAME, params=op.exportable_params)
+                for op in self._operations_box
+            ],
+            engines=[
+                dict(name=engine.NAME, params=engine.exportable_params)
+                for engine in self._engines
+            ],
+        )
+        with open(self._yaml_file, "w") as f:
+            yaml.safe_dump(yaml_dict, f)
+
+    def on_save(self, action, param):
+        if self._yaml_file is None:
+            self.on_save_as(action, param)
+        try:
+            self._write_to_yaml()
+        except Exception as e:
+            dialog = Gtk.MessageDialog(
+                transient_for=self,
+                modal=True,
+                destroy_with_parent=True,
+                message_type=Gtk.MessageType.ERROR,
+                buttons=Gtk.ButtonsType.CLOSE,
+                text=f"Could not write to {self._yaml_file}",
+                secondary_text=str(e),
+            )
+            dialog.run()
+            dialog.destroy()
     #
-    #     self._queue_manager.update_from_dict(queue_manager)
-    #
-    #     # add the operations
-    #     if isinstance(operations, collections.abc.Sequence):
-    #         for op in operations:
-    #             for _class in self.get_property(
-    #                 "application"
-    #             ).known_operations.values():
-    #                 if op["name"] == _class.NAME:
-    #                     new_operation = _class(appwindow=self)
-    #                     new_operation.index = len(self._operations_box)
-    #                     self._operations_box.insert(new_operation, -1)
-    #                     new_operation.update_from_dict(op["params"])
-    #                     new_operation.show_all()
-    #                     break
-    #             else:
-    #                 logger.error(
-    #                     f"load_from_yaml_dict: no match found for operation {op['name']}"
-    #                 )
-    #
-    #     self._engines_notebook.set_current_page(active_engine_index)
-    #     self._update_monitor_switch_sensitivity()
-    #
+    def on_save_as(self, action, param):
+        # open a file chooser dialog
+        dialog = Gtk.FileChooserNative(
+            modal=True,
+            title="Save monitor configuration to YAML file",
+            transient_for=self,
+            action=Gtk.FileChooserAction.SAVE,
+        )
+        filter = Gtk.FileFilter()
+        filter.add_pattern("*.yml")
+        filter.add_pattern("*.yaml")
+        filter.set_name("YAML file")
+        dialog.add_filter(filter)
+
+        if dialog.run() == Gtk.ResponseType.ACCEPT:
+            self._yaml_file = dialog.get_filename()
+            dialog.destroy()
+            # ensure filename ends in .yaml or .yml
+            if not self._yaml_file.endswith(
+                ".yml"
+            ) and not self._yaml_file.endswith(".yaml"):
+                self._yaml_file += ".yml"
+            try:
+                self._write_to_yaml()
+            except Exception as e:
+                dialog = Gtk.MessageDialog(
+                    transient_for=self,
+                    modal=True,
+                    destroy_with_parent=True,
+                    message_type=Gtk.MessageType.ERROR,
+                    buttons=Gtk.ButtonsType.CLOSE,
+                    text=f"Could not write to {self._yaml_file}",
+                    secondary_text=str(e),
+                )
+                dialog.run()
+                dialog.destroy()
+        else:
+            dialog.destroy()
+
+    def load_from_yaml_dict(self, yaml_dict: dict):
+
+        # active_engine
+        active_engine = yaml_dict["active_engine"]
+        queue_manager = yaml_dict["queue_manager"]
+        operations = yaml_dict["operations"]
+        engines = yaml_dict["engines"]
+
+        for engine in engines:
+            # find corresponding engine in appwindow
+            engine_match = next(
+                e for e in self._engines if e.NAME == engine["name"]
+            )
+            engine_match.update_from_dict(engine["params"])
+            if active_engine == engine_match.NAME:
+                active_engine_index = self._engines.index(engine_match)
+                break
+        else:
+            logger.error(
+                f"Active engine {active_engine} not found in list of engines"
+            )
+            return
+
+        self._queue_manager.update_from_dict(queue_manager)
+
+        # add the operations
+        if isinstance(operations, collections.abc.Sequence):
+            for op in operations:
+                for _class in self.get_property(
+                    "application"
+                ).known_operations.values():
+                    if op["name"] == _class.NAME:
+                        new_operation = _class(appwindow=self)
+                        new_operation.index = len(self._operations_box)
+                        self._operations_box.insert(new_operation, -1)
+                        new_operation.update_from_dict(op["params"])
+                        new_operation.show_all()
+                        break
+                else:
+                    logger.error(
+                        f"load_from_yaml_dict: no match found for operation {op['name']}"
+                    )
+
+        self._engines_notebook.set_current_page(active_engine_index)
+        self._update_monitor_switch_sensitivity()
+
     # @property
     # def preflight_check_metadata(self) -> dict:
     #     return self._preflight_check_metadata
-
+    #
     # @property
     # def queue_manager(self) -> QueueManager:
     #     return self._queue_manager
-
+    #
     # @property
     # def active_engine(self) -> Engine:
     #     return self._active_engine

@@ -21,11 +21,11 @@ from .version import __version__
 #     PREFERENCES_CONFIG_FILE,
 #     MONITOR_YAML_VERSION,
 # )
-# from .preferences import (
-#     Preferences,
+from .preferences import (
+     Preferences,
 #     AllowedFilePatternsPreference,
 #     IgnoredFilePatternsPreference,
-# )
+)
 # from .preferenceswindow import PreferencesWindow
 # from .files.regular_file import RegularFile
 # from .file import File
@@ -192,7 +192,7 @@ class Application(Gtk.Application):
     #     self._help_window = HelpWindow(self._pango_docs_map)
     #
     #     # populate dict with preferences found in entry points
-    #     self._prefs = Preferences(Munch(), Munch(), Munch())
+        self._prefs = Preferences(Munch(), Munch(), Munch())
     #     if "rfi_file_monitor.preferences" in importlib.metadata.entry_points():
     #         for e in importlib.metadata.entry_points()[
     #             "rfi_file_monitor.preferences"
@@ -317,8 +317,8 @@ class Application(Gtk.Application):
     #     for operations in self._filetypes_supported_operations_map.values():
     #         operations.sort(key=lambda operation: operation.NAME)
     #
-    # def get_preferences(self) -> Preferences:
-    #     return self._prefs
+    def get_preferences(self) -> Preferences:
+        return self._prefs
     #
     # @classmethod
     # def _split_patterns(cls, patterns: Optional[str]) -> List[str]:

@@ -16,11 +16,11 @@ import importlib.metadata
 from pathlib import Path
 
 from .version import __version__
-# from .utils import (
+from .utils import (
 #     add_action_entries,
-#     PREFERENCES_CONFIG_FILE,
+    PREFERENCES_CONFIG_FILE,
 #     MONITOR_YAML_VERSION,
-# )
+)
 from .preferences import (
      Preferences,
 #     AllowedFilePatternsPreference,
@@ -28,14 +28,14 @@ from .preferences import (
 )
 # from .preferenceswindow import PreferencesWindow
 # from .files.regular_file import RegularFile
-# from .file import File
+from .file import File
 # from .utils.helpwindow import HelpWindow
 # from .utils.googleanalytics import GoogleAnalyticsContext
 from .applicationwindow import ApplicationWindow
-# from .engine import Engine
+from .engine import Engine
 # from .engine_advanced_settings import EngineAdvancedSettings
-# from .operation import Operation
-# from .queue_manager import QueueManager
+from .operation import Operation
+from .queue_manager import QueueManager
 
 
 logger = logging.getLogger(__name__)
@@ -55,32 +55,32 @@ class Application(Gtk.Application):
     def known_operations(self):
         return self._known_operations
 
-    # @property
-    # def known_engines(self):
-    #     return self._known_engines
+    @property
+    def known_engines(self):
+        return self._known_engines
     #
     # @property
     # def help_window(self):
     #     return self._help_window
     #
-    # @property
-    # def engines_advanced_settings_map(self):
-    #     return self._engines_advanced_settings_map
+    @property
+    def engines_advanced_settings_map(self):
+        return self._engines_advanced_settings_map
+
+    @property
+    def engines_exported_filetype_map(self):
+        return self._engines_exported_filetype_map
     #
-    # @property
-    # def engines_exported_filetype_map(self):
-    #     return self._engines_exported_filetype_map
+    @property
+    def filetypes_supported_operations_map(
+        self,
+    ) -> Dict[Type[File], List[Type[Operation]]]:
+        return self._filetypes_supported_operations_map
     #
-    # @property
-    # def filetypes_supported_operations_map(
-    #     self,
-    # ) -> Dict[Type[File], List[Type[Operation]]]:
-    #     return self._filetypes_supported_operations_map
-    #
-    # @property
-    # def pango_docs_map(self):
-    #     return self._pango_docs_map
-    #
+    @property
+    def pango_docs_map(self):
+        return self._pango_docs_map
+
     # @property
     # def google_analytics_context(self):
     #     return self._google_analytics_context
@@ -141,21 +141,21 @@ class Application(Gtk.Application):
     #     for accel in accelerators:
     #         self.set_accels_for_action(accel[0], accel[1])
     #
-    #     self._engines_advanced_settings_map: Dict[
-    #         Type[Engine], Type[EngineAdvancedSettings]
-    #     ] = dict()
+        self._engines_advanced_settings_map: Dict[
+            Type[Engine], Type[EngineAdvancedSettings]
+        ] = dict()
+
+        self._engines_exported_filetype_map: Dict[
+            Type[Engine], Type[File]
+        ] = dict()
     #
-    #     self._engines_exported_filetype_map: Dict[
-    #         Type[Engine], Type[File]
-    #     ] = dict()
+        self._filetypes_supported_operations_map: Dict[
+            Type[File], List[Type[Operation]]
+        ] = dict()
     #
-    #     self._filetypes_supported_operations_map: Dict[
-    #         Type[File], List[Type[Operation]]
-    #     ] = dict()
-    #
-    #     self._pango_docs_map: Dict[
-    #         Type[Union[Engine, QueueManager, Operation]], str
-    #     ] = dict()
+        self._pango_docs_map: Dict[
+            Type[Union[Engine, QueueManager, Operation]], str
+        ] = dict()
     #
     #     # add queue manager docs manually
     #     try:
@@ -171,106 +171,106 @@ class Application(Gtk.Application):
     #     else:
     #         self._pango_docs_map[QueueManager] = contents
     #
-    # #     # get info from entry points
-    #     self._known_operations = {
-    #         e.name: e.load()
-    #         for e in importlib.metadata.entry_points()[
-    #             "rfi_file_monitor.operations"
-    #         ]
-    #     }
+    #     # get info from entry points
+        self._known_operations = {
+            e.name: e.load()
+            for e in importlib.metadata.entry_points()[
+                "rfi_file_monitor.operations"
+            ]
+        }
     #
     #     self._update_supported_filetypes()
     #
-    #     self._known_engines = {
-    #         e.name: e.load()
-    #         for e in importlib.metadata.entry_points()[
-    #             "rfi_file_monitor.engines"
-    #         ]
-    #     }
+        self._known_engines = {
+            e.name: e.load()
+            for e in importlib.metadata.entry_points()[
+                "rfi_file_monitor.engines"
+            ]
+        }
     #
     #     # add our help window, which will be shared by all appwindows
     #     self._help_window = HelpWindow(self._pango_docs_map)
     #
     #     # populate dict with preferences found in entry points
-    #     self._prefs = Preferences(Munch(), Munch(), Munch())
-    #     if "rfi_file_monitor.preferences" in importlib.metadata.entry_points():
-    #         for e in importlib.metadata.entry_points()[
-    #             "rfi_file_monitor.preferences"
-    #         ]:
-    #             _pref = e.load()
-    #             self._prefs.settings[_pref] = _pref.default
-    #
-    #     for _op in self._known_operations.values():
-    #         self._prefs.operations[_op] = not bool(getattr(_op, "DEBUG", False))
-    #
-    #     for _engine in self._known_engines.values():
-    #         self._prefs.engines[_engine] = not bool(
-    #             getattr(_engine, "DEBUG", False)
-    #         )
-    #
-    #     # now, open preferences file and update the prefs dictionary
-    #     try:
-    #         with PREFERENCES_CONFIG_FILE.open("r") as f:
-    #             stored_prefs = yaml.safe_load(f)
-    #     except FileNotFoundError:
-    #         pass
-    #     else:
-    #         if stored_prefs and isinstance(stored_prefs, dict):
-    #             # to maintain compatibility with older versions, first look for settings dict
-    #             if (
-    #                 "settings" in stored_prefs
-    #                 and stored_prefs["settings"] is not None
-    #                 and isinstance(stored_prefs["settings"], dict)
-    #             ):
-    #                 for _key, _value in stored_prefs["settings"].items():
-    #                     for _pref in self._prefs.settings:
-    #                         if _pref.key == _key:
-    #                             self._prefs.settings[_pref] = _value
-    #                             break
-    #                     else:
-    #                         logger.warning(
-    #                             f"Could not find a corresponding Preference class for key {_key} from preferences file"
-    #                         )
-    #             else:
-    #                 for _key, _value in stored_prefs.items():
-    #                     for _pref in self._prefs.settings:
-    #                         if _pref.key == _key:
-    #                             self._prefs.settings[_pref] = _value
-    #                             break
-    #                     else:
-    #                         logger.warning(
-    #                             f"Could not find a corresponding Preference class for key {_key} from preferences file"
-    #                         )
-    #
-    #             if (
-    #                 "operations" in stored_prefs
-    #                 and stored_prefs["operations"] is not None
-    #                 and isinstance(stored_prefs["operations"], dict)
-    #             ):
-    #                 for _key, _value in stored_prefs["operations"].items():
-    #                     for _pref in self._prefs.operations:
-    #                         if _pref.NAME == _key:
-    #                             self._prefs.operations[_pref] = _value
-    #                             break
-    #                     else:
-    #                         logger.warning(
-    #                             f"Could not find a corresponding Operation class for key {_key} from preferences file"
-    #                         )
-    #
-    #             if (
-    #                 "engines" in stored_prefs
-    #                 and stored_prefs["engines"] is not None
-    #                 and isinstance(stored_prefs["engines"], dict)
-    #             ):
-    #                 for _key, _value in stored_prefs["engines"].items():
-    #                     for _pref in self._prefs.engines:
-    #                         if _pref.NAME == _key:
-    #                             self._prefs.engines[_pref] = _value
-    #                             break
-    #                     else:
-    #                         logger.warning(
-    #                             f"Could not find a corresponding Engine class for key {_key} from preferences file"
-    #                         )
+        self._prefs = Preferences(Munch(), Munch(), Munch())
+        if "rfi_file_monitor.preferences" in importlib.metadata.entry_points():
+            for e in importlib.metadata.entry_points()[
+                "rfi_file_monitor.preferences"
+            ]:
+                _pref = e.load()
+                self._prefs.settings[_pref] = _pref.default
+
+        for _op in self._known_operations.values():
+            self._prefs.operations[_op] = not bool(getattr(_op, "DEBUG", False))
+
+        for _engine in self._known_engines.values():
+            self._prefs.engines[_engine] = not bool(
+                getattr(_engine, "DEBUG", False)
+            )
+
+        # now, open preferences file and update the prefs dictionary
+        try:
+            with PREFERENCES_CONFIG_FILE.open("r") as f:
+                stored_prefs = yaml.safe_load(f)
+        except FileNotFoundError:
+            pass
+        else:
+            if stored_prefs and isinstance(stored_prefs, dict):
+                # to maintain compatibility with older versions, first look for settings dict
+                if (
+                    "settings" in stored_prefs
+                    and stored_prefs["settings"] is not None
+                    and isinstance(stored_prefs["settings"], dict)
+                ):
+                    for _key, _value in stored_prefs["settings"].items():
+                        for _pref in self._prefs.settings:
+                            if _pref.key == _key:
+                                self._prefs.settings[_pref] = _value
+                                break
+                        else:
+                            logger.warning(
+                                f"Could not find a corresponding Preference class for key {_key} from preferences file"
+                            )
+                else:
+                    for _key, _value in stored_prefs.items():
+                        for _pref in self._prefs.settings:
+                            if _pref.key == _key:
+                                self._prefs.settings[_pref] = _value
+                                break
+                        else:
+                            logger.warning(
+                                f"Could not find a corresponding Preference class for key {_key} from preferences file"
+                            )
+
+                if (
+                    "operations" in stored_prefs
+                    and stored_prefs["operations"] is not None
+                    and isinstance(stored_prefs["operations"], dict)
+                ):
+                    for _key, _value in stored_prefs["operations"].items():
+                        for _pref in self._prefs.operations:
+                            if _pref.NAME == _key:
+                                self._prefs.operations[_pref] = _value
+                                break
+                        else:
+                            logger.warning(
+                                f"Could not find a corresponding Operation class for key {_key} from preferences file"
+                            )
+
+                if (
+                    "engines" in stored_prefs
+                    and stored_prefs["engines"] is not None
+                    and isinstance(stored_prefs["engines"], dict)
+                ):
+                    for _key, _value in stored_prefs["engines"].items():
+                        for _pref in self._prefs.engines:
+                            if _pref.NAME == _key:
+                                self._prefs.engines[_pref] = _value
+                                break
+                        else:
+                            logger.warning(
+                                f"Could not find a corresponding Engine class for key {_key} from preferences file"
+                            )
     #
     #     # acquire google analytics context
     #     self._google_analytics_context = GoogleAnalyticsContext(

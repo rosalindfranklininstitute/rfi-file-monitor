@@ -30,10 +30,9 @@ from .utils import (
 )
 from .file import FileStatus, File
 from .queue_manager import QueueManager
-#from .engine import Engine
+from .engine import Engine
 # from .operation import Operation
 from .preferences import Preferences
-from .menus.filter_popover_menu import FilterPopoverMenu
 logger = logging.getLogger(__name__)
 
 
@@ -115,7 +114,7 @@ class ApplicationWindow(Gtk.ApplicationWindow):
 
         main_grid = Gtk.Grid(row_spacing=10, **EXPAND_AND_FILL)
         self.set_child(main_grid)
-       #
+
         controls_frame = Gtk.Frame(
             label="File Monitor Controls",
             halign=Gtk.Align.FILL,
@@ -159,16 +158,16 @@ class ApplicationWindow(Gtk.ApplicationWindow):
 
         # turn the buttons off for now
         # play will become active when operations have been added
-        # self.lookup_action("play").set_enabled(False)
-        # self.lookup_action("stop").set_enabled(False)
+        #self.lookup_action("play").set_enabled(False)
+        #self.lookup_action("stop").set_enabled(False)
 
         # add the notebook with the engines
-        # self._engines_notebook = Gtk.Notebook(
-        #     **EXPAND_AND_FILL,
-        #     scrollable=True,
-        # )
-        # controls_grid_basic.attach(self._engines_notebook, 1, 0, 6, 2)
-        #
+        self._engines_notebook = Gtk.Notebook(
+            **EXPAND_AND_FILL,
+            scrollable=True,
+        )
+        controls_grid_basic.attach(self._engines_notebook, 1, 0, 6, 2)
+
         # self._engines: List[Engine] = list()
         #
         # for engine_cls in self.get_property(
@@ -188,22 +187,22 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         #         vexpand=False,
         #         column_spacing=5,
         #     )
-       #      # add button and dialog for advanced settings if necessary
-       #      if (
-       #          engine_cls
-       #          in self.get_property(
-       #              "application"
-       #          ).engines_advanced_settings_map
-       #      ):
-       #          engine_advanced_settings = self.get_property(
-       #              "application"
-       #          ).engines_advanced_settings_map[type(engine)](engine)
-       #          title = f"{engine.NAME} Advanced Settings"
-               # dialog = ParamsWindow(engine_advanced_settings, self, title)
-               #  setattr(
-               #      engine, self.ENGINE_ADVANCED_SETTINGS_WINDOW_ATTR, dialog
-               #  )
-        #
+        #     # add button and dialog for advanced settings if necessary
+        #     if (
+        #         engine_cls
+        #         in self.get_property(
+        #             "application"
+        #         ).engines_advanced_settings_map
+        #     ):
+        #         engine_advanced_settings = self.get_property(
+        #             "application"
+        #         ).engines_advanced_settings_map[type(engine)](engine)
+        #         title = f"{engine.NAME} Advanced Settings"
+        #         dialog = ParamsWindow(engine_advanced_settings, self, title)
+        #         setattr(
+        #             engine, self.ENGINE_ADVANCED_SETTINGS_WINDOW_ATTR, dialog
+        #         )
+        # #
         #         advanced_settings_button = Gtk.Button(
         #             label="Advanced Settings",
         #             halign=Gtk.Align.CENTER,
@@ -413,8 +412,6 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         )
         state_filters_button.set_popover(state_filter_popover)
         filters_grid.attach(state_filters_button, 1, 0, 1, 1)
-
-
 
         label = Gtk.Label(
             label="Name:",

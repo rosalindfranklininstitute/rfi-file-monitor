@@ -51,10 +51,10 @@ class Application(Gtk.Application):
         )
         GLib.set_application_name("RFI File Monitor")
 
-    # @property
-    # def known_operations(self):
-    #     return self._known_operations
-    #
+    @property
+    def known_operations(self):
+        return self._known_operations
+
     # @property
     # def known_engines(self):
     #     return self._known_engines
@@ -93,19 +93,19 @@ class Application(Gtk.Application):
     def do_startup(self):
         Gtk.Application.do_startup(self)
     #
-    #     # this may need to be checked on other platforms as well
-    #     if platform.system() == "Darwin":
-    #         appmenus_str = importlib.resources.read_text(
-    #             "rfi_file_monitor.data", "menus-appmenu.ui"
-    #         )
-    #         builder = Gtk.Builder.new_from_string(appmenus_str, -1)
-    #         self.set_app_menu(builder.get_object("app-menu"))
-    #
-    #     commonmenus_str = importlib.resources.read_text(
-    #         "rfi_file_monitor.data", "menus-common.ui"
-    #     )
-    #     builder = Gtk.Builder.new_from_string(commonmenus_str, -1)
-    #     self.set_menubar(builder.get_object("menubar"))
+        # this may need to be checked on other platforms as well
+        if platform.system() == "Darwin":
+            appmenus_str = importlib.resources.read_text(
+                "rfi_file_monitor.data", "menus-appmenu.ui"
+            )
+            builder = Gtk.Builder.new_from_string(appmenus_str, -1)
+            self.set_app_menu(builder.get_object("app-menu"))
+
+        commonmenus_str = importlib.resources.read_text(
+            "rfi_file_monitor.data", "menus-common.ui"
+        )
+        builder = Gtk.Builder.new_from_string(commonmenus_str, -1)
+        self.set_menubar(builder.get_object("menubar"))
     #
         # get file filter menu
         popover_filter_menu_str = importlib.resources.read_text(
@@ -171,7 +171,7 @@ class Application(Gtk.Application):
     #     else:
     #         self._pango_docs_map[QueueManager] = contents
     #
-    #     # get info from entry points
+    # #     # get info from entry points
     #     self._known_operations = {
     #         e.name: e.load()
     #         for e in importlib.metadata.entry_points()[
@@ -192,7 +192,7 @@ class Application(Gtk.Application):
     #     self._help_window = HelpWindow(self._pango_docs_map)
     #
     #     # populate dict with preferences found in entry points
-        self._prefs = Preferences(Munch(), Munch(), Munch())
+    #     self._prefs = Preferences(Munch(), Munch(), Munch())
     #     if "rfi_file_monitor.preferences" in importlib.metadata.entry_points():
     #         for e in importlib.metadata.entry_points()[
     #             "rfi_file_monitor.preferences"

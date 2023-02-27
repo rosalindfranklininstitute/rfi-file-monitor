@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import gi
 
-gi.require_version("Gtk", "3.0")
+gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, GObject
 import yaml
 
@@ -218,16 +218,16 @@ class PreferencesWindow(Gtk.Window):
         self._prefs: Preferences = prefs
 
         grid = Gtk.Grid(**EXPAND_AND_FILL)
-        self.add(grid)
+        self.set_child(grid)
 
         nb = Gtk.Notebook(**EXPAND_AND_FILL)
         grid.attach(nb, 0, 0, 1, 1)
 
         # Settings
         config_page = Gtk.Grid(
-            **EXPAND_AND_FILL, border_width=5, row_spacing=5, column_spacing=5
+            **EXPAND_AND_FILL,  row_spacing=5, column_spacing=5
         )
-        nb.append_page(config_page, Gtk.Label("Settings"))
+        nb.append_page(config_page, Gtk.Label.new("Settings"))
 
         frame_child = Gtk.Label(
             label="<b>Settings specific to this machine, usable by operations and engines</b>",
@@ -244,7 +244,7 @@ class PreferencesWindow(Gtk.Window):
             hexpand=True,
             vexpand=False,
         )
-        frame.add(frame_child)
+        frame.set_child(frame_child)
         config_page.attach(frame, 0, 0, 1, 1)
 
         store = Gtk.ListStore(str, str)
@@ -252,10 +252,10 @@ class PreferencesWindow(Gtk.Window):
             store.append([_pref.key, _pref.description])
 
         sw = Gtk.ScrolledWindow(
-            **EXPAND_AND_FILL, shadow_type=Gtk.ShadowType.IN
+            **EXPAND_AND_FILL
         )
         tv = Gtk.TreeView(model=store, tooltip_column=1, **EXPAND_AND_FILL)
-        sw.add(tv)
+        sw.set_child(tv)
         config_page.attach(sw, 0, 1, 1, 1)
 
         key_renderer = Gtk.CellRendererText()
@@ -271,9 +271,9 @@ class PreferencesWindow(Gtk.Window):
 
         # Operations
         operations_page = Gtk.Grid(
-            **EXPAND_AND_FILL, border_width=5, row_spacing=5, column_spacing=5
+            **EXPAND_AND_FILL, row_spacing=5, column_spacing=5
         )
-        nb.append_page(operations_page, Gtk.Label("Operations"))
+        nb.append_page(operations_page, Gtk.Label.new("Operations"))
 
         frame_child = Gtk.Label(
             label="<b>Use this table to select which operations will be available.</b>",
@@ -290,7 +290,7 @@ class PreferencesWindow(Gtk.Window):
             hexpand=True,
             vexpand=False,
         )
-        frame.add(frame_child)
+        frame.set_child(frame_child)
         operations_page.attach(frame, 0, 0, 1, 1)
 
         self._operations_store = Gtk.ListStore(str, bool, object)
@@ -298,10 +298,10 @@ class PreferencesWindow(Gtk.Window):
             self._operations_store.append([_op.NAME, _value, _op])
 
         sw = Gtk.ScrolledWindow(
-            **EXPAND_AND_FILL, shadow_type=Gtk.ShadowType.IN
+            **EXPAND_AND_FILL
         )
         tv = Gtk.TreeView(model=self._operations_store, **EXPAND_AND_FILL)
-        sw.add(tv)
+        sw.set_child(tv)
         operations_page.attach(sw, 0, 1, 1, 1)
 
         key_renderer = Gtk.CellRendererText()
@@ -316,9 +316,9 @@ class PreferencesWindow(Gtk.Window):
 
         # Engines
         engines_page = Gtk.Grid(
-            **EXPAND_AND_FILL, border_width=5, row_spacing=5, column_spacing=5
+            **EXPAND_AND_FILL,  row_spacing=5, column_spacing=5
         )
-        nb.append_page(engines_page, Gtk.Label("Engines"))
+        nb.append_page(engines_page, Gtk.Label.new("Engines"))
 
         frame_child = Gtk.Label(
             label="<b>Use this table to select which engines will be available.</b>",
@@ -335,7 +335,7 @@ class PreferencesWindow(Gtk.Window):
             hexpand=True,
             vexpand=False,
         )
-        frame.add(frame_child)
+        frame.set_child(frame_child)
         engines_page.attach(frame, 0, 0, 1, 1)
 
         self._engines_store = Gtk.ListStore(str, bool, object)
@@ -343,10 +343,10 @@ class PreferencesWindow(Gtk.Window):
             self._engines_store.append([_engine.NAME, _value, _engine])
 
         sw = Gtk.ScrolledWindow(
-            **EXPAND_AND_FILL, shadow_type=Gtk.ShadowType.IN
+            **EXPAND_AND_FILL
         )
         tv = Gtk.TreeView(model=self._engines_store, **EXPAND_AND_FILL)
-        sw.add(tv)
+        sw.set_child(tv)
         engines_page.attach(sw, 0, 1, 1, 1)
 
         key_renderer = Gtk.CellRendererText()
@@ -359,7 +359,7 @@ class PreferencesWindow(Gtk.Window):
         tv.append_column(key_column)
         tv.append_column(value_column)
 
-        grid.show_all()
+        grid.show()
 
     def _operation_toggled(self, renderer: Gtk.CellRendererToggle, path: str):
         count_toggled = 0

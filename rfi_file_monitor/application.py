@@ -456,9 +456,6 @@ class Application(Gtk.Application):
             self._prefs,
             modal=False,
             transient_for=self.get_active_window(),
-            window_position=Gtk.WindowPosition.CENTER_ON_PARENT,
-            type=Gtk.WindowType.TOPLEVEL,
             destroy_with_parent=True,
-            border_width=5,
         )
         window.present()

@@ -17,7 +17,7 @@ from pathlib import Path
 
 from .version import __version__
 from .utils import (
-#     add_action_entries,
+     add_action_entries,
     PREFERENCES_CONFIG_FILE,
 #     MONITOR_YAML_VERSION,
 )
@@ -26,7 +26,7 @@ from .preferences import (
 #     AllowedFilePatternsPreference,
 #     IgnoredFilePatternsPreference,
 )
-# from .preferenceswindow import PreferencesWindow
+from .preferenceswindow import PreferencesWindow
 # from .files.regular_file import RegularFile
 from .file import File
 # from .utils.helpwindow import HelpWindow
@@ -92,20 +92,20 @@ class Application(Gtk.Application):
     #
     def do_startup(self):
         Gtk.Application.do_startup(self)
-    #
+
         # this may need to be checked on other platforms as well
         if platform.system() == "Darwin":
             appmenus_str = importlib.resources.read_text(
                 "rfi_file_monitor.data", "menus-appmenu.ui"
             )
             builder = Gtk.Builder.new_from_string(appmenus_str, -1)
-            self.set_app_menu(builder.get_object("app-menu"))
+            self.app_menu=builder.get_object("app-menu")
 
         commonmenus_str = importlib.resources.read_text(
             "rfi_file_monitor.data", "menus-common.ui"
         )
         builder = Gtk.Builder.new_from_string(commonmenus_str, -1)
-        self.set_menubar(builder.get_object("menubar"))
+        self.menubar = builder.get_object("menubar")
     #
         # get file filter menu
         popover_filter_menu_str = importlib.resources.read_text(
@@ -114,19 +114,19 @@ class Application(Gtk.Application):
         builder = Gtk.Builder.new_from_string(popover_filter_menu_str, -1)
         self.filter_popover_menu = builder.get_object("filter-popover-menu")
     #
-    #     action_entries = (
-    #         ("about", self.on_about),
-    #         ("quit", self.on_quit),
-    #         ("open", self.on_open),
-    #         ("new", lambda *_: self.do_activate()),
-    #         ("help-url", self.on_help_url, "s"),
-    #         ("preferences", self.on_preferences),
-    #     )
+        action_entries = (
+            # ("about", self.on_about),
+            # ("quit", self.on_quit),
+            # ("open", self.on_open),
+            # ("new", lambda *_: self.do_activate()),
+            # ("help-url", self.on_help_url, "s"),
+            ("preferences", self.on_preferences),
+        )
     #
     #     # This doesn't work, which is kind of uncool
     #     # self.add_action_entries(action_entries)
-    #     for action_entry in action_entries:
-    #         add_action_entries(self, *action_entry)
+        for action_entry in action_entries:
+            add_action_entries(self, *action_entry)
     #
     #     # add accelerators
     #     accelerators = (
@@ -451,14 +451,14 @@ class Application(Gtk.Application):
     # def on_help_url(self, action, param):
     #     webbrowser.open_new_tab(param.get_string())
     #
-    # def on_preferences(self, action, param):
-    #     window = PreferencesWindow(
-    #         self._prefs,
-    #         modal=False,
-    #         transient_for=self.get_active_window(),
-    #         window_position=Gtk.WindowPosition.CENTER_ON_PARENT,
-    #         type=Gtk.WindowType.TOPLEVEL,
-    #         destroy_with_parent=True,
-    #         border_width=5,
-    #     )
-    #     window.present()
+    def on_preferences(self, action, param):
+        window = PreferencesWindow(
+            self._prefs,
+            modal=False,
+            transient_for=self.get_active_window(),
+            window_position=Gtk.WindowPosition.CENTER_ON_PARENT,
+            type=Gtk.WindowType.TOPLEVEL,
+            destroy_with_parent=True,
+            border_width=5,
+        )
+        window.present()

@@ -41,7 +41,12 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     ENGINE_ADVANCED_SETTINGS_WINDOW_ATTR = "advanced settings window"
 
     def __init__(self, force_all=False, **kwargs):
-        Gtk.ApplicationWindow.__init__(self, **kwargs)
+        Gtk.ApplicationWindow.__init__(self,
+                                       default_height=900,
+                                       default_width=900,
+                                       **kwargs)
+
+
 
         self._prefs: Preferences = self.get_property(
             "application"
@@ -106,9 +111,21 @@ class ApplicationWindow(Gtk.ApplicationWindow):
                 FileStatus.FAILURE,
             ),
         )
-        #
-        # This doesn't work, which is kind of uncool
-       # self.add_action_entries(action_entries)
+
+
+        menu_button = Gtk.MenuButton(
+            valign=Gtk.Align.CENTER,
+            focus_on_click=False,
+            icon_name="open-menu-symbolic",
+            menu_model= self.get_property("application").menubar,
+        )
+        titlebar: Gtk.HeaderBar = Gtk.HeaderBar(
+            title_widget=Gtk.Label(label="RFI-File-Monitor")
+        )
+        titlebar.pack_end(menu_button)
+        self.set_titlebar(titlebar)
+
+
         for action_entry in action_entries:
             add_action_entries(self, *action_entry)
 

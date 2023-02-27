@@ -58,11 +58,11 @@ class Application(Gtk.Application):
     @property
     def known_engines(self):
         return self._known_engines
-    #
-    # @property
-    # def help_window(self):
-    #     return self._help_window
-    #
+
+    @property
+    def help_window(self):
+        return self._help_window
+
     @property
     def engines_advanced_settings_map(self):
         return self._engines_advanced_settings_map
@@ -94,12 +94,12 @@ class Application(Gtk.Application):
         Gtk.Application.do_startup(self)
 
         # this may need to be checked on other platforms as well
-        if platform.system() == "Darwin":
-            appmenus_str = importlib.resources.read_text(
-                "rfi_file_monitor.data", "menus-appmenu.ui"
-            )
-            builder = Gtk.Builder.new_from_string(appmenus_str, -1)
-            self.app_menu=builder.get_object("app-menu")
+        #if platform.system() == "Darwin":
+        appmenus_str = importlib.resources.read_text(
+            "rfi_file_monitor.data", "menus-appmenu.ui"
+        )
+        builder = Gtk.Builder.new_from_string(appmenus_str, -1)
+        self.app_menu=builder.get_object("app-menu")
 
         commonmenus_str = importlib.resources.read_text(
             "rfi_file_monitor.data", "menus-common.ui"
@@ -115,11 +115,11 @@ class Application(Gtk.Application):
         self.filter_popover_menu = builder.get_object("filter-popover-menu")
     #
         action_entries = (
-            # ("about", self.on_about),
-            # ("quit", self.on_quit),
-            # ("open", self.on_open),
-            # ("new", lambda *_: self.do_activate()),
-            # ("help-url", self.on_help_url, "s"),
+            ("about", self.on_about),
+            ("quit", self.on_quit),
+            ("open", self.on_open),
+            ("new", lambda *_: self.do_activate()),
+            ("help-url", self.on_help_url, "s"),
             ("preferences", self.on_preferences),
         )
     #
@@ -350,65 +350,65 @@ class Application(Gtk.Application):
     #     patterns.extend(self._split_patterns(extra_patterns))
     #     return patterns
     #
-    # def on_open(self, action, param):
-    #     # fire up file chooser dialog
-    #     active_window = self.get_active_window()
-    #     dialog = Gtk.FileChooserNative(
-    #         modal=True,
-    #         title="Open monitor configuration YAML file",
-    #         transient_for=active_window,
-    #         action=Gtk.FileChooserAction.OPEN,
-    #     )
-    #     filter = Gtk.FileFilter()
-    #     filter.add_pattern("*.yml")
-    #     filter.add_pattern("*.yaml")
-    #     filter.set_name("YAML file")
-    #     dialog.add_filter(filter)
-    #
-    #     if dialog.run() == Gtk.ResponseType.ACCEPT:
-    #         yaml_file = dialog.get_filename()
-    #         dialog.destroy()
-    #         try:
-    #             with open(yaml_file, "r") as f:
-    #                 yaml_dict = yaml.safe_load(f)
-    #             if (
-    #                 "version" not in yaml_dict
-    #                 or yaml_dict["version"] != MONITOR_YAML_VERSION
-    #             ):
-    #                 raise Exception(
-    #                     f"The YAML file {yaml_file} is not compatible with this version of the RFI-File-Monitor"
-    #                 )
-    #             if (
-    #                 "active_engine" not in yaml_dict
-    #                 or "queue_manager" not in yaml_dict
-    #                 or "operations" not in yaml_dict
-    #                 or "engines" not in yaml_dict
-    #             ):
-    #                 raise Exception(
-    #                     f"The YAML file {yaml_file} is incomplete and cannot be loaded"
-    #                 )
-    #         except Exception as e:
-    #             dialog = Gtk.MessageDialog(
-    #                 transient_for=active_window,
-    #                 modal=True,
-    #                 destroy_with_parent=True,
-    #                 message_type=Gtk.MessageType.ERROR,
-    #                 buttons=Gtk.ButtonsType.CLOSE,
-    #                 text=f"Could not load {yaml_file}",
-    #                 secondary_text=str(e),
-    #             )
-    #             dialog.run()
-    #             dialog.destroy()
-    #         else:
-    #             window = ApplicationWindow(
-    #                 application=self,
-    #                 type=Gtk.WindowType.TOPLEVEL,
-    #                 force_all=True,
-    #             )
-    #             window.show_all()
-    #             window.load_from_yaml_dict(yaml_dict)
-    #     else:
-    #         dialog.destroy()
+    def on_open(self, action, param):
+        # fire up file chooser dialog
+        active_window = self.get_active_window()
+        dialog = Gtk.FileChooserNative(
+            modal=True,
+            title="Open monitor configuration YAML file",
+            transient_for=active_window,
+            action=Gtk.FileChooserAction.OPEN,
+        )
+        filter = Gtk.FileFilter()
+        filter.add_pattern("*.yml")
+        filter.add_pattern("*.yaml")
+        filter.set_name("YAML file")
+        dialog.add_filter(filter)
+
+        if dialog.run() == Gtk.ResponseType.ACCEPT:
+            yaml_file = dialog.get_filename()
+            dialog.destroy()
+            try:
+                with open(yaml_file, "r") as f:
+                    yaml_dict = yaml.safe_load(f)
+                if (
+                    "version" not in yaml_dict
+                    or yaml_dict["version"] != MONITOR_YAML_VERSION
+                ):
+                    raise Exception(
+                        f"The YAML file {yaml_file} is not compatible with this version of the RFI-File-Monitor"
+                    )
+                if (
+                    "active_engine" not in yaml_dict
+                    or "queue_manager" not in yaml_dict
+                    or "operations" not in yaml_dict
+                    or "engines" not in yaml_dict
+                ):
+                    raise Exception(
+                        f"The YAML file {yaml_file} is incomplete and cannot be loaded"
+                    )
+            except Exception as e:
+                dialog = Gtk.MessageDialog(
+                    transient_for=active_window,
+                    modal=True,
+                    destroy_with_parent=True,
+                    message_type=Gtk.MessageType.ERROR,
+                    buttons=Gtk.ButtonsType.CLOSE,
+                    text=f"Could not load {yaml_file}",
+                    secondary_text=str(e),
+                )
+                dialog.run()
+                dialog.destroy()
+            else:
+                window = ApplicationWindow(
+                    application=self,
+                    type=Gtk.WindowType.TOPLEVEL,
+                    force_all=True,
+                )
+                window.show_all()
+                window.load_from_yaml_dict(yaml_dict)
+        else:
+            dialog.destroy()
     #
     def do_activate(self):
         window = ApplicationWindow(
@@ -418,39 +418,39 @@ class Application(Gtk.Application):
         )
         window.present()
     #
-    # def on_about(self, action, param):
-    #
-    #     with importlib.resources.path(
-    #         "rfi_file_monitor.data", "RFI-logo-transparent.png"
-    #     ) as f:
-    #         logo = GdkPixbuf.Pixbuf.new_from_file_at_scale(
-    #             str(f), 300, -1, True
-    #         )
-    #
-    #     about_dialog = Gtk.AboutDialog(
-    #         transient_for=self.get_active_window(),
-    #         modal=True,
-    #         authors=["Tom Schoonjans"],
-    #         logo=logo,
-    #         version=__version__,
-    #     )
-    #     about_dialog.present()
-    #
-    # def on_quit(self, action, param):
-    #     windows = filter(
-    #         lambda window: isinstance(window, ApplicationWindow),
-    #         self.get_windows(),
-    #     )
-    #
-    #     for index, window in enumerate(windows):
-    #         if window.active_engine.props.running:
-    #             window.close()
-    #         else:
-    #             self.remove_window(window)
-    #
-    # def on_help_url(self, action, param):
-    #     webbrowser.open_new_tab(param.get_string())
-    #
+    def on_about(self, action, param):
+
+        with importlib.resources.path(
+            "rfi_file_monitor.data", "RFI-logo-transparent.png"
+        ) as f:
+            logo = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+                str(f), 300, -1, True
+            )
+
+        about_dialog = Gtk.AboutDialog(
+            transient_for=self.get_active_window(),
+            modal=True,
+            authors=["Tom Schoonjans", "Laura Shemilt"],
+            logo=logo,
+            version=__version__,
+        )
+        about_dialog.present()
+
+    def on_quit(self, action, param):
+        windows = filter(
+            lambda window: isinstance(window, ApplicationWindow),
+            self.get_windows(),
+        )
+
+        for index, window in enumerate(windows):
+            if window.active_engine.props.running:
+                window.close()
+            else:
+                self.remove_window(window)
+
+    def on_help_url(self, action, param):
+        webbrowser.open_new_tab(param.get_string())
+
     def on_preferences(self, action, param):
         window = PreferencesWindow(
             self._prefs,

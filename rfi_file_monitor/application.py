@@ -423,15 +423,13 @@ class Application(Gtk.Application):
         with importlib.resources.path(
             "rfi_file_monitor.data", "RFI-logo-transparent.png"
         ) as f:
-            logo = GdkPixbuf.Pixbuf.new_from_file_at_scale(
-                str(f), 300, -1, True
-            )
+            logo = Gtk.Picture.new_for_file(Gio.File.new_for_path(str(f)))
 
         about_dialog = Gtk.AboutDialog(
             transient_for=self.get_active_window(),
             modal=True,
             authors=["Tom Schoonjans", "Laura Shemilt"],
-            logo=logo,
+            logo=logo.get_paintable(),
             version=__version__,
         )
         about_dialog.present()

@@ -113,16 +113,18 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         )
 
 
-        menu_button = Gtk.MenuButton(
+        common_menu_button = Gtk.MenuButton(
             valign=Gtk.Align.CENTER,
             focus_on_click=False,
             icon_name="open-menu-symbolic",
             menu_model= self.get_property("application").menubar,
         )
+
+
         titlebar: Gtk.HeaderBar = Gtk.HeaderBar(
             title_widget=Gtk.Label(label="RFI-File-Monitor")
         )
-        titlebar.pack_end(menu_button)
+        titlebar.pack_end(common_menu_button)
         self.set_titlebar(titlebar)
 
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import gi
 
-gi.require_version("Gtk", "3.0")
+gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, GLib
 from ..utils import match_path
 from watchdog.observers import Observer
@@ -56,40 +56,74 @@ class FileWatchdogEngine(Engine):
         )
         self.attach(label, 0, 0, 1, 1)
 
-        self._directory_chooser_button = self.register_widget(
-            Gtk.FileChooserButton(
-                title="Select a directory for monitoring",
-                action=Gtk.FileChooserAction.SELECT_FOLDER,
-                create_folders=True,
-                halign=Gtk.Align.FILL,
-                valign=Gtk.Align.FILL,
-                hexpand=True,
-                vexpand=False,
+
+        self._directory_chooser_button =  Gtk.Button(
+            child=Gtk.Label(
+                label="Select a folder for monitoring",
             ),
-            "monitored_directory",
+            halign=Gtk.Align.FILL,
+            valign=Gtk.Align.CENTER,
+            hexpand=True,
+            vexpand=False,
         )
         self.attach(self._directory_chooser_button, 1, 0, 1, 1)
         self._directory_chooser_button.connect(
-            "selection-changed", self._directory_chooser_button_cb
+            "clicked", self._directory_chooser_button_cb
         )
+
 
         self._monitor: Observer = None
 
+
     def _directory_chooser_button_cb(self, button):
-        if (
-            self.params.monitored_directory is None
-            or Path(self.params.monitored_directory).is_dir() is False
-        ):
-            self._valid = False
+        _filter = Gtk.FileFilter()
+        _filter.add_mime_type("directory")
+        _filter.set_name("Directories")
+
+        dialog = Gtk.FileChooserDialog(
+            action=Gtk.FileChooserAction.SELECT_FOLDER,
+            filter=_filter,
+            title="Select a directory to monitor",
+            modal=True,
+            transient_for=self.appwindow,
+        )
+        dialog.add_button("Select", Gtk.ResponseType.ACCEPT)
+        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        dialog.connect(
+            "response",
+            self._directory_chooser_response_cb,
+            button,
+        )
+        dialog.show()
+
+
+    def _directory_chooser_response_cb(
+        self,
+        native: Gtk.FileChooserDialog,
+        response: int,
+        button: Gtk.Button,
+    ):
+        if response == Gtk.ResponseType.ACCEPT:
+            file: Gio.File = native.get_file()
+            filename: str = file.get_path()
+            if (
+                filename
+                and os.path.isfile(filename)
+                and os.access(filename, os.R_OK)
+            ):
+                label: Gtk.Label = button.get_child()
+                label.set_text(filename)
+                self._filename = filename
+            else:
+                self._filename = None
+            self._update_buttons()
+
+        native.destroy()
+    def _update_buttons(self):
+        if self._filename is not None and self._destination is not None:
+            self.lookup_action("play").set_enabled(True)
         else:
-            try:
-                os.listdir(self.params.monitored_directory)
-                self._valid = True
-            except Exception:
-                self._valid = False
-
-        self.notify("valid")
-
+            self.lookup_action("play").set_enabled(False)
 
 # add our ExitableThread methods to Watchdog's Observer class to ensure it can be used as an EngineThread
 class FileWatchdogEngineThread(Observer):

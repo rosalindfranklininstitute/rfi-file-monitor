@@ -29,7 +29,7 @@ from .preferences import (
 from .preferenceswindow import PreferencesWindow
 # from .files.regular_file import RegularFile
 from .file import File
-# from .utils.helpwindow import HelpWindow
+from .utils.helpwindow import HelpWindow
 # from .utils.googleanalytics import GoogleAnalyticsContext
 from .applicationwindow import ApplicationWindow
 from .engine import Engine
@@ -128,19 +128,19 @@ class Application(Gtk.Application):
         for action_entry in action_entries:
             add_action_entries(self, *action_entry)
     #
-    #     # add accelerators
-    #     accelerators = (
-    #         ("app.quit", ("<Primary>Q",)),
-    #         ("app.new", ("<Primary>N",)),
-    #         ("app.open", ("<Primary>O",)),
-    #         ("win.save", ("<Primary>S",)),
-    #         ("win.save-as", ("<Primary><Shift>S",)),
-    #         ("win.close", ("<Primary>W",)),
-    #     )
-    #
-    #     for accel in accelerators:
-    #         self.set_accels_for_action(accel[0], accel[1])
-    #
+        # add accelerators
+        accelerators = (
+            ("app.quit", ("<Primary>Q",)),
+            ("app.new", ("<Primary>N",)),
+            ("app.open", ("<Primary>O",)),
+            ("win.save", ("<Primary>S",)),
+            ("win.save-as", ("<Primary><Shift>S",)),
+            ("win.close", ("<Primary>W",)),
+        )
+
+        for accel in accelerators:
+            self.set_accels_for_action(accel[0], accel[1])
+
         self._engines_advanced_settings_map: Dict[
             Type[Engine], Type[EngineAdvancedSettings]
         ] = dict()
@@ -156,22 +156,22 @@ class Application(Gtk.Application):
         self._pango_docs_map: Dict[
             Type[Union[Engine, QueueManager, Operation]], str
         ] = dict()
-    #
-    #     # add queue manager docs manually
-    #     try:
-    #         contents = (
-    #             Path(__file__)
-    #             .parent.joinpath("docs", "queue_manager.pango")
-    #             .read_text()
-    #         )
-    #     except Exception:
-    #         logger.exception(
-    #             f"with_pango_docs: could not open queue_manager.pango for reading"
-    #         )
-    #     else:
-    #         self._pango_docs_map[QueueManager] = contents
-    #
-    #     # get info from entry points
+
+        # add queue manager docs manually
+        try:
+            contents = (
+                Path(__file__)
+                .parent.joinpath("docs", "queue_manager.pango")
+                .read_text()
+            )
+        except Exception:
+            logger.exception(
+                f"with_pango_docs: could not open queue_manager.pango for reading"
+            )
+        else:
+            self._pango_docs_map[QueueManager] = contents
+
+        # get info from entry points
         self._known_operations = {
             e.name: e.load()
             for e in importlib.metadata.entry_points()[
@@ -188,8 +188,8 @@ class Application(Gtk.Application):
             ]
         }
     #
-    #     # add our help window, which will be shared by all appwindows
-    #     self._help_window = HelpWindow(self._pango_docs_map)
+        # add our help window, which will be shared by all appwindows
+       # self._help_window = HelpWindow(self._pango_docs_map)
     #
     #     # populate dict with preferences found in entry points
         self._prefs = Preferences(Munch(), Munch(), Munch())

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import gi
 
-gi.require_version("Gtk", "3.0")
+gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, GLib
 from ..utils import match_path, _get_common_patterns
 from watchdog.observers import Observer

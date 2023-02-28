@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import gi
 
-gi.require_version("Gtk", "3.0")
-gi.require_version("Gdk", "3.0")
+gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, GObject, Gdk, GLib
 from munch import Munch
 
@@ -51,7 +50,6 @@ class Engine(ABC, WidgetParams, Gtk.Grid, metaclass=EngineMeta):
             vexpand=True,
             row_spacing=5,
             column_spacing=5,
-            border_width=5,
         )
         Gtk.Grid.__init__(self, **kwargs)
         WidgetParams.__init__(self)
@@ -90,7 +88,7 @@ class Engine(ABC, WidgetParams, Gtk.Grid, metaclass=EngineMeta):
         # spawn a thread for this to avoid GUI freezes
         task_window = LongTaskWindow(self._appwindow)
         task_window.set_text(f"<b>Launching {self.NAME}</b>")
-        task_window.show()
+        task_window.present()
         watch_cursor = Gdk.Cursor.new_for_display(
             Gdk.Display.get_default(), Gdk.CursorType.WATCH
         )
@@ -107,7 +105,7 @@ class Engine(ABC, WidgetParams, Gtk.Grid, metaclass=EngineMeta):
 
         task_window = LongTaskWindow(self._appwindow)
         task_window.set_text(f"<b>Stopping {self.NAME}</b>")
-        task_window.show()
+        task_window.present()
         watch_cursor = Gdk.Cursor.new_for_display(
             Gdk.Display.get_default(), Gdk.CursorType.WATCH
         )

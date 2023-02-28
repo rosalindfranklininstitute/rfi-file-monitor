@@ -187,26 +187,26 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         )
         controls_grid_basic.attach(self._engines_notebook, 1, 0, 6, 2)
 
-        # self._engines: List[Engine] = list()
-        #
-        # for engine_cls in self.get_property(
-        #     "application"
-        # ).known_engines.values():
-        #     if not (self._prefs.engines[engine_cls] or force_all):
-        #         continue
-        #     engine = engine_cls(appwindow=self)
-        #     engine_grid = Gtk.Grid(
-        #         **EXPAND_AND_FILL, row_spacing=5
-        #     )
-        #     engine_grid.attach(engine, 0, 0, 1, 1)
-        #     buttons_grid = Gtk.Grid(
-        #         halign=Gtk.Align.FILL,
-        #         valign=Gtk.Align.CENTER,
-        #         hexpand=True,
-        #         vexpand=False,
-        #         column_spacing=5,
-        #     )
-        #     # add button and dialog for advanced settings if necessary
+        self._engines: List[Engine] = list()
+
+        for engine_cls in self.get_property(
+            "application"
+        ).known_engines.values():
+            if not (self._prefs.engines[engine_cls] or force_all):
+                continue
+            engine = engine_cls(appwindow=self)
+            engine_grid = Gtk.Grid(
+                **EXPAND_AND_FILL, row_spacing=5
+            )
+            engine_grid.attach(engine, 0, 0, 1, 1)
+            buttons_grid = Gtk.Grid(
+                halign=Gtk.Align.FILL,
+                valign=Gtk.Align.CENTER,
+                hexpand=True,
+                vexpand=False,
+                column_spacing=5,
+            )
+            # add button and dialog for advanced settings if necessary
         #     if (
         #         engine_cls
         #         in self.get_property(
@@ -230,51 +230,51 @@ class ApplicationWindow(Gtk.ApplicationWindow):
         #             vexpand=False,
         #         )
         #         buttons_grid.attach(
-        #             advanced_settings_button, len(buttons_grid), 0, 1, 1
+        #             advanced_settings_button, 0, 0, 1, 1
         #         )
         #         advanced_settings_button.connect(
         #             "clicked",
         #             self._engine_advanced_settings_button_clicked_cb,
         #             engine,
         #         )
-        #     if engine_cls in self.get_property("application").pango_docs_map:
-        #         help_button = Gtk.Button(
-        #             label="Help",
-        #             halign=Gtk.Align.CENTER,
-        #             valign=Gtk.Align.CENTER,
-        #             hexpand=True,
-        #             vexpand=False,
-        #         )
-        #         buttons_grid.attach(help_button, len(buttons_grid), 0, 1, 1)
-        #         help_button.connect(
-        #             "clicked", self._engine_help_button_clicked_cb, engine
-        #         )
-        #
-        #     # fix layout a bit. Buttons should be grouped and centered
-        #     if buttons_grid_len := len(buttons_grid):
-        #         engine_grid.attach(buttons_grid, 0, 1, 1, 1)
-        #         if buttons_grid_len >= 2:
-        #             # apparently the children of the grid are listed in LIFO order
-        #             list(buttons_grid)[0].props.halign = Gtk.Align.START
-        #             list(buttons_grid)[-1].props.halign = Gtk.Align.END
-        #         if buttons_grid_len >= 3:
-        #             for widget in list(buttons_grid)[1:-1]:
-        #                 widget.props.hexpand = False
-        #     else:
-        #         del buttons_grid
-        #     self._engines_notebook.append_page(
-        #         engine_grid, Gtk.Label(label=engine_cls.NAME)
-        #     )
-        #     self._engines.append(engine)
-        #
-        # # ensure first engine is active
-        # #self._active_engine: Engine = self._engines[0]
-        # self._active_engine_valid_handler_id = self._active_engine.connect(
-        #     "notify::valid", self._engine_valid_changed_cb
-        # )
-        # self._engines_notebook.props.page = 0
-        # self._engines_notebook.connect("switch-page", self._switch_page_cb)
-        #
+            if engine_cls in self.get_property("application").pango_docs_map:
+                help_button = Gtk.Button(
+                    label="Help",
+                    halign=Gtk.Align.CENTER,
+                    valign=Gtk.Align.CENTER,
+                    hexpand=True,
+                    vexpand=False,
+                )
+                buttons_grid.attach(help_button, 1, 0, 1, 1)
+                help_button.connect(
+                    "clicked", self._engine_help_button_clicked_cb, engine
+                )
+
+            # fix layout a bit. Buttons should be grouped and centered
+            # if buttons_grid_len := len(buttons_grid):
+            #     engine_grid.attach(buttons_grid, 0, 1, 1, 1)
+            #     if buttons_grid_len >= 2:
+            #         # apparently the children of the grid are listed in LIFO order
+            #         list(buttons_grid)[0].props.halign = Gtk.Align.START
+            #         list(buttons_grid)[-1].props.halign = Gtk.Align.END
+            #     if buttons_grid_len >= 3:
+            #         for widget in list(buttons_grid)[1:-1]:
+            #             widget.props.hexpand = False
+            # else:
+            #     del buttons_grid
+            self._engines_notebook.append_page(
+                engine_grid, Gtk.Label(label=engine_cls.NAME)
+            )
+            self._engines.append(engine)
+
+        # ensure first engine is active
+        self._active_engine: Engine = self._engines[0]
+        self._active_engine_valid_handler_id = self._active_engine.connect(
+            "notify::valid", self._engine_valid_changed_cb
+        )
+        self._engines_notebook.props.page = 0
+        self._engines_notebook.connect("switch-page", self._switch_page_cb)
+
         # # Add support for adding and removing operations
         # controls_grid_basic.attach(
         #     Gtk.Separator(
@@ -603,14 +603,14 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     #             return True
     #         return False
     #
-    # def _switch_page_cb(self, notebook, page, page_num):
-    #     self._active_engine.disconnect(self._active_engine_valid_handler_id)
-    #     self._active_engine = self._engines[page_num]
-    #     self._repopulate_available_operations()
-    #     self._update_monitor_switch_sensitivity()
-    #     self._active_engine_valid_handler_id = self._active_engine.connect(
-    #         "notify::valid", self._engine_valid_changed_cb
-    #     )
+    def _switch_page_cb(self, notebook, page, page_num):
+        self._active_engine.disconnect(self._active_engine_valid_handler_id)
+        self._active_engine = self._engines[page_num]
+        self._repopulate_available_operations()
+        self._update_monitor_switch_sensitivity()
+        self._active_engine_valid_handler_id = self._active_engine.connect(
+            "notify::valid", self._engine_valid_changed_cb
+        )
     #
     # def _repopulate_available_operations(self):
     #     # get active engine
@@ -642,16 +642,16 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     #         self.lookup_action("add-operation").set_enabled(False)
     #         self._controls_operations_combo.set_sensitive(False)
     #
-    # def _update_monitor_switch_sensitivity(self):
-    #     if len(self._operations_box) == 0:
-    #         self.lookup_action("play").set_enabled(False)
-    #         self._engines_notebook.props.show_tabs = True
-    #     else:
-    #         self._engines_notebook.props.show_tabs = False
-    #         if self._active_engine.props.valid:
-    #             self.lookup_action("play").set_enabled(True)
-    #         else:
-    #             self.lookup_action("play").set_enabled(False)
+    def _update_monitor_switch_sensitivity(self):
+        if len(self._operations_box) == 0:
+            self.lookup_action("play").set_enabled(False)
+            self._engines_notebook.props.show_tabs = True
+        else:
+            self._engines_notebook.props.show_tabs = False
+            if self._active_engine.props.valid:
+                self.lookup_action("play").set_enabled(True)
+            else:
+                self.lookup_action("play").set_enabled(False)
 
     def _files_tree_model_visible_func(self, model, iter, data):
         # Children should always be shown when the parent is visible
@@ -687,19 +687,19 @@ class ApplicationWindow(Gtk.ApplicationWindow):
     #         return True
     #     return fnmatch(model[iter][0], pattern)
     #
-    # def _engine_advanced_settings_button_clicked_cb(self, button, engine):
-    #     # To avoid problems with the params, we have to reuse the window
-    #     # So when it is closed, it is hidden instead of destroyed.
-    #     dialog = getattr(engine, self.ENGINE_ADVANCED_SETTINGS_WINDOW_ATTR)
-    #     dialog.present()
+    def _engine_advanced_settings_button_clicked_cb(self, button, engine):
+        # To avoid problems with the params, we have to reuse the window
+        # So when it is closed, it is hidden instead of destroyed.
+        dialog = getattr(engine, self.ENGINE_ADVANCED_SETTINGS_WINDOW_ATTR)
+        dialog.present()
 
-    # def _engine_help_button_clicked_cb(self, button, engine):
-    #     # Reuse window for all engines
-    #     dialog = self.get_property("application").help_window
-    #     dialog.props.transient_for = self
-    #     dialog.select_item(type(engine))
-    #     dialog.present()
-    #
+    def _engine_help_button_clicked_cb(self, button, engine):
+        # Reuse window for all engines
+        dialog = self.get_property("application").help_window
+        dialog.props.transient_for = self
+        dialog.select_item(type(engine))
+        dialog.present()
+
     def on_open_queue_manager(self, action, param):
         self._queue_manager_window.present()
 

@@ -1,6 +1,6 @@
 import gi
 
-gi.require_version("Gtk", "3.0")
+gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, Pango
 
 import logging
@@ -23,14 +23,12 @@ class HelpWindow(Gtk.Window):
     ):
         super().__init__(
             destroy_with_parent=True,
-            window_position=Gtk.WindowPosition.NONE,
-            border_width=5,
             title="Help",
         )
         self.set_default_size(600, 600)
 
         grid = Gtk.Grid(**EXPAND_AND_FILL, row_spacing=5, column_spacing=5)
-        self.add(grid)
+        self.set_child(grid)
 
         self._search_entry = Gtk.SearchEntry(
             halign=Gtk.Align.START,
@@ -47,7 +45,6 @@ class HelpWindow(Gtk.Window):
             hexpand=False,
             vexpand=True,
             hscrollbar_policy=Gtk.PolicyType.NEVER,
-            shadow_type=Gtk.ShadowType.IN,
         )
         grid.attach(list_sw, 0, 1, 1, 1)
 
@@ -56,7 +53,7 @@ class HelpWindow(Gtk.Window):
             activate_on_single_click=False,
         )
 
-        list_sw.add(self._list_box)
+        list_sw.set_child(self._list_box)
 
         # prepare contents
         contents = list()
@@ -115,7 +112,6 @@ class HelpWindow(Gtk.Window):
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
                 vexpand=False,
-                margin=6,
                 label=f"{widgetclass.NAME}",
             )
             self._list_box.insert(label, -1)
@@ -133,7 +129,6 @@ class HelpWindow(Gtk.Window):
         label_sw = Gtk.ScrolledWindow(
             **EXPAND_AND_FILL,
             hscrollbar_policy=Gtk.PolicyType.NEVER,
-            shadow_type=Gtk.ShadowType.IN,
         )
         self._contents_label = Gtk.Label(
             **EXPAND_AND_FILL,
@@ -148,12 +143,12 @@ class HelpWindow(Gtk.Window):
             margin_top=5,
             margin_bottom=5,
         )
-        label_sw.add(self._contents_label)
+        label_sw.set_child(self._contents_label)
         grid.attach(label_sw, 1, 0, 1, 2)
 
         self._list_box.invalidate_headers()
 
-        grid.show_all()
+        grid.show()
 
     def _search_entry_changed_cb(self, entry):
         self._list_box.invalidate_filter()
@@ -170,6 +165,7 @@ class HelpWindow(Gtk.Window):
         header = row.get_header()
 
         if not header and (before is None or before.section != row.section):
+            logger.info(f"********{row.get_activatable}************")
             title = f"<b>{row.section}</b>"
 
             header = Gtk.Label(

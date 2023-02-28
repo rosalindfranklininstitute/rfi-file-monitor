@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod, ABCMeta
 import gi
 
-gi.require_version("Gtk", "3.0")
+gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk
 
 from .file import File
@@ -40,8 +40,7 @@ class Operation(ABC, Gtk.Frame, WidgetParams, metaclass=OperationMeta):
             valign=Gtk.Align.CENTER,
             hexpand=False,
             vexpand=False,
-            column_spacing=5,
-            border_width=5,
+            column_spacing=5
         )
         label_grid.attach(self._label, 0, 0, 1, 1)
 

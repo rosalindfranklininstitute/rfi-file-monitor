@@ -1,6 +1,6 @@
 import gi
 
-gi.require_version("Gtk", "3.0")
+gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk
 
 from ..engine_advanced_settings import EngineAdvancedSettings
@@ -132,7 +132,7 @@ class CephS3BucketEngineAdvancedSettings(EngineAdvancedSettings):
 
         # now the RabbitMQ config
         rabbitmq_radiobutton = engine.register_widget(
-            Gtk.RadioButton(
+            Gtk.CheckButton(
                 halign=Gtk.Align.START,
                 valign=Gtk.Align.CENTER,
                 hexpand=False,
@@ -155,9 +155,9 @@ class CephS3BucketEngineAdvancedSettings(EngineAdvancedSettings):
         self._row_counter += 1
 
         rabbitmq_grid = Gtk.Grid(
-            **EXPAND_AND_FILL, row_spacing=5, column_spacing=5, border_width=5
+            **EXPAND_AND_FILL, row_spacing=5, column_spacing=5
         )
-        rabbitmq_frame.add(rabbitmq_grid)
+        rabbitmq_frame.set_child(rabbitmq_grid)
 
         # we need:
         # 1. rabbitmq hostname
@@ -351,13 +351,13 @@ class CephS3BucketEngineAdvancedSettings(EngineAdvancedSettings):
             1,
         )
         rabbitmq_ca_certificate = engine.register_widget(
-            Gtk.FileChooserButton(
+            Gtk.FileChooserNative(
                 title="Select the CA certificate used to sign the server SSL certificate",
                 action=Gtk.FileChooserAction.OPEN,
-                halign=Gtk.Align.FILL,
-                valign=Gtk.Align.CENTER,
-                hexpand=True,
-                vexpand=False,
+                # halign=Gtk.Align.FILL,
+                # valign=Gtk.Align.CENTER,
+                # hexpand=True,
+                # vexpand=False,
             ),
             "rabbitmq_ca_certificate",
         )

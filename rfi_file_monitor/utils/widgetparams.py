@@ -44,11 +44,11 @@ class WidgetParams:
     ):
         self._params[param_name] = checkbutton.get_active()
 
-    # @final
-    # def _filechooserbutton_selection_changed_cb(
-    #     self, filechooserbutton: Gtk.FileChooserButton, param_name: str
-    # ):
-    #     self._params[param_name] = filechooserbutton.get_filename()
+    @final
+    def _filechooserbutton_selection_changed_cb(
+        self, filechooserbutton: Gtk.FileChooserDialog, param_name: str
+    ):
+        self._params[param_name] = filechooserbutton.get_file()
 
     @final
     def _spinbutton_value_changed_cb(
@@ -93,13 +93,13 @@ class WidgetParams:
             self._signal_ids[param_name] = widget.connect(
                 "toggled", self._checkbutton_toggled_cb, param_name
             )
-        elif isinstance(widget, Gtk.FileChooserButton):
-            self._params[param_name] = widget.get_filename()
-            self._signal_ids[param_name] = widget.connect(
-                "selection-changed",
-                self._filechooserbutton_selection_changed_cb,
-                param_name,
-            )
+        elif isinstance(widget, Gtk.FileChooserDialog):
+            self._params[param_name] = widget.get_file()
+            # self._signal_ids[param_name] = widget.connect(
+            #     "selection-changed",
+            #     self._filechooserbutton_selection_changed_cb,
+            #     param_name,
+            # )
         elif isinstance(widget, Gtk.Entry):
             self._params[param_name] = widget.get_text().strip()
             self._signal_ids[param_name] = widget.connect(

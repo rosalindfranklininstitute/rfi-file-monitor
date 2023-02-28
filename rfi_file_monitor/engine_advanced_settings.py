@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod, ABCMeta
 import gi
 
-gi.require_version("Gtk", "3.0")
+gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk
 
 from .utils import EXPAND_AND_FILL

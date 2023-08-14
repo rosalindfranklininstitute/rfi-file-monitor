@@ -18,6 +18,8 @@ from pathlib import Path
 import collections.abc
 import functools
 import threading
+from time import sleep
+from ..file import FileStatus
 
 logger = logging.getLogger(__name__)
 
@@ -185,5 +187,43 @@ def add_directory_support(run: Callable[[Operation, File], Optional[str]]):
             return None
         else:
             raise NotImplementedError(f"{type(file)} is currently unsupported")
+
+    return wrapper
+
+
+def do_bulk_upload(process_existing_files: Callable[List]):
+    @functools.wraps(process_existing_files)
+    def wrapper(self: Engine, existing_files: List):
+
+        chunk_size = 2000
+        if len(existing_files) > chunk_size:
+
+            # do not like this hard coded value but it is empirically derived -
+            # this is the max number of files that a queue can take without a long wait for users working on a standard
+            # size machine with 8CPU 8G RAM
+            chunked_input = [
+                existing_files[i : i + chunk_size]
+                for i in range(0, len(existing_files), chunk_size)
+            ]
+            n = 1
+            processed_files = 0
+            for rv in chunked_input:
+                # chunk_weight = sum(
+                #     [Path(file.filename).stat().st_size for file in rv]
+                # )
+                process_existing_files(self, rv)
+
+                while (
+                    processed_files < chunk_size * n * 0.9
+                ):  # refresh the list when we are at 90% of the size
+                    processed_files = sum(
+                        [
+                            item
+                            for item in self._engine._appwindow._queue_manager._files_dict.values()
+                            if item.status == FileStatus.SUCCESS
+                        ]
+                    )
+                    sleep(1)
+                n = n + 1
 
     return wrapper

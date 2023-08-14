@@ -20,6 +20,7 @@ from ..utils.decorators import (
     exported_filetype,
     with_advanced_settings,
     with_pango_docs,
+    do_bulk_upload,
 )
 from .file_watchdog_engine_advanced_settings import (
     FileWatchdogEngineAdvancedSettings,
@@ -125,38 +126,56 @@ class FileWatchdogEngineThread(Observer):
 
     def _search_for_existing_files(self, directory: Path) -> List[RegularFile]:
         rv: List[RegularFile] = list()
-        for child in directory.iterdir():
-            if (
-                child.is_file()
-                and not child.is_symlink()
-                and match_path(
-                    child,
+        path_tree = os.walk(directory)
+        for root, dirs, files in path_tree:
+            for fname in files:
+                if not Path(fname).is_symlink() and match_path(
+                    Path(fname),
                     included_patterns=self._included_patterns,
                     excluded_patterns=self._excluded_patterns,
                     case_sensitive=False,
-                )
-            ):
+                ):
+                    file_path = Path(os.path.join(root, fname))
+                    relative_file_path = file_path.relative_to(
+                        self.params.monitored_directory
+                    )
+                    _file = RegularFile(
+                        str(file_path),
+                        relative_file_path,
+                        get_file_creation_timestamp(file_path),
+                        FileStatus.SAVED,
+                    )
+                    rv.append(_file)
+        GLib.idle_add(
+            self._engine._appwindow._queue_manager.get_total_files_in_path,
+            len(rv),
+            priority=GLib.PRIORITY_DEFAULT_IDLE,
+        )
 
-                file_path = directory.joinpath(child)
-                relative_file_path = file_path.relative_to(
-                    self.params.monitored_directory
-                )
-                _file = RegularFile(
-                    str(file_path),
-                    relative_file_path,
-                    get_file_creation_timestamp(file_path),
-                    FileStatus.SAVED,
-                )
-                rv.append(_file)
-            elif (
-                self.params.monitor_recursively
-                and child.is_dir()
-                and not child.is_symlink()
-            ):
-                rv.extend(
-                    self._search_for_existing_files(directory.joinpath(child))
-                )
         return rv
+
+    @do_bulk_upload
+    def process_existing_files(self, existing_files):
+        try:
+            GLib.idle_add(
+                self._engine._appwindow._queue_manager.add,
+                existing_files,
+                priority=GLib.PRIORITY_DEFAULT_IDLE,
+            )
+        except Exception as e:
+            self._engine.cleanup()
+            GLib.idle_add(
+                self._engine.abort,
+                self._task_window,
+                e,
+                priority=GLib.PRIORITY_HIGH,
+            )
+        GLib.idle_add(
+            self._engine.kill_task_window,
+            self._task_window,
+            priority=GLib.PRIORITY_HIGH,
+        )
+        return
 
     def run(self):
         # confirm patterns are valid
@@ -180,24 +199,12 @@ class FileWatchdogEngineThread(Observer):
                 self._task_window.set_text,
                 "<b>Processing existing files...</b>",
             )
-            try:
-                existing_files = self._search_for_existing_files(
-                    Path(self.params.monitored_directory)
-                )
-                GLib.idle_add(
-                    self._engine._appwindow._queue_manager.add,
-                    existing_files,
-                    priority=GLib.PRIORITY_DEFAULT_IDLE,
-                )
-            except Exception as e:
-                self._engine.cleanup()
-                GLib.idle_add(
-                    self._engine.abort,
-                    self._task_window,
-                    e,
-                    priority=GLib.PRIORITY_HIGH,
-                )
-                return
+
+            existing_files = self._search_for_existing_files(
+                Path(self.params.monitored_directory)
+            )
+            self.process_existing_files(existing_files)
+            return
 
         # if we get here, things should be working.
         # close task_window

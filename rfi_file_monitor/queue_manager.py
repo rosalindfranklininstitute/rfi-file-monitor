@@ -38,6 +38,7 @@ class QueueManager(WidgetParams, Gtk.Grid):
         self._files_dict: OrderedDictType[str, File] = OrderedDict()
         self._jobs_list: Final[List[Job]] = list()
         self._njobs_running: int = 0
+        self._total_files_in_path: int = 0
 
         kwargs = dict(
             halign=Gtk.Align.FILL,
@@ -453,6 +454,9 @@ class QueueManager(WidgetParams, Gtk.Grid):
         self._running = False
         self.notify("running")
 
+    def get_total_files_in_path(self, number_of_files: int):
+        self._total_files_in_path = number_of_files
+
     def _files_dict_timeout_cb(self, *user_data):
         """
         This function runs every second, and will take action based on the status of all files in the dict
@@ -563,7 +567,7 @@ class QueueManager(WidgetParams, Gtk.Grid):
             # update status bar
             self._appwindow._status_grid.get_child_at(
                 0, 0
-            ).props.label = f"Total: {len(self._files_dict)}"
+            ).props.label = f"Total: {self._total_files_in_path }"
             for _status, _counter in status_counters.items():
                 self._appwindow._status_grid.get_child_at(
                     int(_status), 0

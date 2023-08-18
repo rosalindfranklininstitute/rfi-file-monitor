@@ -13,6 +13,8 @@ from pyscicat.client import ScicatClient
 from pyscicat.model import Dataset, RawDataset, DerivedDataset
 import logging
 from urllib.parse import urlparse
+import importlib.metadata
+import importlib
 from typing import Dict, Optional, List
 from ..version import __version__ as core_version
 
@@ -36,8 +38,18 @@ class SciCataloguer(Operation):
         )
         self.add(self._grid)
 
+        tempgrid = Gtk.Grid(
+            row_spacing=5,
+            column_spacing=5,
+            halign=Gtk.Align.FILL,
+            valign=Gtk.Align.CENTER,
+            hexpand=True,
+            vexpand=False,
+        )
+        self._grid.attach(tempgrid, 0, 0, 1, 1)
+
         # Hostname
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label=" SciCat Hostname ",
                 halign=Gtk.Align.CENTER,
@@ -59,10 +71,10 @@ class SciCataloguer(Operation):
             ),
             "hostname",
         )
-        self._grid.attach(self._hostname_entry, 1, 0, 1, 1)
+        tempgrid.attach(self._hostname_entry, 1, 0, 1, 1)
 
         # Operation upload
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label=" Upload location ",
                 halign=Gtk.Align.CENTER,
@@ -81,10 +93,10 @@ class SciCataloguer(Operation):
             op_combo.append_text(k)
 
         op_widget = self.register_widget(op_combo, "operation")
-        self._grid.attach(op_widget, 3, 0, 1, 1)
+        tempgrid.attach(op_widget, 3, 0, 1, 1)
 
         # Username
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label=" Username ",
                 halign=Gtk.Align.CENTER,
@@ -106,10 +118,10 @@ class SciCataloguer(Operation):
             ),
             "username",
         )
-        self._grid.attach(self._username_entry, 1, 1, 1, 1)
+        tempgrid.attach(self._username_entry, 1, 1, 1, 1)
 
         # Password
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label=" Password ",
                 halign=Gtk.Align.CENTER,
@@ -132,10 +144,10 @@ class SciCataloguer(Operation):
             ),
             "password",
         )
-        self._grid.attach(self._password_entry, 3, 1, 1, 1)
+        tempgrid.attach(self._password_entry, 3, 1, 1, 1)
 
         # Owner
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label=" Owner ",
                 halign=Gtk.Align.CENTER,
@@ -157,10 +169,10 @@ class SciCataloguer(Operation):
             ),
             "owner",
         )
-        self._grid.attach(self._owner_entry, 1, 2, 1, 1)
+        tempgrid.attach(self._owner_entry, 1, 2, 1, 1)
 
         # Owner group
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label=" Owner Group ",
                 halign=Gtk.Align.CENTER,
@@ -182,10 +194,10 @@ class SciCataloguer(Operation):
             ),
             "owner_group",
         )
-        self._grid.attach(self._owner_grp_entry, 3, 2, 1, 1)
+        tempgrid.attach(self._owner_grp_entry, 3, 2, 1, 1)
 
         # Comtact email
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label=" Email ",
                 halign=Gtk.Align.CENTER,
@@ -207,10 +219,10 @@ class SciCataloguer(Operation):
             ),
             "email",
         )
-        self._grid.attach(self._email_entry, 1, 3, 1, 1)
+        tempgrid.attach(self._email_entry, 1, 3, 1, 1)
 
         # Orcid
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label=" Orcid ",
                 halign=Gtk.Align.CENTER,
@@ -232,10 +244,10 @@ class SciCataloguer(Operation):
             ),
             "orcid",
         )
-        self._grid.attach(self._orcid_entry, 3, 3, 1, 1)
+        tempgrid.attach(self._orcid_entry, 3, 3, 1, 1)
 
         # PI
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label=" Principal Investigator ",
                 halign=Gtk.Align.CENTER,
@@ -257,10 +269,10 @@ class SciCataloguer(Operation):
             ),
             "investigator",
         )
-        self._grid.attach(self._pi_entry, 1, 4, 1, 1)
+        tempgrid.attach(self._pi_entry, 1, 4, 1, 1)
 
         # Dataset name
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label=" Experiment name ",
                 halign=Gtk.Align.CENTER,
@@ -282,11 +294,11 @@ class SciCataloguer(Operation):
             ),
             "experiment_name",
         )
-        self._grid.attach(self._exp_name_entry, 3, 4, 1, 1)
+        tempgrid.attach(self._exp_name_entry, 3, 4, 1, 1)
 
         # Instrument
         # TO DO - this is temporary until instrument preferences configured
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label=" Instrument ",
                 halign=Gtk.Align.CENTER,
@@ -308,10 +320,10 @@ class SciCataloguer(Operation):
             ),
             "instrument_choice",
         )
-        self._grid.attach(self._instrument_entry, 1, 5, 1, 1)
+        tempgrid.attach(self._instrument_entry, 1, 5, 1, 1)
 
         # Technique
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label=" Technique ",
                 halign=Gtk.Align.CENTER,
@@ -333,10 +345,10 @@ class SciCataloguer(Operation):
             ),
             "technique",
         )
-        self._grid.attach(self._technique_entry, 3, 5, 1, 1)
+        tempgrid.attach(self._technique_entry, 3, 5, 1, 1)
 
         # Input boxes for derived dataset specific fields
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label=" Input Datasets ",
                 halign=Gtk.Align.START,
@@ -360,9 +372,9 @@ class SciCataloguer(Operation):
             ),
             "input_datasets",
         )
-        self._grid.attach(self._input_datasets_entry, 1, 7, 1, 1)
+        tempgrid.attach(self._input_datasets_entry, 1, 7, 1, 1)
 
-        self._grid.attach(
+        tempgrid.attach(
             Gtk.Label(
                 label=" Used Software ",
                 halign=Gtk.Align.START,
@@ -386,14 +398,112 @@ class SciCataloguer(Operation):
             ),
             "used_software",
         )
-        self._grid.attach(self._used_software_entry, 3, 7, 1, 1)
+        tempgrid.attach(self._used_software_entry, 3, 7, 1, 1)
 
         self._derived_checkbox = Gtk.CheckButton(label="Derived Dataset")
         self._derived_checkbox.connect("toggled", self.checkbox_toggled)
         self.params.derived_dataset = self.checkbox_toggled(
             self._derived_checkbox
         )
-        self._grid.attach(self._derived_checkbox, 0, 6, 1, 1)
+        tempgrid.attach(self._derived_checkbox, 0, 6, 1, 1)
+
+        self.tempgrid = Gtk.Grid(
+            row_spacing=5,
+            column_spacing=5,
+            halign=Gtk.Align.CENTER,
+            valign=Gtk.Align.CENTER,
+            hexpand=True,
+            vexpand=False,
+        )
+        self._grid.attach(self.tempgrid, 0, 1, 1, 1)
+
+        self.counter = 0  # counter for number of rows added
+        b = Gtk.Button.new_with_label("Manually add metadata")
+        b.connect("clicked", self.on_add_clicked)
+        self.tempgrid.attach(b, 3, 0, 1, 1)
+
+        self.extra_widgets = {}
+
+        self.parser_list = []
+        for e in importlib.metadata.entry_points()[
+            "rfi_file_monitor.metadataparsers"
+        ]:
+            self.parser_list.append(e.load())
+
+    # Add in textboxes to provide metadata manually
+    def on_add_clicked(self, button):
+        i = self.counter
+
+        self.tempgrid.attach(
+            Gtk.Label(
+                label="Name",
+                halign=Gtk.Align.CENTER,
+                valign=Gtk.Align.CENTER,
+                hexpand=False,
+                vexpand=False,
+            ),
+            0,
+            1 + i,
+            1,
+            1,
+        )
+        widget = Gtk.Entry(
+            placeholder_text="Required",
+            halign=Gtk.Align.FILL,
+            valign=Gtk.Align.CENTER,
+            hexpand=True,
+            vexpand=False,
+        )
+        self.tempgrid.attach(widget, 1, 1 + i, 1, 1)
+        self.extra_widgets["name" + str(i)] = widget
+
+        self.tempgrid.attach(
+            Gtk.Label(
+                label="Value",
+                halign=Gtk.Align.CENTER,
+                valign=Gtk.Align.CENTER,
+                hexpand=False,
+                vexpand=False,
+            ),
+            2,
+            1 + i,
+            1,
+            1,
+        )
+        widget = Gtk.Entry(
+            placeholder_text="Required",
+            halign=Gtk.Align.FILL,
+            valign=Gtk.Align.CENTER,
+            hexpand=True,
+            vexpand=False,
+        )
+        self.tempgrid.attach(widget, 3, 1 + i, 1, 1)
+        self.extra_widgets["value" + str(i)] = widget
+
+        self.tempgrid.attach(
+            Gtk.Label(
+                label="Unit",
+                halign=Gtk.Align.CENTER,
+                valign=Gtk.Align.CENTER,
+                hexpand=False,
+                vexpand=False,
+            ),
+            4,
+            1 + i,
+            1,
+            1,
+        )
+        widget = Gtk.Entry(
+            halign=Gtk.Align.FILL,
+            valign=Gtk.Align.CENTER,
+            hexpand=True,
+            vexpand=False,
+        )
+        self.tempgrid.attach(widget, 5, 1 + i, 1, 1)
+        self.extra_widgets["unit" + str(i)] = widget
+
+        self.tempgrid.show_all()
+        self.counter += 1
 
     # Makes input datasets/used software boxes editable if dataset is derived
     def checkbox_toggled(self, checkbox):
@@ -423,6 +533,30 @@ class SciCataloguer(Operation):
             raise RequiredInfoNotFound("Owner required")
         if not params.owner_group:
             raise RequiredInfoNotFound("Owner group required")
+
+    # Iterates over every metadata row and extracts data
+    def _fetch_additional_metadata(self):
+        self.params.additional_metadata = {}
+        rows = int(len(self.extra_widgets) / 3)
+        for i in range(0, rows):
+            _name = self.extra_widgets["name" + str(i)].get_text()
+            _value = self.extra_widgets["value" + str(i)].get_text()
+            _unit = self.extra_widgets["unit" + str(i)].get_text()
+            if _name and _value:
+                self.additional_metadata[_name] = {
+                    "type": "string",
+                    "value": _value,
+                    "unit": _unit,
+                }
+            # don't throw exception if row left empty, just ignore
+            elif not _name and not _value:
+                logger.info(
+                    "name and value not provided for additional metadata row, skipping"
+                )
+            else:
+                raise RequiredInfoNotFound(
+                    "Both type and value are required metadata fields."
+                )
 
     def preflight_check(self):
         self._preflight_check(self.params)
@@ -456,10 +590,11 @@ class SciCataloguer(Operation):
                 "Please name a technique for this instrument."
             )
 
+        # Fetch additional metadata
+        self._fetch_additional_metadata
+
     def run(self, file: File):
         self.params.keywords = []
-        # This can be added manually in future? TO DO
-        self.params.additional_metadata = {}
         return self._run(file, self.params)
 
     def _run(self, file: File, params):
@@ -534,8 +669,22 @@ class SciCataloguer(Operation):
         fstats = Path(file.filename).stat()
         _payload.size = fstats.st_size
 
+        try:
+            parser = self.find_parser(file.filename)
+        except Exception as e:
+            logger.info(" Parser not found. Creating payload without metadata")
+            parser = None
+
         # Scientific metadata
         scientificMetadata = {}
+        if parser:
+            scientificMetadata = PayloadHelpers.implement_parser(
+                self.instr_dict,
+                self.params.technique,
+                file.filename,
+                parser,
+            )
+
         _payload.scientificMetadata = (
             PayloadHelpers.scientific_metadata_concatenation(
                 scientificMetadata,
@@ -562,8 +711,30 @@ class SciCataloguer(Operation):
         _payload.size = file._total_size
         _payload.numberOfFiles = len(file._filelist)
 
+        parser_dict = {}
+        for f in file:
+            try:
+                parser = self.find_parser(f[0])
+            except ParserNotFound:
+                parser = None
+        if parser:
+            parser_dict[f[0]] = parser
+        if not parser_dict:
+            logger.info(" Parsers not found. Creating payload without metadata")
+
         # Scientific metadata
         scientificMetadata: Dict[str, Dict[str, str]] = {}
+        if parser_dict:
+            for k, v in parser_dict.items():
+                metadata = PayloadHelpers.implement_parser(
+                    self.instr_dict, self.params.technique, k, v
+                )
+                for key, value in metadata.items():
+                    if key in scientificMetadata.keys():
+                        if scientificMetadata[key] == value:
+                            continue
+                    else:
+                        scientificMetadata[key] = value
         _payload.scientificMetadata = (
             PayloadHelpers.scientific_metadata_concatenation(
                 scientificMetadata,
@@ -595,6 +766,16 @@ class SciCataloguer(Operation):
         _payload.inputDatasets = self.params.input_datasets.split(",")
         _payload.usedSoftware = self.params.used_software.split(",")
         return _payload
+
+    def find_parser(self, filename):
+        for parser in self.parser_list:
+            if parser.supports_file(filename):
+                break
+        else:
+            parser = None
+        if not parser:
+            raise ParserNotFound("parser not found")
+        return parser
 
     # Inserts a dataset into Scicat
     def insert_payload(self, payload, scicat_session):
@@ -688,6 +869,20 @@ class PayloadHelpers:
                 ).parts[0]
 
         return source_folders
+
+    @classmethod
+    def implement_parser(cls, instr_dict, technique, filename, parser):
+        scientific_metadata = {}
+        instr_vars = instr_dict["techniques"][technique]
+        extracted = parser.extract_metadata(instr_vars, filename)
+        if extracted:
+            for k, v in extracted.items():
+                scientific_metadata[k] = {
+                    "type": "string",
+                    "value": str(v),
+                    "unit": "",
+                }
+        return scientific_metadata
 
     @classmethod
     def scientific_metadata_concatenation(
